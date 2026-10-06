@@ -1,0 +1,58 @@
+name: Reproduction gate and reports
+
+# On every push to main: fetch upstream by manifest, harmonize, run the
+# reproduction gate, render reports/ and publish to gh-pages.
+# Heavy hypothesis analyses are NOT run here; see docs/decisions.md D-004.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  gate-and-render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            yaml
+            digest
+            readr
+            dplyr
+            tidyr
+            stringr
+            tibble
+            purrr
+            ggplot2
+            testthat
+            knitr
+            rmarkdown
+            quarto
+            gt
+            DT
+            plotly
+            matrixStats
+            jsonlite
+      - uses: quarto-dev/quarto-actions/setup@v2
+      - name: Fetch upstream (verifies against lock)
+        run: Rscript R/fetch.R
+      - name: Harmonize
+        run: Rscript R/harmonize.R
+      - name: Reproduction gate
+        run: Rscript tests/run.R
+      - name: Render reports
+        run: quarto render reports
+      - name: Publish to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: reports/_site

@@ -1,0 +1,169 @@
+---
+title: "Data QC and design overview"
+---
+
+```{r setup}
+root <- ".."
+source(file.path(root, "R", "load.R"))
+suppressPackageStartupMessages({ library(dplyr); library(tidyr); library(ggplot2); library(gt); library(matrixStats) })
+design <- readr::read_csv(file.path(root, "config", "design.csv"), show_col_types = FALSE)
+derived <- function(n) readr::read_csv(file.path(root, "data", "derived", paste0(n, ".csv")), show_col_types = FALSE, progress = FALSE)
+lock <- yaml::read_yaml(file.path(root, "config", "upstream.lock.yml"))
+sp_names <- c(Apul = "A. pulchra", Peve = "P. evermanni", Ptuh = "P. tuahiniensis")
+```
+
+Harmonized from MOSAiC commit `r substr(lock$mosaic_commit, 1, 7)`; lock updated `r lock$lock_updated`.
+Every table here is derived from `config/design.csv` and `data/derived/`, which are what every hypothesis reads.
+
+## Samples per species, timepoint, and layer
+
+```{r}
+layer_cols <- grep("^has_", names(design), value = TRUE)
+design |>
+  group_by(species, timepoint) |>
+  summarise(colonies = n_distinct(colony), across(all_of(layer_cols), sum), .groups = "drop") |>
+  rename_with(~ sub("^has_", "", .x)) |>
+  gt(groupname_col = "species") |>
+  tab_header(title = "Sample counts by layer") |>
+  tab_options(table.font.size = px(13))
+```
+
+## Colony coverage
+
+Which colonies have which timepoints in the gene-expression layer. Gaps matter for every repeated-measures model.
+
+```{r}
+#| fig-height: 7
+design |>
+  filter(has_genes) |>
+  mutate(species = sp_names[species]) |>
+  ggplot(aes(timepoint, colony)) +
+  geom_tile(aes(fill = site), colour = "white") +
+  facet_wrap(~ species, scales = "free_y", ncol = 3) +
+  labs(x = NULL, y = NULL, fill = "Site", title = "Gene-expression samples per colony") +
+  theme_minimal(base_size = 11) + theme(legend.position = "bottom")
+```
+
+## Layer overlap
+
+Number of samples shared between each pair of layers (all species pooled). The diagonal is the layer's own n.
+
+```{r}
+L <- as.matrix(design[, layer_cols]); colnames(L) <- sub("^has_", "", layer_cols)
+ov <- crossprod(L * 1L)
+as.data.frame(ov) |> tibble::rownames_to_column("layer") |> gt() |>
+  tab_header(title = "Pairwise sample overlap") |> tab_options(table.font.size = px(13))
+```
+
+Samples present in **every** molecular layer (genes, mirna, lncrna, cpg, metabolomics, lipidomics), per species:
+
+```{r}
+mol <- c("has_genes", "has_mirna", "has_lncrna", "has_cpg", "has_metabolomics", "has_lipidomics")
+design |> filter(if_all(all_of(mol))) |> dplyr::count(species, timepoint) |>
+  pivot_wider(names_from = timepoint, values_from = n, values_fill = 0) |> gt()
+```
+
+## Site and nutrient balance
+
+```{r}
+design |> distinct(species, colony, site, nutrient) |>
+  dplyr::count(species, site, nutrient) |>
+  pivot_wider(names_from = species, values_from = n, values_fill = 0) |>
+  gt() |> tab_header(title = "Colonies per site x nutrient")
+```
+
+## Gene-expression library sizes and PCA
+
+```{r}
+#| fig-height: 4
+libs <- bind_rows(lapply(names(sp_names), function(sp) {
+  g <- derived(paste0("genes_", sp))
+  tibble(species = sp, sample_id = setdiff(names(g), "feature_id"),
+         libsize = colSums(as_count_matrix(g)))
+})) |> left_join(design, by = c("species", "sample_id"))
+ggplot(libs, aes(timepoint, libsize / 1e6, colour = site)) +
+  geom_jitter(width = 0.15, size = 2) +
+  facet_wrap(~ species, labeller = labeller(species = sp_names)) +
+  labs(y = "Assigned reads (millions)", x = NULL, title = "Gene count library sizes") +
+  theme_minimal(base_size = 11)
+```
+
+```{r}
+#| fig-height: 4
+pca_df <- bind_rows(lapply(names(sp_names), function(sp) {
+  m <- as_count_matrix(derived(paste0("genes_", sp)))
+  keep <- rowSums(m >= 10) >= 0.25 * ncol(m)
+  m <- m[keep, ]
+  l <- log2(t(t(m) / colSums(m) * 1e6) + 1)
+  v <- rowVars(l); l <- l[order(v, decreasing = TRUE)[1:min(2000, nrow(l))], ]
+  p <- prcomp(t(l), scale. = FALSE)
+  ve <- round(100 * p$sdev[1:2]^2 / sum(p$sdev^2))
+  tibble(species = sp, sample_id = rownames(p$x), PC1 = p$x[, 1], PC2 = p$x[, 2],
+         lab = sprintf("PC1 %d%% / PC2 %d%%", ve[1], ve[2]))
+})) |> left_join(design, by = c("species", "sample_id"))
+ggplot(pca_df, aes(PC1, PC2, colour = timepoint, shape = site)) +
+  geom_point(size = 2.5) +
+  facet_wrap(~ species + lab, scales = "free") +
+  labs(title = "PCA of log-CPM, top 2000 variable genes") +
+  theme_minimal(base_size = 11)
+```
+
+Colonies are connected across timepoints below; tight clusters per colony indicate colony-dominated variance (the H01 question).
+
+```{r}
+#| fig-height: 4
+ggplot(pca_df, aes(PC1, PC2, group = colony, colour = colony)) +
+  geom_path(alpha = 0.6) + geom_point(aes(shape = timepoint), size = 2) +
+  facet_wrap(~ species, scales = "free") +
+  theme_minimal(base_size = 11) + theme(legend.position = "none") +
+  labs(title = "Same PCA, points joined by colony")
+```
+
+## Ortholog coverage
+
+```{r}
+og <- derived("orthologs_three_way")
+tibble(species = names(sp_names),
+       orthologs_in_counts = sapply(names(sp_names), function(sp) {
+         key <- c(Apul = "apul_gene", Peve = "peve_gene", Ptuh = "ptuh_gene")[[sp]]
+         sum(og[[key]] %in% derived(paste0("genes_", sp))$feature_id)
+       }),
+       total = nrow(og),
+       with_protein_name = sum(!is.na(og$protein_name) & og$protein_name != "")) |>
+  gt() |> tab_header(title = "Three-way ortholog groups resolvable in each count matrix")
+```
+
+## Temperature history before each timepoint
+
+Daily mean per site with the nominal timepoint dates (mid-month; decision D-006).
+
+```{r}
+#| fig-height: 4
+temp <- derived("temperature_daily")
+tp <- tibble(timepoint = paste0("TP", 1:4), date = as.Date(c("2020-01-15", "2020-03-15", "2020-09-15", "2020-11-15")))
+ggplot(temp, aes(day, mean_c, colour = site)) +
+  geom_ribbon(aes(ymin = min_c, ymax = max_c, fill = site), alpha = 0.15, colour = NA) +
+  geom_line() +
+  geom_vline(data = tp, aes(xintercept = date), linetype = "dotted") +
+  geom_text(data = tp, aes(x = date, y = 31.5, label = timepoint), inherit.aes = FALSE, size = 3) +
+  labs(x = NULL, y = "Daily temperature (C)", title = "Logger record by site") +
+  theme_minimal(base_size = 11)
+```
+
+```{r}
+temp |>
+  tidyr::crossing(tp) |>
+  filter(day > date - 30, day <= date) |>
+  group_by(site, timepoint) |>
+  summarise(days = n(), mean_30d = round(mean(mean_c), 2), max_30d = round(max(max_c), 2), .groups = "drop") |>
+  pivot_wider(names_from = timepoint, values_from = c(mean_30d, max_30d, days)) |>
+  gt() |> tab_header(title = "30-day window before each nominal timepoint date")
+```
+
+## Upstream files
+
+```{r}
+tibble::as_tibble(do.call(rbind, lapply(lock$files, as.data.frame))) |>
+  mutate(MB = round(as.numeric(bytes) / 1e6, 2)) |> select(id, MB, md5, fetched_on) |>
+  gt() |> tab_options(table.font.size = px(12))
+```

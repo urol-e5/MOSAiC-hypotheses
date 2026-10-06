@@ -1,0 +1,22 @@
+# Raw upstream data: fetched by R/fetch.R, never committed
+data/raw/
+
+# Large derived matrices (CpG methylation is 25+ MB per species). Rebuild with tar_make().
+data/derived/cpg_*.csv
+data/derived/orthologs_all.csv
+
+# targets store
+_targets/
+
+# Quarto / R
+reports/_site/
+reports/.quarto/
+/.quarto/
+*_cache/
+*_files/
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+upstream-drift.csv

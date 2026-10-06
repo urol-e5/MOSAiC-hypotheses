@@ -1,0 +1,5 @@
+---
+title: "Decision log"
+---
+
+{{< include ../docs/decisions.md >}}

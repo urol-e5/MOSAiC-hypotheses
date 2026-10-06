@@ -1,0 +1,36 @@
+Package: MOSAiC.hypotheses
+Type: Project
+Title: Hypothesis-driven analyses of the E5 MOSAiC coral time series
+Version: 0.1.0
+Description: Not an installable package. This DESCRIPTION exists so that
+    r-lib/actions/setup-r-dependencies and renv can install what the pipeline,
+    tests, and reports need.
+License: MIT
+Encoding: UTF-8
+Imports:
+    yaml,
+    digest,
+    readr,
+    dplyr,
+    tidyr,
+    stringr,
+    tibble,
+    purrr,
+    ggplot2,
+    targets,
+    tarchetypes,
+    testthat,
+    knitr,
+    rmarkdown,
+    quarto,
+    gt,
+    DT,
+    plotly,
+    matrixStats,
+    jsonlite,
+    DESeq2,
+    edgeR,
+    limma,
+    vegan,
+    variancePartition,
+    lme4

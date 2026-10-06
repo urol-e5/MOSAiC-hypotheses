@@ -1,0 +1,52 @@
+name: New hypothesis
+description: Propose a pre-registered hypothesis to test on the MOSAiC data
+title: "Hxx: <claim>"
+labels: [hypothesis]
+body:
+  - type: input
+    id: claim
+    attributes:
+      label: Hypothesis as a claim
+      placeholder: "Colony identity explains more expression variance than season."
+    validations:
+      required: true
+  - type: textarea
+    id: prediction
+    attributes:
+      label: Prediction
+      description: What you expect to see if the claim is true, and if it is false.
+    validations:
+      required: true
+  - type: checkboxes
+    id: layers
+    attributes:
+      label: Data layers
+      options:
+        - label: genes
+        - label: mirna
+        - label: lncrna
+        - label: cpg
+        - label: metabolomics
+        - label: lipidomics
+        - label: physiology
+        - label: its2
+        - label: temperature
+  - type: textarea
+    id: model
+    attributes:
+      label: Model or test
+      description: Formula, random effects (colony!), filters, multiple-testing correction.
+    validations:
+      required: true
+  - type: textarea
+    id: rule
+    attributes:
+      label: Decision rule
+      description: Numeric outcome that counts as supported / not supported / inconclusive. Written now, before any analysis.
+    validations:
+      required: true
+  - type: input
+    id: depends
+    attributes:
+      label: Depends on
+      placeholder: "H01"

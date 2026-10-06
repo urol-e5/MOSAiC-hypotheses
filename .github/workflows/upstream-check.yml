@@ -1,0 +1,41 @@
+name: Upstream drift check
+
+# Re-downloads every file in config/upstream.yml and compares its MD5 to
+# config/upstream.lock.yml. Opens (or updates) an issue when anything changed.
+# Nothing is re-run automatically; a human decides what to do about drift.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - name: Install minimal deps
+        run: Rscript -e 'install.packages(c("yaml","digest"))'
+      - name: Check drift
+        id: drift
+        continue-on-error: true
+        run: Rscript R/fetch.R --check
+      - name: Open issue on drift
+        if: steps.drift.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          body="$(printf 'The weekly upstream check found files whose MD5 no longer matches `config/upstream.lock.yml`.\n\n```\n%s\n```\n\nDecide whether to refresh the lock (`Rscript R/fetch.R --force`, rerun the reproduction gate, commit) or pin the old copy.\n' "$(cat upstream-drift.csv)")"
+          existing=$(gh issue list --label upstream-drift --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "Upstream data changed ($(date -u +%Y-%m-%d))" --label upstream-drift --body "$body"
+          fi

@@ -1,0 +1,186 @@
+# Upstream data manifest.
+#
+# MOSAiC (urol-e5/MOSAiC) is a READ-ONLY upstream. This file pins the commit
+# this repo was built against and lists every external file we depend on.
+# Checksums and fetch dates are recorded in config/upstream.lock.yml by
+# `Rscript R/fetch.R`. Run `Rscript R/fetch.R --check` to detect drift.
+#
+# Species codes used throughout this repo:
+#   Apul = Acropora pulchra         (sample prefix ACR)
+#   Peve = Porites evermanni        (sample prefix POR)
+#   Ptuh = Pocillopora tuahiniensis (sample prefix POC; reference genome is P. meandrina;
+#                                    upstream file names use "ptua"/"Ptua")
+
+mosaic:
+  repo: https://github.com/urol-e5/MOSAiC
+  commit: 86432e3e393aecca307be356e514c95981177b7c
+  raw_base: https://raw.githubusercontent.com/urol-e5/MOSAiC/86432e3e393aecca307be356e514c95981177b7c
+
+files:
+  # ---- Gene counts (RNA-seq, HISAT2 + StringTie, prepDE) --------------------
+  - id: genes_Apul
+    layer: genes
+    species: Apul
+    format: csv
+    url: https://gannet.fish.washington.edu/gitrepos/urol-e5/timeseries_molecular/D-Apul/output/02.20-D-Apul-RNAseq-alignment-HiSat2/apul-gene_count_matrix.csv
+    dest: data/raw/genes/apul-gene_count_matrix.csv
+    source_page: quarto/counts.qmd
+  - id: genes_Peve
+    layer: genes
+    species: Peve
+    format: csv
+    url: https://gannet.fish.washington.edu/gitrepos/urol-e5/timeseries_molecular/E-Peve/output/02.20-E-Peve-RNAseq-alignment-HiSat2/peve-gene_count_matrix.csv
+    dest: data/raw/genes/peve-gene_count_matrix.csv
+    source_page: quarto/counts.qmd
+  - id: genes_Ptuh
+    layer: genes
+    species: Ptuh
+    format: csv
+    url: https://gannet.fish.washington.edu/gitrepos/urol-e5/timeseries_molecular/F-Ptua/output/02.20-F-Ptua-RNAseq-alignment-HiSat2/ptua-gene_count_matrix.csv
+    dest: data/raw/genes/ptua-gene_count_matrix.csv
+    source_page: quarto/counts.qmd
+
+  # ---- miRNA counts (ShortStack 4.1.0, confirmed MIRNA=Y loci) --------------
+  - id: mirna_Apul
+    layer: mirna
+    species: Apul
+    format: tsv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries_molecular/refs/heads/main/M-multi-species/output/10-format-miRNA-counts/Apul_miRNA_counts_formatted.txt
+    dest: data/raw/mirna/Apul_miRNA_counts_formatted.txt
+    source_page: quarto/counts.qmd
+  - id: mirna_Peve
+    layer: mirna
+    species: Peve
+    format: tsv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries_molecular/refs/heads/main/M-multi-species/output/10-format-miRNA-counts/Peve_miRNA_counts_formatted.txt
+    dest: data/raw/mirna/Peve_miRNA_counts_formatted.txt
+    source_page: quarto/counts.qmd
+  - id: mirna_Ptuh
+    layer: mirna
+    species: Ptuh
+    format: tsv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries_molecular/refs/heads/main/M-multi-species/output/10-format-miRNA-counts/Ptuh_miRNA_counts_formatted.txt
+    dest: data/raw/mirna/Ptuh_miRNA_counts_formatted.txt
+    source_page: quarto/counts.qmd
+
+  # ---- lncRNA counts (featureCounts; filtered <10 counts in >50% samples) ---
+  - id: lncrna_Apul
+    layer: lncrna
+    species: Apul
+    format: tsv
+    url: https://gannet.fish.washington.edu/v1_web/owlshell/bu-github/timeseries_molecular/D-Apul/output/31.5-Apul-lncRNA-discovery/lncRNA_counts.clean.filtered.txt
+    dest: data/raw/lncrna/Apul_lncRNA_counts.clean.filtered.txt
+    source_page: quarto/counts.qmd
+  - id: lncrna_Peve
+    layer: lncrna
+    species: Peve
+    format: tsv
+    url: https://gannet.fish.washington.edu/v1_web/owlshell/bu-github/timeseries_molecular/E-Peve/output/12-Peve-lncRNA-discovery/lncRNA_counts.clean.filtered.txt
+    dest: data/raw/lncrna/Peve_lncRNA_counts.clean.filtered.txt
+    source_page: quarto/counts.qmd
+  - id: lncrna_Ptuh
+    layer: lncrna
+    species: Ptuh
+    format: tsv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries_molecular/refs/heads/main/F-Ptua/output/06-Ptua-lncRNA-discovery/lncRNA_counts.clean.filtered.txt
+    dest: data/raw/lncrna/Ptuh_lncRNA_counts.clean.filtered.txt
+    source_page: quarto/counts.qmd
+
+  # ---- CpG percent methylation (EM-seq, Bismark; >=10x in all samples) ------
+  - id: cpg_Apul
+    layer: cpg
+    species: Apul
+    format: csv
+    url: https://gannet.fish.washington.edu/metacarcinus/E5/20250821_meth_Apul/merged-WGBS-CpG-counts_filtered.csv
+    dest: data/raw/cpg/Apul_merged-WGBS-CpG-counts_filtered.csv
+    source_page: quarto/counts.qmd
+  - id: cpg_Peve
+    layer: cpg
+    species: Peve
+    format: csv
+    url: https://gannet.fish.washington.edu/metacarcinus/E5/Pevermanni/20250821_meth_Peve/merged-WGBS-CpG-counts_filtered.csv
+    dest: data/raw/cpg/Peve_merged-WGBS-CpG-counts_filtered.csv
+    source_page: quarto/counts.qmd
+  - id: cpg_Ptuh
+    layer: cpg
+    species: Ptuh
+    format: csv
+    url: https://gannet.fish.washington.edu/metacarcinus/E5/Ptuahiniensis/20250821_meth_Ptua/merged-WGBS-CpG-counts_filtered.csv
+    dest: data/raw/cpg/Ptuh_merged-WGBS-CpG-counts_filtered.csv
+    source_page: quarto/counts.qmd
+
+  # ---- Metabolomics / lipidomics (all species in one matrix) ----------------
+  - id: metabolomics
+    layer: metabolomics
+    species: all
+    format: csv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries_molecular/main/M-multi-species/output/metabolomics_count_matrix.csv
+    dest: data/raw/metabolomics/metabolomics_count_matrix.csv
+    source_page: quarto/physiology.qmd
+  - id: lipidomics
+    layer: lipidomics
+    species: all
+    format: csv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries_molecular/main/M-multi-species/output/lipid_count_matrix.csv
+    dest: data/raw/lipidomics/lipid_count_matrix.csv
+    source_page: quarto/physiology.qmd
+
+  # ---- Physiology master + ITS2 (urol-e5/timeseries) ------------------------
+  - id: physiology
+    layer: physiology
+    species: all
+    format: csv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries/master/time_series_analysis/Output/master_timeseries.csv
+    dest: data/raw/physiology/master_timeseries.csv
+    source_page: quarto/physiology.qmd
+  - id: its2
+    layer: its2
+    species: all
+    format: csv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries/master/time_series_analysis/Output/ITS2_rel_abund_matrix.csv
+    dest: data/raw/its2/ITS2_rel_abund_matrix.csv
+    source_page: quarto/its.qmd
+
+  # ---- Files tracked inside MOSAiC itself (pinned to the commit above) ------
+  - id: orthologs_three_way
+    layer: orthologs
+    species: all
+    format: csv
+    url: https://raw.githubusercontent.com/urol-e5/MOSAiC/86432e3e393aecca307be356e514c95981177b7c/data/orthologs/ortholog_groups_three_way.csv
+    dest: data/raw/orthologs/ortholog_groups_three_way.csv
+    source_page: data/orthologs
+  - id: orthologs_annotated
+    layer: orthologs
+    species: all
+    format: csv
+    url: https://raw.githubusercontent.com/urol-e5/MOSAiC/86432e3e393aecca307be356e514c95981177b7c/data/orthologs/ortholog_groups_annotated.csv
+    dest: data/raw/orthologs/ortholog_groups_annotated.csv
+    source_page: data/orthologs
+  - id: temperature
+    layer: temperature
+    species: all
+    format: csv
+    url: https://raw.githubusercontent.com/urol-e5/MOSAiC/86432e3e393aecca307be356e514c95981177b7c/data/temperature_timeseries.csv
+    dest: data/raw/temperature/temperature_timeseries.csv
+    source_page: data
+  - id: gff_Apul
+    layer: annotation
+    species: Apul
+    format: gff
+    url: https://raw.githubusercontent.com/urol-e5/MOSAiC/86432e3e393aecca307be356e514c95981177b7c/data/Apul/Apulchra-genome.gff
+    dest: data/raw/annotation/Apulchra-genome.gff
+    source_page: data/Apul
+  - id: gff_Peve
+    layer: annotation
+    species: Peve
+    format: gff
+    url: https://raw.githubusercontent.com/urol-e5/MOSAiC/86432e3e393aecca307be356e514c95981177b7c/data/Peve/Porites_evermanni_validated.gff3
+    dest: data/raw/annotation/Porites_evermanni_validated.gff3
+    source_page: data/Peve
+  - id: gff_Ptuh
+    layer: annotation
+    species: Ptuh
+    format: gff
+    url: https://raw.githubusercontent.com/urol-e5/MOSAiC/86432e3e393aecca307be356e514c95981177b7c/data/Pmea/Pocillopora_meandrina_HIv1.genes-validated.gff3
+    dest: data/raw/annotation/Pocillopora_meandrina_HIv1.genes-validated.gff3
+    source_page: data/Pmea

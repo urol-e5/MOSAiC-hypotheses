@@ -1,0 +1,35 @@
+project:
+  type: website
+  output-dir: _site
+  execute-dir: project
+
+website:
+  title: "MOSAiC hypotheses"
+  description: "Pre-registered analyses of the E5 MOSAiC coral time series"
+  navbar:
+    left:
+      - text: Status
+        href: index.qmd
+      - text: Data QC
+        href: qc.qmd
+      - text: Decisions
+        href: decisions.qmd
+    right:
+      - icon: github
+        href: https://github.com/urol-e5/MOSAiC-hypotheses
+      - text: MOSAiC portal
+        href: https://urol-e5.github.io/MOSAiC/
+  page-footer:
+    left: "Upstream: urol-e5/MOSAiC (read-only). Built with Quarto + targets."
+
+format:
+  html:
+    theme:
+      light: flatly
+      dark: cyborg
+    toc: true
+
+execute:
+  echo: false
+  warning: false
+  message: false

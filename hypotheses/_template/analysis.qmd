@@ -1,0 +1,48 @@
+---
+title: "Hxx: short title"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+# Always load through R/load.R. Paths are relative to the repo root when run
+# via targets; the here() call makes interactive rendering work too.
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+source(file.path(root, "R", "load.R"))
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "Hxx-short-slug", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+```
+
+## Pre-registered decision rule
+
+> Paste the decision rule from `hypothesis.md` verbatim here so the report is
+> self-contained.
+
+## Data
+
+```{r}
+# subset design, load layers, report n per species x timepoint
+```
+
+## Model
+
+```{r}
+# fit
+```
+
+## Result against the decision rule
+
+```{r}
+# compute the numbers the decision rule names, write them to out_dir as CSV
+```
+
+## Sensitivity checks
+
+## Caveats

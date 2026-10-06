@@ -1,0 +1,37 @@
+---
+title: "Hypothesis status board"
+---
+
+```{r}
+root <- ".."
+source(file.path(root, "R", "status.R"))
+board <- hypothesis_board(file.path(root, "hypotheses"))
+lock  <- yaml::read_yaml(file.path(root, "config", "upstream.lock.yml"))
+```
+
+Built against MOSAiC commit `r substr(lock$mosaic_commit, 1, 7)`; upstream lock last updated `r lock$lock_updated`.
+Rules for adding a hypothesis are in [CLAUDE.md](https://github.com/urol-e5/MOSAiC-hypotheses/blob/main/CLAUDE.md).
+
+```{r}
+library(gt)
+status_colors <- c(planned = "#e9ecef", running = "#fff3cd", supported = "#d1e7dd",
+                   `not supported` = "#f8d7da", inconclusive = "#e2e3e5", withdrawn = "#dee2e6")
+board |>
+  dplyr::mutate(layers = vapply(layers, paste, "", collapse = ", "),
+                species = vapply(species, paste, "", collapse = ", "),
+                depends_on = vapply(depends_on, function(x) if (length(x)) paste(x, collapse = ", ") else "", "")) |>
+  dplyr::select(id, tier, title, status, layers, species, depends_on) |>
+  gt() |>
+  tab_header(title = "Hypotheses") |>
+  cols_label(id = "ID", tier = "Tier", title = "Claim", status = "Status",
+             layers = "Layers", species = "Species", depends_on = "Depends on") |>
+  data_color(columns = status, fn = function(x) unname(status_colors[x])) |>
+  tab_options(table.font.size = px(13))
+```
+
+## Tiers
+
+1. **Variance structure.** Colony vs season vs site. Everything downstream depends on these.
+2. **Regulatory layers.** Methylation, miRNA, lncRNA.
+3. **Phenotype and environment.** Physiology, symbionts, thermal history, nutrients.
+4. **Integration.** Multi-omics factors and energetics.
