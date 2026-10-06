@@ -1,0 +1,142 @@
+[
+  {
+    "objectID": "decisions.html",
+    "href": "decisions.html",
+    "title": "Decision log",
+    "section": "",
+    "text": "Dated, numbered, append-only. Each entry: the problem, the choice, why.\n\n\nUpstream uses Ptua/ptua in file names and Ptuh in counts.qmd. This repo uses Ptuh everywhere (it is the species, P. tuahiniensis; the genome is P. meandrina). Canonical sample id is {ACR|POR|POC}-{colony}-TP{n}; norm_sample_id() in R/harmonize.R accepts every upstream variant seen (plate prefixes, underscores, BAM paths, readr dedup suffixes, timepoint1).\n\n\n\nMOSAiC’s docs/corrected_sample_counts.md reports 80 columns (technical replicates) in the remote Apul gene matrix. On 2026-10-06 the remote file on gannet is byte-identical (MD5 6d9c7c720951658ab7c4a552c9bfc926) to the 40-column copy in MOSAiC/data/orthologs/. The replicate issue is therefore resolved upstream and no collapsing is done here. harmonize_matrix() stops on duplicate sample ids, so a reappearance will fail loudly rather than silently averaging.\n\n\n\nApul ortholog ids carry a -T\\d+ transcript suffix; Peve and Ptuh count matrices carry a gene- prefix. Both are stripped (norm_gene_id()). After stripping, an Apul gene can appear in more than one ortholog group if two of its transcripts were assigned separately; genes_by_ortholog() keeps the first group per gene. Revisit if a hypothesis depends on isoform resolution.\n\n\n\nGitHub Actions runs only the fetch, harmonize, reproduction gate, and report render. Hypothesis analyses that need Bioconductor (DESeq2, variancePartition, MOFA2) or the 25 MB CpG matrices run locally or on raven via targets::tar_make(); their small outputs are committed. Revisit if Actions runtime proves sufficient.\n\n\n\ndata/raw/ is never committed. data/derived/ is committed except the CpG matrices (ignored by pattern). config/design.csv is committed and is the single sample-metadata table; colony-level site, nutrient, and haplotype are taken from the physiology master. Samples present in molecular layers but absent from the physiology master get NA for those fields rather than being dropped.\n\n\n\nExact collection dates per colony are not in any upstream table. The design uses mid-month nominal dates (15 Jan, 15 Mar, 15 Sep, 15 Nov 2020), as temperature.qmd in MOSAiC does. Hypotheses that compute thermal history (H11) must treat the window as approximate.\n\n\n\nMOSAiC docs/corrected_sample_counts.md lists 45 / 43 / 44 lncRNA samples (Apul / Peve / Ptuh). The lncRNA files pinned in the lock on 2026-10-06 have 40 / 38 / 39 sample columns, identical to the gene matrices, plus the five featureCounts metadata columns (Chr, Start, End, Strand, Length). The documented numbers evidently came from an earlier upstream version. The reproduction gate asserts the current values; if upstream changes again the weekly drift check will catch it.\n\n\n\nSites passing the upstream filter (&gt;= 10x in every sample): Apul 96,772; Peve 242,100; Ptuh 1,991,606. The Ptuh matrix is 397 MB raw. Part of this is fewer Ptuh samples (32) making the all-samples filter easier to pass, but a 20-fold difference suggests the upstream filtering may not be identical across species. Methylation hypotheses (H04 to H06) must report per-species site counts and should consider a common coverage filter applied here."
+  },
+  {
+    "objectID": "decisions.html#d-001-2026-10-06-species-codes-and-sample-ids",
+    "href": "decisions.html#d-001-2026-10-06-species-codes-and-sample-ids",
+    "title": "Decision log",
+    "section": "",
+    "text": "Upstream uses Ptua/ptua in file names and Ptuh in counts.qmd. This repo uses Ptuh everywhere (it is the species, P. tuahiniensis; the genome is P. meandrina). Canonical sample id is {ACR|POR|POC}-{colony}-TP{n}; norm_sample_id() in R/harmonize.R accepts every upstream variant seen (plate prefixes, underscores, BAM paths, readr dedup suffixes, timepoint1)."
+  },
+  {
+    "objectID": "decisions.html#d-002-2026-10-06-technical-replicates-in-the-apul-gene-matrix",
+    "href": "decisions.html#d-002-2026-10-06-technical-replicates-in-the-apul-gene-matrix",
+    "title": "Decision log",
+    "section": "",
+    "text": "MOSAiC’s docs/corrected_sample_counts.md reports 80 columns (technical replicates) in the remote Apul gene matrix. On 2026-10-06 the remote file on gannet is byte-identical (MD5 6d9c7c720951658ab7c4a552c9bfc926) to the 40-column copy in MOSAiC/data/orthologs/. The replicate issue is therefore resolved upstream and no collapsing is done here. harmonize_matrix() stops on duplicate sample ids, so a reappearance will fail loudly rather than silently averaging."
+  },
+  {
+    "objectID": "decisions.html#d-003-2026-10-06-gene-id-normalization",
+    "href": "decisions.html#d-003-2026-10-06-gene-id-normalization",
+    "title": "Decision log",
+    "section": "",
+    "text": "Apul ortholog ids carry a -T\\d+ transcript suffix; Peve and Ptuh count matrices carry a gene- prefix. Both are stripped (norm_gene_id()). After stripping, an Apul gene can appear in more than one ortholog group if two of its transcripts were assigned separately; genes_by_ortholog() keeps the first group per gene. Revisit if a hypothesis depends on isoform resolution."
+  },
+  {
+    "objectID": "decisions.html#d-004-2026-10-06-where-compute-runs",
+    "href": "decisions.html#d-004-2026-10-06-where-compute-runs",
+    "title": "Decision log",
+    "section": "",
+    "text": "GitHub Actions runs only the fetch, harmonize, reproduction gate, and report render. Hypothesis analyses that need Bioconductor (DESeq2, variancePartition, MOFA2) or the 25 MB CpG matrices run locally or on raven via targets::tar_make(); their small outputs are committed. Revisit if Actions runtime proves sufficient."
+  },
+  {
+    "objectID": "decisions.html#d-005-2026-10-06-what-is-committed-under-data",
+    "href": "decisions.html#d-005-2026-10-06-what-is-committed-under-data",
+    "title": "Decision log",
+    "section": "",
+    "text": "data/raw/ is never committed. data/derived/ is committed except the CpG matrices (ignored by pattern). config/design.csv is committed and is the single sample-metadata table; colony-level site, nutrient, and haplotype are taken from the physiology master. Samples present in molecular layers but absent from the physiology master get NA for those fields rather than being dropped."
+  },
+  {
+    "objectID": "decisions.html#d-006-2026-10-06-timepoint-dates",
+    "href": "decisions.html#d-006-2026-10-06-timepoint-dates",
+    "title": "Decision log",
+    "section": "",
+    "text": "Exact collection dates per colony are not in any upstream table. The design uses mid-month nominal dates (15 Jan, 15 Mar, 15 Sep, 15 Nov 2020), as temperature.qmd in MOSAiC does. Hypotheses that compute thermal history (H11) must treat the window as approximate."
+  },
+  {
+    "objectID": "decisions.html#d-007-2026-10-06-lncrna-sample-counts-differ-from-mosaics-documentation",
+    "href": "decisions.html#d-007-2026-10-06-lncrna-sample-counts-differ-from-mosaics-documentation",
+    "title": "Decision log",
+    "section": "",
+    "text": "MOSAiC docs/corrected_sample_counts.md lists 45 / 43 / 44 lncRNA samples (Apul / Peve / Ptuh). The lncRNA files pinned in the lock on 2026-10-06 have 40 / 38 / 39 sample columns, identical to the gene matrices, plus the five featureCounts metadata columns (Chr, Start, End, Strand, Length). The documented numbers evidently came from an earlier upstream version. The reproduction gate asserts the current values; if upstream changes again the weekly drift check will catch it."
+  },
+  {
+    "objectID": "decisions.html#d-008-2026-10-06-cpg-matrix-sizes-are-very-unequal-across-species",
+    "href": "decisions.html#d-008-2026-10-06-cpg-matrix-sizes-are-very-unequal-across-species",
+    "title": "Decision log",
+    "section": "",
+    "text": "Sites passing the upstream filter (&gt;= 10x in every sample): Apul 96,772; Peve 242,100; Ptuh 1,991,606. The Ptuh matrix is 397 MB raw. Part of this is fewer Ptuh samples (32) making the all-samples filter easier to pass, but a 20-fold difference suggests the upstream filtering may not be identical across species. Methylation hypotheses (H04 to H06) must report per-species site counts and should consider a common coverage filter applied here."
+  },
+  {
+    "objectID": "qc.html",
+    "href": "qc.html",
+    "title": "Data QC and design overview",
+    "section": "",
+    "text": "Harmonized from MOSAiC commit 86432e3; lock updated 2026-10-06. Every table here is derived from config/design.csv and data/derived/, which are what every hypothesis reads."
+  },
+  {
+    "objectID": "qc.html#samples-per-species-timepoint-and-layer",
+    "href": "qc.html#samples-per-species-timepoint-and-layer",
+    "title": "Data QC and design overview",
+    "section": "Samples per species, timepoint, and layer",
+    "text": "Samples per species, timepoint, and layer\n\n\n\n\n\n\n\n\nSample counts by layer\n\n\ntimepoint\ncolonies\ngenes\nmirna\nlncrna\ncpg\nmetabolomics\nlipidomics\nphysiology\nits2\n\n\n\n\nApul\n\n\nTP1\n43\n10\n10\n10\n9\n10\n10\n42\n42\n\n\nTP2\n24\n10\n10\n10\n10\n0\n0\n24\n23\n\n\nTP3\n21\n10\n10\n10\n10\n10\n10\n21\n21\n\n\nTP4\n34\n10\n10\n10\n10\n9\n9\n29\n34\n\n\nPeve\n\n\nTP1\n45\n10\n10\n10\n10\n10\n10\n45\n44\n\n\nTP2\n44\n10\n10\n10\n9\n10\n10\n44\n42\n\n\nTP3\n40\n9\n8\n9\n9\n9\n9\n40\n40\n\n\nTP4\n38\n9\n9\n9\n9\n9\n9\n38\n36\n\n\nPtuh\n\n\nTP1\n43\n10\n10\n10\n9\n10\n10\n43\n40\n\n\nTP2\n45\n10\n10\n10\n9\n0\n0\n44\n42\n\n\nTP3\n39\n10\n10\n10\n7\n10\n10\n38\n39\n\n\nTP4\n40\n9\n9\n9\n7\n9\n9\n40\n38"
+  },
+  {
+    "objectID": "qc.html#colony-coverage",
+    "href": "qc.html#colony-coverage",
+    "title": "Data QC and design overview",
+    "section": "Colony coverage",
+    "text": "Colony coverage\nWhich colonies have which timepoints in the gene-expression layer. Gaps matter for every repeated-measures model."
+  },
+  {
+    "objectID": "qc.html#layer-overlap",
+    "href": "qc.html#layer-overlap",
+    "title": "Data QC and design overview",
+    "section": "Layer overlap",
+    "text": "Layer overlap\nNumber of samples shared between each pair of layers (all species pooled). The diagonal is the layer’s own n.\n\n\n\n\n\n\n\n\nPairwise sample overlap\n\n\nlayer\ngenes\nmirna\nlncrna\ncpg\nmetabolomics\nlipidomics\nphysiology\nits2\n\n\n\n\ngenes\n117\n116\n117\n108\n96\n96\n116\n113\n\n\nmirna\n116\n116\n116\n107\n95\n95\n115\n112\n\n\nlncrna\n117\n116\n117\n108\n96\n96\n116\n113\n\n\ncpg\n108\n107\n108\n108\n88\n88\n107\n104\n\n\nmetabolomics\n96\n95\n96\n88\n96\n96\n96\n92\n\n\nlipidomics\n96\n95\n96\n88\n96\n96\n96\n92\n\n\nphysiology\n116\n115\n116\n107\n96\n96\n448\n433\n\n\nits2\n113\n112\n113\n104\n92\n92\n433\n441\n\n\n\n\n\n\n\nSamples present in every molecular layer (genes, mirna, lncrna, cpg, metabolomics, lipidomics), per species:\n\n\n\n\n\n\n\n\nspecies\nTP1\nTP3\nTP4\nTP2\n\n\n\n\nApul\n9\n10\n9\n0\n\n\nPeve\n10\n8\n9\n9\n\n\nPtuh\n9\n7\n7\n0"
+  },
+  {
+    "objectID": "qc.html#site-and-nutrient-balance",
+    "href": "qc.html#site-and-nutrient-balance",
+    "title": "Data QC and design overview",
+    "section": "Site and nutrient balance",
+    "text": "Site and nutrient balance\n\n\n\n\n\n\n\n\nColonies per site x nutrient\n\n\nsite\nnutrient\nApul\nPeve\nPtuh\n\n\n\n\nHilton\nMedium\n15\n15\n15\n\n\nMahana\nLow\n19\n16\n15\n\n\nManava\nHigh\n16\n15\n15"
+  },
+  {
+    "objectID": "qc.html#gene-expression-library-sizes-and-pca",
+    "href": "qc.html#gene-expression-library-sizes-and-pca",
+    "title": "Data QC and design overview",
+    "section": "Gene-expression library sizes and PCA",
+    "text": "Gene-expression library sizes and PCA\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nColonies are connected across timepoints below; tight clusters per colony indicate colony-dominated variance (the H01 question)."
+  },
+  {
+    "objectID": "qc.html#ortholog-coverage",
+    "href": "qc.html#ortholog-coverage",
+    "title": "Data QC and design overview",
+    "section": "Ortholog coverage",
+    "text": "Ortholog coverage\n\n\n\n\n\n\n\n\nThree-way ortholog groups resolvable in each count matrix\n\n\nspecies\northologs_in_counts\ntotal\nwith_protein_name\n\n\n\n\nApul\n10258\n10381\n4054\n\n\nPeve\n10381\n10381\n4054\n\n\nPtuh\n10381\n10381\n4054"
+  },
+  {
+    "objectID": "qc.html#temperature-history-before-each-timepoint",
+    "href": "qc.html#temperature-history-before-each-timepoint",
+    "title": "Data QC and design overview",
+    "section": "Temperature history before each timepoint",
+    "text": "Temperature history before each timepoint\nDaily mean per site with the nominal timepoint dates (mid-month; decision D-006).\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n30-day window before each nominal timepoint date\n\n\nsite\nmean_30d_TP1\nmean_30d_TP2\nmean_30d_TP3\nmean_30d_TP4\nmax_30d_TP1\nmax_30d_TP2\nmax_30d_TP3\nmax_30d_TP4\ndays_TP1\ndays_TP2\ndays_TP3\ndays_TP4\n\n\n\n\nHilton\n27.61\n29.35\n26.93\n27.62\n28.37\n30.57\n27.92\n29.46\n16\n24\n5\n22\n\n\nMahana\n27.60\n29.39\n27.06\n27.71\n28.52\n30.80\n31.33\n29.49\n16\n24\n30\n22\n\n\nManava\n27.61\n29.42\n27.00\n27.66\n28.89\n30.72\n29.61\n29.29\n16\n24\n30\n22"
+  },
+  {
+    "objectID": "qc.html#upstream-files",
+    "href": "qc.html#upstream-files",
+    "title": "Data QC and design overview",
+    "section": "Upstream files",
+    "text": "Upstream files\n\n\n\n\n\n\n\n\nid\nMB\nmd5\nfetched_on\n\n\n\n\ngenes_Apul\n5.32\n6d9c7c720951658ab7c4a552c9bfc926\n2026-10-06\n\n\ngenes_Peve\n4.83\n2bf812e537f6c901d3b1d6f659c31398\n2026-10-06\n\n\ngenes_Ptuh\n5.30\n4ab30984dc7d58f7d67081d09278bacc\n2026-10-06\n\n\nmirna_Apul\n0.01\n5f63500760989ea2effa22ea4bbf961c\n2026-10-06\n\n\nmirna_Peve\n0.01\n48f31811f25d04767adb0ec0fe62443a\n2026-10-06\n\n\nmirna_Ptuh\n0.01\n10209712f953cba5ac2674ae63ace7e2\n2026-10-06\n\n\nlncrna_Apul\n3.75\n5aeb38c643298bbc3f0d8520964d157e\n2026-10-06\n\n\nlncrna_Peve\n1.90\nec6e720bcde1cf6c606a29e0e652f749\n2026-10-06\n\n\nlncrna_Ptuh\n3.00\nfbeaf0fda52378f611f779efb3eb004f\n2026-10-06\n\n\ncpg_Apul\n25.28\n47135a4e5302b908a39bdd50c14dd7cf\n2026-10-06\n\n\ncpg_Peve\n63.83\n0840708bad79d61e5e55405d6c9a5a75\n2026-10-06\n\n\ncpg_Ptuh\n396.64\n6d200bd90e427869b78c8e643c1e156b\n2026-10-06\n\n\nmetabolomics\n0.23\n210731535861bd44f626267ed158f605\n2026-10-06\n\n\nlipidomics\n0.63\n6da212cbf7816f1f426d5c1bb33caaaa\n2026-10-06\n\n\nphysiology\n0.36\na88028dd07a17945fc1e61d2e6cbefe3\n2026-10-06\n\n\nits2\n0.09\nf82988f58109f845113b901dc0ec7d3a\n2026-10-06\n\n\northologs_three_way\n7.63\nc97f836634ffe3c954da66f057f9537d\n2026-10-06\n\n\northologs_annotated\n10.14\n68077915d6031cfae8587ceca06ba048\n2026-10-06\n\n\ntemperature\n10.93\n53b034248359ba4a40f73f22ed2dd336\n2026-10-06\n\n\ngff_Apul\n46.55\na7ffef0ed79ec223aa0ffca90a2720ce\n2026-10-06\n\n\ngff_Peve\n55.14\naa9fbc27f31a1e4c643a67bb004a50c2\n2026-10-06\n\n\ngff_Ptuh\n87.25\nbca9c5a378c3b20592fee38d4dd4f722\n2026-10-06"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Hypothesis status board",
+    "section": "",
+    "text": "Built against MOSAiC commit 86432e3; upstream lock last updated 2026-10-06. Rules for adding a hypothesis are in CLAUDE.md.\nHypotheses\n\n\nID\nTier\nClaim\nStatus\nLayers\nSpecies\nDepends on\n\n\n\n\nH01\n1\nColony identity explains more gene-expression variance than season in all three species\nplanned\ngenes\nApul, Peve, Ptuh\n\n\n\nH02\n1\nTranscriptional plasticity across the year ranks Acropora &gt; Pocillopora &gt; Porites\nplanned\ngenes\nApul, Peve, Ptuh\nH01\n\n\nH03\n1\nSeasonal expression responses are conserved across the three species at orthologous genes\nplanned\ngenes\nApul, Peve, Ptuh\nH02\n\n\nH04\n2\nDNA methylation is more stable within colonies over time than gene expression\nplanned\ncpg, genes\nApul, Peve, Ptuh\nH01\n\n\nH05\n2\nGene-body methylation is positively associated with expression level and negatively with its temporal variability\nplanned\ncpg, genes, annotation\nApul, Peve, Ptuh\nH04\n\n\nH06\n2\nSeasonal change in gene-body methylation tracks seasonal change in expression at the same genes\nplanned\ncpg, genes, annotation\nApul, Peve, Ptuh\nH04, H05\n\n\nH07\n2\nSeasonal miRNA expression profiles are conserved across species for shared miRNA families\nplanned\nmirna\nApul, Peve, Ptuh\n\n\n\nH08\n2\nlncRNA-mRNA co-expression at a fixed correlation threshold exceeds a permutation null\nplanned\nlncrna, genes\nApul, Peve, Ptuh\n\n\n\nH09\n3\nSymbiont density and chlorophyll predict host gene-expression modules\nplanned\ngenes, physiology\nApul, Peve, Ptuh\nH01\n\n\nH10\n3\nSymbiodiniaceae ITS2 community composition is fixed by colony and does not shift seasonally\nplanned\nits2, physiology\nApul, Peve, Ptuh\n\n\n\nH11\n3\nCumulative thermal exposure before sampling predicts expression of heat-stress orthologs\nplanned\ngenes, temperature\nApul, Peve, Ptuh\nH03\n\n\nH12\n3\nSite nutrient context modulates the seasonal trajectory of host physiology\nplanned\nphysiology\nApul, Peve, Ptuh\n\n\n\nH13\n4\nA single latent factor spanning all omics layers separates summer from winter samples\nplanned\ngenes, mirna, lncrna, cpg, metabolomics, lipidomics\nApul, Peve, Ptuh\nH01, H04\n\n\nH14\n4\nSeasonal shifts in storage lipids and central metabolites track host biomass and calcification\nplanned\nlipidomics, metabolomics, physiology\nApul, Peve, Ptuh"
+  },
+  {
+    "objectID": "index.html#tiers",
+    "href": "index.html#tiers",
+    "title": "Hypothesis status board",
+    "section": "Tiers",
+    "text": "Tiers\n\nVariance structure. Colony vs season vs site. Everything downstream depends on these.\nRegulatory layers. Methylation, miRNA, lncRNA.\nPhenotype and environment. Physiology, symbionts, thermal history, nutrients.\nIntegration. Multi-omics factors and energetics."
+  }
+]
