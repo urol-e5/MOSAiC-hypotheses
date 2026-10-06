@@ -2,7 +2,7 @@
 id: H01
 slug: colony-vs-season-variance
 title: Colony identity explains more gene-expression variance than season in all three species
-status: planned
+status: not supported
 tier: 1
 layers: [genes]
 species: [Apul, Peve, Ptuh]

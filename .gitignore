@@ -20,3 +20,6 @@ reports/.quarto/
 .Ruserdata
 .DS_Store
 upstream-drift.csv
+
+# Rendered hypothesis notebooks (outputs/ holds the committed results)
+hypotheses/*/analysis.html

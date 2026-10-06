@@ -1,0 +1,187 @@
+---
+title: "H01: colony vs season variance in gene expression"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+suppressPackageStartupMessages({
+  library(tidyr); library(ggplot2); library(variancePartition); library(BiocParallel)
+})
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H01", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+n_boot <- 1000
+set.seed(20261006)
+bp <- MulticoreParam(workers = max(1, parallel::detectCores() - 1), progressbar = FALSE)
+```
+
+## Pre-registered decision rule
+
+> `supported` if median(colony fraction) > median(timepoint fraction) with
+> non-overlapping bootstrap 95% CIs in all three species. `not supported` if
+> timepoint >= colony in any species with non-overlapping CIs. Otherwise
+> `inconclusive`.
+
+Model: `~ (1|colony) + (1|timepoint) + (1|site)` per gene, per species, on
+DESeq2 `vst` of genes with >= 10 counts in >= 25% of samples. 95% intervals on
+the median fractions from 1000 bootstrap resamples of genes. No hypothesis
+tests are run, so no multiple-testing correction applies.
+
+## Data
+
+```{r data}
+prep <- lapply(setNames(species_all, species_all), function(sp) prep_vst(load_genes(sp), design))
+
+n_tab <- bind_rows(lapply(species_all, function(sp) {
+  p <- prep[[sp]]
+  tibble(species = sp, samples = ncol(p$vst), colonies = n_distinct(p$info$colony),
+         genes_in = p$n_raw, genes_kept = nrow(p$vst))
+}))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab)
+```
+
+Design per species (samples per colony x timepoint; a 0 is a missing sample):
+
+```{r design-table}
+design_tab <- bind_rows(lapply(species_all, function(sp) prep[[sp]]$info)) |>
+  count(species, site, colony, timepoint) |>
+  pivot_wider(names_from = timepoint, values_from = n, values_fill = 0) |>
+  arrange(species, site, colony)
+write_csv(design_tab, file.path(out_dir, "design_per_colony.csv"))
+knitr::kable(design_tab)
+```
+
+## Model
+
+```{r fit}
+form_full <- ~ (1 | colony) + (1 | timepoint) + (1 | site)
+
+fit_vp <- function(v, info, form) {
+  info <- as.data.frame(info) |> mutate(across(c(colony, timepoint, site), factor))
+  vp <- fitExtractVarPartModel(v, form, info, BPPARAM = bp)
+  as_tibble(as.data.frame(vp), rownames = "feature_id")
+}
+
+vp_full <- bind_rows(lapply(species_all, function(sp)
+  fit_vp(prep[[sp]]$vst, prep[[sp]]$info, form_full) |> mutate(species = sp, .before = 1)))
+write_csv(vp_full, file.path(out_dir, "varpart_per_gene.csv"))
+```
+
+```{r fig-varpart, fig.width = 9, fig.height = 4}
+long <- vp_full |>
+  pivot_longer(c(colony, timepoint, site, Residuals), names_to = "component", values_to = "fraction") |>
+  mutate(component = factor(component, c("colony", "timepoint", "site", "Residuals")))
+g <- ggplot(long, aes(component, fraction)) +
+  geom_violin(scale = "width", fill = "grey85") +
+  geom_boxplot(width = 0.12, outlier.shape = NA) +
+  facet_wrap(~ species) +
+  labs(x = NULL, y = "Fraction of expression variance") +
+  theme_bw()
+ggsave(file.path(out_dir, "varpart_violin.png"), g, width = 9, height = 4, dpi = 150)
+write_csv(long |> group_by(species, component) |>
+            summarise(median = median(fraction), q25 = quantile(fraction, 0.25),
+                      q75 = quantile(fraction, 0.75), .groups = "drop"),
+          file.path(out_dir, "varpart_violin_summary.csv"))
+g
+```
+
+## Result against the decision rule
+
+```{r bootstrap}
+boot_medians <- function(vp, components = c("colony", "timepoint"), B = n_boot) {
+  bind_rows(lapply(split(vp, vp$species), function(d) {
+    n <- nrow(d)
+    est <- sapply(components, function(k) median(d[[k]]))
+    bs <- replicate(B, { i <- sample.int(n, n, replace = TRUE); sapply(components, function(k) median(d[[k]][i])) })
+    bs <- matrix(bs, nrow = length(components), dimnames = list(components, NULL))
+    tibble(species = d$species[1], component = components, median = est,
+           lo = apply(bs, 1, quantile, 0.025), hi = apply(bs, 1, quantile, 0.975))
+  }))
+}
+
+decide <- function(ci) {
+  per_sp <- ci |>
+    select(species, component, median, lo, hi) |>
+    pivot_wider(names_from = component, values_from = c(median, lo, hi)) |>
+    mutate(colony_wins = median_colony > median_timepoint & lo_colony > hi_timepoint,
+           timepoint_wins = median_timepoint >= median_colony & lo_timepoint > hi_colony)
+  verdict <- if (all(per_sp$colony_wins)) "supported" else
+    if (any(per_sp$timepoint_wins)) "not supported" else "inconclusive"
+  list(per_species = per_sp, verdict = verdict)
+}
+
+ci_full <- boot_medians(vp_full)
+write_csv(ci_full, file.path(out_dir, "median_fraction_ci.csv"))
+dec_full <- decide(ci_full)
+write_csv(dec_full$per_species, file.path(out_dir, "decision_per_species.csv"))
+knitr::kable(dec_full$per_species, digits = 3)
+```
+
+**Primary verdict: `r dec_full$verdict`.**
+
+## Sensitivity checks
+
+### Site dropped
+
+Site is colony-level, so variance it absorbs would otherwise sit with colony.
+
+```{r sens-nosite}
+vp_nosite <- bind_rows(lapply(species_all, function(sp)
+  fit_vp(prep[[sp]]$vst, prep[[sp]]$info, ~ (1 | colony) + (1 | timepoint)) |>
+    mutate(species = sp, .before = 1)))
+ci_nosite <- boot_medians(vp_nosite)
+dec_nosite <- decide(ci_nosite)
+write_csv(ci_nosite, file.path(out_dir, "sens_nosite_median_fraction_ci.csv"))
+knitr::kable(dec_nosite$per_species, digits = 3)
+```
+
+Verdict without site: `r dec_nosite$verdict`.
+
+### Three-way orthologs only
+
+Same filter and model on the shared ortholog set, to check that the result is
+not driven by species differences in reference-genome quality.
+
+```{r sens-ortho}
+orth <- load_orthologs()
+vp_ortho <- bind_rows(lapply(species_all, function(sp) {
+  p <- prep_vst(genes_by_ortholog(sp, orthologs = orth), design)
+  fit_vp(p$vst, p$info, form_full) |> mutate(species = sp, .before = 1, n_genes = nrow(p$vst))
+}))
+ci_ortho <- boot_medians(vp_ortho)
+dec_ortho <- decide(ci_ortho)
+write_csv(ci_ortho, file.path(out_dir, "sens_ortho_median_fraction_ci.csv"))
+knitr::kable(dec_ortho$per_species, digits = 3)
+```
+
+Verdict on orthologs: `r dec_ortho$verdict`.
+
+```{r summary}
+write_csv(tibble(analysis = c("primary", "site dropped", "three-way orthologs"),
+                 verdict = c(dec_full$verdict, dec_nosite$verdict, dec_ortho$verdict)),
+          file.path(out_dir, "verdicts.csv"))
+```
+
+## Caveats
+
+- About 10 colonies per species; colony and timepoint fractions are each
+  estimated from few levels (10 and 4), so per-gene estimates are noisy and
+  the bootstrap over genes does not capture colony-sampling uncertainty.
+- Timepoint is fit as a random effect with only 4 levels, as pre-registered.
+- Site has 2 levels with 5 colonies each and is nested in colony.
+- Missing samples (Peve TP3/TP4, Ptuh TP4) leave the design slightly unbalanced; see the design table.

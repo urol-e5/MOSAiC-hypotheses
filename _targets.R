@@ -36,5 +36,8 @@ list(
     harmonized; reproduction_gate
     quarto::quarto_render("reports", as_job = FALSE)
     "reports/_site"
-  }, format = "file")
+  }, format = "file"),
+
+  # ---- Hypotheses (local or raven; not run in Actions, see D-004) ---------------
+  tar_quarto(H01, "hypotheses/H01/analysis.qmd", extra_files = "R/expression.R")
 )
