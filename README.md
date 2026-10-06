@@ -52,22 +52,30 @@ Or all at once: `Rscript -e 'targets::tar_make()'`.
 
 ## Hypothesis slate
 
-| ID | Tier | Claim |
-|---|---|---|
-| H01 | 1 | Colony explains more expression variance than season |
-| H02 | 1 | Temporal plasticity ranks Acropora > Pocillopora > Porites |
-| H03 | 1 | Seasonal expression responses are conserved across species |
-| H04 | 2 | Methylation is more stable within colony than expression |
-| H05 | 2 | Gene-body methylation tracks high, stable expression |
-| H06 | 2 | Seasonal methylation change tracks seasonal expression change |
-| H07 | 2 | Homologous miRNAs share seasonal profiles |
-| H08 | 2 | lncRNA–mRNA co-expression exceeds a permutation null |
-| H09 | 3 | Symbiont state predicts host expression modules |
-| H10 | 3 | ITS2 symbiont communities are colony-fixed |
-| H11 | 3 | Thermal history predicts heat-stress gene expression |
-| H12 | 3 | Nutrient context modulates seasonal physiology |
-| H13 | 4 | One multi-omics latent factor separates summer from winter |
-| H14 | 4 | Storage lipids track biomass and calcification |
+| ID | Tier | Claim | Compute |
+|---|---|---|---|
+| H01 | 1 | Colony explains more expression variance than season | desktop |
+| H02 | 1 | Temporal plasticity ranks Acropora > Pocillopora > Porites | desktop |
+| H03 | 1 | Seasonal expression responses are conserved across species | desktop |
+| H04 | 2 | Methylation is more stable within colony than expression | raven |
+| H05 | 2 | Gene-body methylation tracks high, stable expression | desktop |
+| H06 | 2 | Seasonal methylation change tracks seasonal expression change | desktop |
+| H07 | 2 | Homologous miRNAs share seasonal profiles | desktop |
+| H08 | 2 | lncRNA–mRNA co-expression exceeds a permutation null | raven |
+| H09 | 3 | Symbiont state predicts host expression modules | raven |
+| H10 | 3 | ITS2 symbiont communities are colony-fixed | desktop |
+| H11 | 3 | Thermal history predicts heat-stress gene expression | desktop |
+| H12 | 3 | Nutrient context modulates seasonal physiology | desktop |
+| H13 | 4 | One multi-omics latent factor separates summer from winter | desktop |
+| H14 | 4 | Storage lipids track biomass and calcification | desktop |
+
+Compute: **desktop** runs on a laptop (16 GB, 8 cores) in under an hour.
+**raven** needs more memory or hours of per-feature model fits: H04 fits a
+variance partition per CpG (about 2 M sites for Ptuh), H08 correlates every
+lncRNA x mRNA pair (about 3 x 10^8 per species) under 200 permutations, and
+H09 builds a WGCNA TOM on about 20 k genes. **klone** is the fallback if any
+raven target exceeds a day; none is expected to. See D-004 in
+[docs/decisions.md](docs/decisions.md).
 
 Full planning document: [docs/plan.md](docs/plan.md). Decisions taken along
 the way: [docs/decisions.md](docs/decisions.md).
