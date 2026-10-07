@@ -1,0 +1,245 @@
+---
+title: "H06: seasonal methylation change vs expression change"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+source(file.path(root, "R", "methylation.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2); library(lme4) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H06", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+n_perm <- 1000
+n_boot <- 1000
+n_sim <- 200
+dm_frac <- 0.10
+set.seed(20261006)
+```
+
+## Pre-registered decision rule
+
+> `supported` if rho > 0 with permutation p < 0.05 in at least two species and
+> the mixed-model GBM slope is positive with CI excluding zero in those species.
+> `not supported` if rho <= 0 in all three. Otherwise `inconclusive`.
+
+**Amendment 1 (2026-10-07, before any analysis; see `hypothesis.md`).** The
+originally stated null (shuffle colony labels for a colony-averaged rho) is
+degenerate. As amended, "rho" in the rule is the per-colony coupling
+statistic T = mean over colonies of Spearman(dGBM_c, dExpr_c) across genes,
+with a null that pairs each colony's methylation change with another colony's
+expression change (1000 permutations, one-sided). DM genes are the top 10% by
+|colony-averaged dGBM|; the mixed model `expr ~ gbm + (1|colony) + (1|gene)`
+is fit on TP1 and TP3 samples of paired colonies for the DM set. The
+colony-averaged rho is descriptive only.
+
+No correction across species: the rule counts species passing at p < 0.05,
+as pre-registered.
+
+Implementation notes (not in `hypothesis.md`; none changes the rule):
+
+- Because ranks are fixed per colony, the full colony-by-colony matrix of
+  rho(dGBM_c, dExpr_c') is computed once; T and every permuted T are means of
+  its entries.
+- The mixed-model slope uses a Wald 95% CI, in vst units per 10 percentage
+  points of GBM.
+- **Power** (pre-registered sensitivity): at each species' observed n, add a
+  coupling of strength b to the observed expression deltas,
+  dExpr*_c = dExpr_pi(c) + b · sd(dExpr) · z(dGBM_c), with pi a random
+  colony permutation so that no real coupling remains, and record how often
+  the permutation test gives p < 0.05 (`r n_sim` simulations per b).
+
+## Data
+
+```{r data}
+build_deltas <- function(sp, coords) {
+  cpg <- as_count_matrix(load_cpg(sp))
+  both <- design |> filter(species == sp, has_cpg %in% TRUE, has_genes %in% TRUE, sample_id %in% colnames(cpg))
+  ex <- prep_vst(load_genes(sp) |> select(feature_id, all_of(both$sample_id)), design)
+  paired <- both |> filter(timepoint %in% c("TP1", "TP3"), sample_id %in% colnames(ex$vst)) |>
+    group_by(colony) |> filter(n_distinct(timepoint) == 2) |> ungroup() |> arrange(colony, timepoint)
+  gb <- gene_body_methylation(cpg[, paired$sample_id, drop = FALSE], coords, min_cpg = 5)
+  genes <- intersect(rownames(gb$gbm), rownames(ex$vst))
+  cols <- unique(paired$colony)
+  s1 <- paired$sample_id[paired$timepoint == "TP1"][match(cols, paired$colony[paired$timepoint == "TP1"])]
+  s3 <- paired$sample_id[paired$timepoint == "TP3"][match(cols, paired$colony[paired$timepoint == "TP3"])]
+  dG <- gb$gbm[genes, s3, drop = FALSE] - gb$gbm[genes, s1, drop = FALSE]
+  dE <- ex$vst[genes, s3, drop = FALSE] - ex$vst[genes, s1, drop = FALSE]
+  colnames(dG) <- colnames(dE) <- cols
+  list(species = sp, dG = dG, dE = dE, gbm = gb$gbm[genes, paired$sample_id, drop = FALSE],
+       vst = ex$vst[genes, paired$sample_id, drop = FALSE], paired = paired,
+       n = tibble(species = sp, colonies_paired = length(cols), samples_both_layers = nrow(both),
+                  genes_used = length(genes)))
+}
+
+gb_data <- lapply(setNames(species_all, species_all), function(sp) build_deltas(sp, load_gene_coords(sp)))
+n_tab <- bind_rows(lapply(gb_data, `[[`, "n"))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab, format.args = list(big.mark = ","))
+```
+
+Paired colonies (both layers at TP1 and TP3):
+
+```{r paired}
+knitr::kable(bind_rows(lapply(gb_data, function(d) tibble(species = d$species, colonies = paste(colnames(d$dG), collapse = ", ")))))
+```
+
+## Model
+
+```{r functions}
+# Colony x colony matrix of Spearman rho(dGBM of row colony, dExpr of column colony).
+coupling_matrix <- function(dG, dE) {
+  rG <- apply(dG, 2, rank); rE <- apply(dE, 2, rank)
+  cor(rG, rE)
+}
+
+perm_test <- function(R, B = n_perm) {
+  k <- nrow(R)
+  T_obs <- mean(diag(R))
+  T_perm <- replicate(B, { p <- sample.int(k); mean(R[cbind(seq_len(k), p)]) })
+  list(T = T_obs, p = (1 + sum(T_perm >= T_obs)) / (1 + B), T_perm = T_perm)
+}
+
+mixed_slope <- function(d, genes) {
+  long <- tibble(
+    gene = rep(genes, times = ncol(d$gbm)),
+    sample_id = rep(colnames(d$gbm), each = length(genes)),
+    gbm10 = as.vector(d$gbm[genes, , drop = FALSE]) / 10,
+    expr = as.vector(d$vst[genes, colnames(d$gbm), drop = FALSE])) |>
+    left_join(d$paired |> select(sample_id, colony), by = "sample_id")
+  fit <- lmer(expr ~ gbm10 + (1 | colony) + (1 | gene), data = long)
+  ci <- confint(fit, parm = "gbm10", method = "Wald")
+  tibble(n_obs = nrow(long), slope = unname(fixef(fit)["gbm10"]), slope_lo = ci[1], slope_hi = ci[2])
+}
+
+analyse <- function(d) {
+  R <- coupling_matrix(d$dG, d$dE)
+  pt <- perm_test(R)
+  mG <- rowMeans(d$dG); mE <- rowMeans(d$dE)
+  avg_rho <- cor(mG, mE, method = "spearman")
+  avg_boot <- replicate(n_boot, { i <- sample.int(length(mG), replace = TRUE); cor(mG[i], mE[i], method = "spearman") })
+  dm <- names(sort(abs(mG), decreasing = TRUE))[seq_len(ceiling(dm_frac * length(mG)))]
+  R_dm <- coupling_matrix(d$dG[dm, , drop = FALSE], d$dE[dm, , drop = FALSE])
+  pt_dm <- perm_test(R_dm)
+  list(
+    summary = tibble(species = d$species, colonies = ncol(d$dG), genes = nrow(d$dG),
+                     T = pt$T, perm_p = pt$p,
+                     T_null_median = median(pt$T_perm),
+                     avg_rho = avg_rho, avg_rho_lo = quantile(avg_boot, 0.025), avg_rho_hi = quantile(avg_boot, 0.975),
+                     dm_genes = length(dm), T_dm = pt_dm$T, perm_p_dm = pt_dm$p) |>
+      bind_cols(mixed_slope(d, dm)),
+    per_colony = tibble(species = d$species, colony = colnames(d$dG), rho_c = diag(R)),
+    R = R)
+}
+
+decide <- function(s) {
+  s <- s |> mutate(passes = T > 0 & perm_p < 0.05 & slope > 0 & slope_lo > 0)
+  verdict <- if (sum(s$passes) >= 2) "supported" else if (all(s$T <= 0)) "not supported" else "inconclusive"
+  list(per_species = s, verdict = verdict)
+}
+```
+
+```{r fit}
+res <- lapply(gb_data, analyse)
+primary <- decide(bind_rows(lapply(res, `[[`, "summary")))
+write_csv(primary$per_species, file.path(out_dir, "coupling_summary.csv"))
+write_csv(bind_rows(lapply(res, `[[`, "per_colony")), file.path(out_dir, "coupling_per_colony.csv"))
+write_csv(bind_rows(lapply(gb_data, function(d)
+  tibble(species = d$species, feature_id = rownames(d$dG), mean_dgbm = rowMeans(d$dG), mean_dexpr = rowMeans(d$dE)))),
+  file.path(out_dir, "deltas_per_gene.csv"))
+knitr::kable(primary$per_species, digits = 4)
+```
+
+**Primary verdict: `r primary$verdict`.**
+
+```{r fig-coupling, fig.width = 9, fig.height = 3.5}
+R_long <- bind_rows(lapply(res, function(r) {
+  R <- r$R
+  tibble(species = r$summary$species, meth_colony = rep(rownames(R), ncol(R)),
+         expr_colony = rep(colnames(R), each = nrow(R)), rho = as.vector(R),
+         same_colony = meth_colony == expr_colony)
+}))
+write_csv(R_long, file.path(out_dir, "coupling_matrix.csv"))
+g <- ggplot(R_long, aes(same_colony, rho)) +
+  geom_hline(yintercept = 0, colour = "grey70") +
+  geom_jitter(width = 0.15, alpha = 0.6, size = 1.2) +
+  stat_summary(fun = mean, geom = "crossbar", width = 0.5, colour = "black") +
+  facet_wrap(~ species) +
+  scale_x_discrete(labels = c(`FALSE` = "different colony\n(null pairs)", `TRUE` = "same colony")) +
+  labs(x = NULL, y = "Spearman rho, dGBM vs dExpr across genes") +
+  theme_bw()
+ggsave(file.path(out_dir, "coupling_same_vs_other_colony.png"), g, width = 9, height = 3.5, dpi = 150)
+g
+```
+
+## Sensitivity checks
+
+### Power at the observed n
+
+```{r power}
+b_grid <- c(0.01, 0.02, 0.03, 0.05, 0.1)
+power_one <- function(d, b) {
+  k <- ncol(d$dG)
+  zG <- scale(d$dG)
+  sims <- replicate(n_sim, {
+    p0 <- sample.int(k)
+    dE_null <- d$dE[, p0, drop = FALSE]
+    dE_sim <- dE_null + b * sd(as.vector(d$dE)) * zG
+    R <- coupling_matrix(d$dG, dE_sim)
+    pt <- perm_test(R, B = 199)
+    c(T = pt$T, sig = pt$p < 0.05)
+  })
+  tibble(species = d$species, b = b, mean_T = mean(sims["T", ]), power = mean(sims["sig", ]))
+}
+power_tab <- bind_rows(lapply(gb_data, function(d) bind_rows(lapply(b_grid, power_one, d = d))))
+write_csv(power_tab, file.path(out_dir, "power.csv"))
+knitr::kable(power_tab, digits = 3)
+```
+
+`b` is the added coupling in SD units of expression change per SD of
+methylation change; `mean_T` is the per-colony coupling it produces on top of
+shuffled (uncoupled) data. Power uses 199 permutations per simulation.
+
+### 2 kb upstream windows
+
+```{r sens-upstream}
+up_data <- lapply(setNames(species_all, species_all), function(sp) build_deltas(sp, upstream_coords(load_gene_coords(sp), 2000)))
+res_up <- lapply(up_data, analyse)
+sens_up <- decide(bind_rows(lapply(res_up, `[[`, "summary")))
+write_csv(sens_up$per_species, file.path(out_dir, "sens_upstream2kb_summary.csv"))
+knitr::kable(sens_up$per_species, digits = 4)
+```
+
+Verdict for upstream windows: `r sens_up$verdict`.
+
+```{r summary}
+write_csv(tibble(analysis = c("gene body (primary)", "2 kb upstream"), verdict = c(primary$verdict, sens_up$verdict)),
+          file.path(out_dir, "verdicts.csv"))
+```
+
+## Caveats
+
+- Paired colonies: `r paste(n_tab$species, n_tab$colonies_paired, sep = " ", collapse = ", ")`.
+  The permutation null has at most k! distinct pairings and is only as
+  informative as the number of colonies allows; see the power table.
+- About 10 colonies per species before pairing.
+- Per-colony deltas from one TP1 and one TP3 sample carry the full sampling
+  noise of both layers; colony-level GBM from 10x CpGs is noisy at the few-%
+  methylation typical of these genes.
+- CpG density differs about 20-fold across species (D-008), so the gene sets
+  differ in size and composition.
+- TP1 and TP3 differ in temperature, light, nutrients and reproductive
+  timing; coupling, if present, is not attributable to temperature.

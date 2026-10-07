@@ -2,7 +2,7 @@
 id: H06
 slug: seasonal-methylation-expression-coupling
 title: Seasonal change in gene-body methylation tracks seasonal change in expression at the same genes
-status: planned
+status: inconclusive
 tier: 2
 layers: [cpg, genes, annotation]
 species: [Apul, Peve, Ptuh]

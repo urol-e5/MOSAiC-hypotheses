@@ -26,3 +26,14 @@ gene_body_methylation <- function(cpg, coords, min_cpg = 5) {
   colnames(gbm) <- colnames(cpg)
   list(gbm = gbm, n_cpg = setNames(n[keep], coords$feature_id[keep]))
 }
+
+# Strand-aware windows of `width` bp immediately upstream of each gene, in the
+# same shape as load_gene_coords(), for gene_body_methylation(). Used by H06.
+upstream_coords <- function(coords, width = 2000) {
+  dplyr::mutate(coords,
+    new_start = ifelse(strand == "-", end + 1, pmax(1, start - width)),
+    new_end   = ifelse(strand == "-", end + width, start - 1)) |>
+    dplyr::filter(new_end >= new_start) |>
+    dplyr::mutate(start = new_start, end = new_end) |>
+    dplyr::select(-new_start, -new_end)
+}
