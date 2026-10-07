@@ -2,7 +2,7 @@
 id: H15
 slug: methylation-persistence
 title: Seasonal gene-body methylation changes persist after temperature reverses, while expression changes revert
-status: planned
+status: inconclusive
 tier: 2
 layers: [cpg, genes, temperature, annotation]
 species: [Apul, Peve, Ptuh]

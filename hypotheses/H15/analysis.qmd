@@ -1,0 +1,280 @@
+---
+title: "H15: persistence of seasonal methylation vs expression changes"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+source(file.path(root, "R", "methylation.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H15", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+n_boot <- 2000
+sel_frac <- 0.10
+set.seed(20261007)
+```
+
+## Pre-registered decision rule
+
+> - `supported` if dP > 0 with 95% CI excluding 0 in at least two species,
+>   and in those species P_GBM > mean P_T.
+> - `not supported` if the dP point estimate is <= 0 in at least two species.
+> - `inconclusive` otherwise, including when b31 for GBM has a CI that
+>   includes 0 (no detectable seasonal methylation shift to persist) in two
+>   or more species.
+
+P = persistence = mean over colonies of b41_c / mean over colonies of b31_c,
+where b31_c and b41_c are the through-origin slopes of colony c's
+(x_TP3 − x_TP1) and (x_TP4 − x_TP1) on D_g, the leave-one-colony-out (LOCO)
+mean of (x_TP3 − x_TP1), over that colony's top 10% of genes by |D_g|.
+dP = P_GBM − P_expr. CIs by colony bootstrap (2000 resamples), with LOCO
+selection redone inside each resample.
+
+Implementation notes (not in `hypothesis.md`; none changes the rule):
+
+- The rule's two `inconclusive` clauses are checked before
+  `not supported`: if the GBM b31 CI includes 0 in two or more species there
+  is no shift whose persistence can be measured, and the verdict is
+  `inconclusive` regardless of dP.
+- In a bootstrap resample a colony drawn twice is not its own LOCO
+  reference: D for a draw is the mean over draws of *other* original
+  colonies.
+- Bootstrap p-values (two-sided, 2 × the smaller tail) are Holm-corrected
+  across species for reporting only.
+- Temperature: mean of daily site means over the 30 days before each
+  nominal date (D-006). P_T = (T4 − T1)/(T3 − T1) per site, averaged over
+  the species' colonies (so weighted by colonies per site).
+
+## Data
+
+```{r data}
+build_layers <- function(sp, min_cpg = 5) {
+  cpg <- as_count_matrix(load_cpg(sp))
+  both <- design |> filter(species == sp, has_cpg %in% TRUE, has_genes %in% TRUE, sample_id %in% colnames(cpg))
+  ex <- prep_vst(load_genes(sp) |> select(feature_id, all_of(both$sample_id)), design)
+  trip <- both |> filter(timepoint %in% c("TP1", "TP3", "TP4"), sample_id %in% colnames(ex$vst)) |>
+    group_by(colony) |> filter(n_distinct(timepoint) == 3) |> ungroup() |> arrange(colony, timepoint)
+  gb <- gene_body_methylation(cpg[, trip$sample_id, drop = FALSE], load_gene_coords(sp), min_cpg = min_cpg)
+  genes <- intersect(rownames(gb$gbm), rownames(ex$vst))
+  cols <- unique(trip$colony)
+  pick <- function(tp) trip$sample_id[trip$timepoint == tp][match(cols, trip$colony[trip$timepoint == tp])]
+  s1 <- pick("TP1"); s3 <- pick("TP3"); s4 <- pick("TP4")
+  mk <- function(m) {
+    d31 <- m[genes, s3, drop = FALSE] - m[genes, s1, drop = FALSE]
+    d41 <- m[genes, s4, drop = FALSE] - m[genes, s1, drop = FALSE]
+    colnames(d31) <- colnames(d41) <- cols
+    list(d31 = d31, d41 = d41)
+  }
+  list(species = sp, colonies = cols, sites = trip$site[match(cols, trip$colony)],
+       gbm = mk(gb$gbm), expr = mk(ex$vst), n_cpg = gb$n_cpg[genes],
+       n = tibble(species = sp, colonies_TP1_TP3_TP4 = length(cols), samples_both_layers = nrow(both),
+                  genes_used = length(genes)))
+}
+
+lay <- lapply(setNames(species_all, species_all), build_layers)
+n_tab <- bind_rows(lapply(lay, `[[`, "n"))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab, format.args = list(big.mark = ","))
+```
+
+Colonies used (both layers at TP1, TP3 and TP4):
+
+```{r colonies}
+knitr::kable(bind_rows(lapply(lay, function(d) tibble(species = d$species, colonies = paste(d$colonies, collapse = ", ")))))
+```
+
+### Temperature persistence
+
+```{r temperature}
+temp <- load_temperature_daily()
+tp_dates <- design |> distinct(timepoint, tp_date) |> filter(timepoint %in% c("TP1", "TP3", "TP4"))
+t30 <- tidyr::crossing(site = unique(temp$site), tp_dates) |>
+  rowwise() |>
+  mutate(T30 = mean(temp$mean_c[temp$site == site & temp$day < tp_date & temp$day >= tp_date - 30]),
+         days = sum(temp$site == site & temp$day < tp_date & temp$day >= tp_date - 30)) |>
+  ungroup()
+pt_site <- t30 |> select(site, timepoint, T30) |> pivot_wider(names_from = timepoint, values_from = T30) |>
+  mutate(P_T = (TP4 - TP1) / (TP3 - TP1))
+write_csv(t30, file.path(out_dir, "temperature_30d.csv"))
+knitr::kable(pt_site, digits = 3)
+P_T_species <- sapply(lay, function(d) mean(pt_site$P_T[match(d$sites, pt_site$site)]))
+```
+
+## Model
+
+```{r functions}
+# Persistence for one layer. d31, d41: gene x colony change matrices.
+# `ids` gives the original colony identity of each column (differs from
+# colnames only in bootstrap resamples), so LOCO excludes every copy of a colony.
+persistence <- function(d31, d41, ids = colnames(d31), frac = sel_frac) {
+  k <- ncol(d31)
+  b <- t(sapply(seq_len(k), function(j) {
+    other <- ids != ids[j]
+    D <- rowMeans(d31[, other, drop = FALSE])
+    sel <- order(abs(D), decreasing = TRUE)[seq_len(ceiling(frac * length(D)))]
+    D <- D[sel]
+    c(b31 = sum(D * d31[sel, j]) / sum(D^2), b41 = sum(D * d41[sel, j]) / sum(D^2),
+      flip31 = mean(sign(d31[sel, j]) != sign(D)), flip41 = mean(sign(d41[sel, j]) != sign(D)))
+  }))
+  c(P = mean(b[, "b41"]) / mean(b[, "b31"]), b31 = mean(b[, "b31"]), b41 = mean(b[, "b41"]),
+    flip31 = mean(b[, "flip31"]), flip41 = mean(b[, "flip41"]))
+}
+
+analyse <- function(d, genes = rownames(d$gbm$d31), frac = sel_frac) {
+  g <- d$gbm; e <- d$expr
+  est <- function(cols, ids) {
+    pg <- persistence(g$d31[genes, cols, drop = FALSE], g$d41[genes, cols, drop = FALSE], ids, frac)
+    pe <- persistence(e$d31[genes, cols, drop = FALSE], e$d41[genes, cols, drop = FALSE], ids, frac)
+    c(P_gbm = pg[["P"]], P_expr = pe[["P"]], dP = pg[["P"]] - pe[["P"]],
+      b31_gbm = pg[["b31"]], b41_gbm = pg[["b41"]], b31_expr = pe[["b31"]], b41_expr = pe[["b41"]],
+      flip31_gbm = pg[["flip31"]], flip41_gbm = pg[["flip41"]],
+      flip31_expr = pe[["flip31"]], flip41_expr = pe[["flip41"]])
+  }
+  cols <- d$colonies
+  obs <- est(cols, cols)
+  boot <- t(replicate(n_boot, {
+    i <- sample.int(length(cols), replace = TRUE)
+    if (length(unique(i)) < 3) return(rep(NA_real_, length(obs)))
+    est(cols[i], cols[i])
+  }))
+  colnames(boot) <- names(obs)
+  ci <- function(v) quantile(boot[, v], c(0.025, 0.975), na.rm = TRUE)
+  p2 <- function(v) min(1, 2 * min(mean(boot[, v] <= 0, na.rm = TRUE), mean(boot[, v] >= 0, na.rm = TRUE)))
+  list(
+    summary = tibble(species = d$species, colonies = length(cols), genes_selected = ceiling(frac * length(genes)),
+                     genes = length(genes),
+                     P_gbm = obs[["P_gbm"]], P_gbm_lo = ci("P_gbm")[1], P_gbm_hi = ci("P_gbm")[2],
+                     P_expr = obs[["P_expr"]], P_expr_lo = ci("P_expr")[1], P_expr_hi = ci("P_expr")[2],
+                     dP = obs[["dP"]], dP_lo = ci("dP")[1], dP_hi = ci("dP")[2], dP_boot_p = p2("dP"),
+                     b31_gbm = obs[["b31_gbm"]], b31_gbm_lo = ci("b31_gbm")[1], b31_gbm_hi = ci("b31_gbm")[2],
+                     b31_expr = obs[["b31_expr"]], b31_expr_lo = ci("b31_expr")[1], b31_expr_hi = ci("b31_expr")[2],
+                     P_T = P_T_species[[d$species]],
+                     n_boot_valid = sum(!is.na(boot[, "dP"]))),
+    rebound = tibble(species = d$species, layer = c("gbm", "expr"),
+                     opposite_sign_TP3 = c(obs[["flip31_gbm"]], obs[["flip31_expr"]]),
+                     opposite_sign_TP4 = c(obs[["flip41_gbm"]], obs[["flip41_expr"]])),
+    boot = as_tibble(boot) |> mutate(species = d$species))
+}
+
+decide <- function(s) {
+  s <- s |> mutate(dP_boot_p_holm = p.adjust(dP_boot_p, "holm"),
+                   shift_gbm = b31_gbm_lo > 0 | b31_gbm_hi < 0,
+                   passes = dP_lo > 0 & P_gbm > P_T)
+  verdict <- if (sum(s$passes) >= 2) "supported"
+    else if (sum(!s$shift_gbm) >= 2) "inconclusive"
+    else if (sum(s$dP <= 0) >= 2) "not supported"
+    else "inconclusive"
+  list(per_species = s, verdict = verdict)
+}
+```
+
+```{r fit}
+res <- lapply(lay, analyse)
+primary <- decide(bind_rows(lapply(res, `[[`, "summary")))
+write_csv(primary$per_species, file.path(out_dir, "persistence_summary.csv"))
+write_csv(bind_rows(lapply(res, `[[`, "boot")), file.path(out_dir, "persistence_bootstrap.csv"))
+knitr::kable(primary$per_species |> select(species, colonies, genes, P_gbm, P_gbm_lo, P_gbm_hi, P_expr, P_expr_lo, P_expr_hi,
+                                           dP, dP_lo, dP_hi, dP_boot_p_holm, b31_gbm_lo, b31_gbm_hi, P_T, passes), digits = 3)
+```
+
+**Primary verdict: `r primary$verdict`.**
+
+```{r fig-trajectory, fig.width = 9, fig.height = 3.5}
+traj <- primary$per_species |>
+  transmute(species, gbm = P_gbm, gbm_lo = P_gbm_lo, gbm_hi = P_gbm_hi,
+            expr = P_expr, expr_lo = P_expr_lo, expr_hi = P_expr_hi, temperature = P_T) |>
+  pivot_longer(-species, names_to = c("layer", "stat"), names_pattern = "([a-z]+)_?(lo|hi)?") |>
+  mutate(stat = ifelse(stat == "", "est", stat)) |>
+  pivot_wider(names_from = stat, values_from = value)
+traj <- bind_rows(
+  traj |> mutate(timepoint = "TP4"),
+  traj |> mutate(timepoint = "TP3", est = 1, lo = NA, hi = NA),
+  traj |> mutate(timepoint = "TP1", est = 0, lo = NA, hi = NA)) |>
+  mutate(timepoint = factor(timepoint, c("TP1", "TP3", "TP4")),
+         layer = factor(layer, c("gbm", "expr", "temperature"), c("gene-body methylation", "expression", "temperature")))
+write_csv(traj, file.path(out_dir, "trajectory_normalized.csv"))
+g <- ggplot(traj, aes(timepoint, est, colour = layer, group = layer)) +
+  geom_hline(yintercept = 0, colour = "grey80") +
+  geom_line(position = position_dodge(0.25)) + geom_point(position = position_dodge(0.25)) +
+  geom_errorbar(aes(ymin = lo, ymax = hi), width = 0.15, position = position_dodge(0.25), na.rm = TRUE) +
+  facet_wrap(~ species) +
+  scale_colour_manual(values = c("#1b6ca8", "#d1495b", "grey40")) +
+  coord_cartesian(ylim = c(-3, 3)) +
+  labs(x = NULL, y = "Fraction of TP1-to-TP3 shift present", colour = NULL) +
+  theme_bw() + theme(legend.position = "bottom")
+ggsave(file.path(out_dir, "persistence_trajectory.png"), g, width = 9, height = 3.8, dpi = 150)
+g
+```
+
+The TP4 point is P; 0 is full reversion to TP1, 1 is no reversion. Error bars
+are 95% colony-bootstrap intervals; the y-axis is clipped at ±3, so wider
+intervals run off the panel (full values in `persistence_summary.csv`).
+
+### Rebound (secondary, descriptive)
+
+Fraction of a colony's selected genes whose change from TP1 has the opposite
+sign to the LOCO shift D, averaged over colonies. At TP3 this is the noise
+floor (the shift is defined from the other colonies); a TP4 value above it
+means some genes overshoot past baseline. Relates to Q4; no decision.
+
+```{r rebound}
+reb <- bind_rows(lapply(res, `[[`, "rebound"))
+write_csv(reb, file.path(out_dir, "rebound.csv"))
+knitr::kable(reb, digits = 3)
+```
+
+## Sensitivity checks
+
+```{r sensitivity}
+sens_run <- function(label, gene_fun = function(d) rownames(d$gbm$d31), frac = sel_frac) {
+  s <- bind_rows(lapply(lay, function(d) analyse(d, gene_fun(d), frac)$summary))
+  dec <- decide(s)
+  write_csv(dec$per_species, file.path(out_dir, paste0("sens_", label, "_summary.csv")))
+  list(label = label, dec = dec)
+}
+
+orth <- load_orthologs()
+orth_ids <- list(Apul = orth$apul_gene, Peve = orth$peve_gene, Ptuh = orth$ptuh_gene)
+
+sens <- list(
+  sens_run("mincpg20", function(d) names(d$n_cpg)[d$n_cpg >= 20]),
+  sens_run("top5", frac = 0.05),
+  sens_run("top20", frac = 0.20),
+  sens_run("orthologs", function(d) intersect(rownames(d$gbm$d31), orth_ids[[d$species]])))
+sens_tab <- bind_rows(lapply(sens, function(x) x$dec$per_species |>
+  transmute(check = x$label, species, genes, P_gbm, P_expr, dP, dP_lo, dP_hi, passes)))
+knitr::kable(sens_tab, digits = 3)
+```
+
+```{r summary}
+verdicts <- tibble(analysis = c("primary (top 10%, >= 5 CpGs)", sapply(sens, `[[`, "label")),
+                   verdict = c(primary$verdict, sapply(sens, function(x) x$dec$verdict)))
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+knitr::kable(verdicts)
+```
+
+## Caveats
+
+- Colonies with both layers at TP1, TP3 and TP4:
+  `r paste(n_tab$species, n_tab$colonies_TP1_TP3_TP4, sep = " ", collapse = ", ")`.
+  About 10 colonies per species before this restriction.
+- P is a ratio; when b31 is close to 0 for a layer, P and its interval are
+  unstable. Read P only where the b31 interval excludes 0.
+- TP4 is two months after TP3; P describes persistence over that interval
+  only, and TP3→TP4 also spans the *Acropora* spawning window.
+- CpG density differs about 20-fold across species (D-008), so gene sets
+  differ in size and composition.

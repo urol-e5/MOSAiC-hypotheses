@@ -1,0 +1,28 @@
+species,layer,est,lo,hi,timepoint
+Apul,gene-body methylation,0.6859214773878798,-3.702435591953469,5.5480081111554025,TP4
+Apul,expression,0.1785995268948177,-0.44045178581751204,0.5586441473772966,TP4
+Apul,temperature,-0.11839555182014594,NA,NA,TP4
+Peve,gene-body methylation,1.0291908311043532,-9.569578872589622,14.455293809505294,TP4
+Peve,expression,0.012296205188442174,-3.360906886549826,4.56686979631084,TP4
+Peve,temperature,-0.11839555182014594,NA,NA,TP4
+Ptuh,gene-body methylation,0.8709645423355244,-3.9319478202786984,3.350786879011914,TP4
+Ptuh,expression,-1.1240423657125904,-11.773097468022014,7.408204209853703,TP4
+Ptuh,temperature,-0.10402456127451419,NA,NA,TP4
+Apul,gene-body methylation,1,NA,NA,TP3
+Apul,expression,1,NA,NA,TP3
+Apul,temperature,1,NA,NA,TP3
+Peve,gene-body methylation,1,NA,NA,TP3
+Peve,expression,1,NA,NA,TP3
+Peve,temperature,1,NA,NA,TP3
+Ptuh,gene-body methylation,1,NA,NA,TP3
+Ptuh,expression,1,NA,NA,TP3
+Ptuh,temperature,1,NA,NA,TP3
+Apul,gene-body methylation,0,NA,NA,TP1
+Apul,expression,0,NA,NA,TP1
+Apul,temperature,0,NA,NA,TP1
+Peve,gene-body methylation,0,NA,NA,TP1
+Peve,expression,0,NA,NA,TP1
+Peve,temperature,0,NA,NA,TP1
+Ptuh,gene-body methylation,0,NA,NA,TP1
+Ptuh,expression,0,NA,NA,TP1
+Ptuh,temperature,0,NA,NA,TP1
