@@ -127,3 +127,19 @@ system change:
 A fresh fetch on raven reproduced every md5 in `config/upstream.lock.yml`; only
 `fetched_on` dates changed, and that diff was discarded. The reproduction gate
 passed before H04 ran.
+
+## D-013 (2026-10-07) H04 PERMANOVA bootstrap runs in parallel
+
+In the first raven run the R2 bootstrap (200 resamples, one Euclidean
+distance over up to 1.8 M CpGs each) ran serially and took about 1 h 45 min
+of the 3 h 44 min total. `permanova_one()` now draws all bootstrap indices
+serially in the main process, in the same order `replicate()` did, and forks
+only the `adonis2` fits with `parallel::mclapply` (`H04_WORKERS` cores).
+`adonis2(..., permutations = 0)` uses no random numbers, so the draws and the
+RNG state afterwards are unchanged: rerunning the purled qmd for Apul
+reproduced the committed `permanova.csv` rows exactly (tolerance 0). Each
+Ptuh worker holds one resampled copy of the matrix, about 1 GB.
+
+Open: variancePartition fits ran at about 0.24 s per feature per worker with
+47 workers, against 0.026 s in a single-process benchmark. Check whether
+threaded BLAS inside forked workers is the cause before the next large run.

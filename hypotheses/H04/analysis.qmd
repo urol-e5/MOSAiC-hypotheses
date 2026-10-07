@@ -125,12 +125,16 @@ permanova_one <- function(m, info, layer) {
   a_free <- adonis2(d ~ colony + timepoint, data = info, by = "terms", permutations = n_perm)
   a_block <- adonis2(d ~ colony + timepoint, data = info, by = "terms",
                      permutations = permute::how(blocks = info$colony, nperm = n_perm))
-  r2_boot <- replicate(n_boot_r2, {
-    i <- sample.int(nrow(m), nrow(m), replace = TRUE)
+  # Indices are drawn serially in the main process (same draws and RNG state
+  # as replicate()); only the adonis2 fits are forked. See D-013.
+  idx <- lapply(seq_len(n_boot_r2), function(b) sample.int(nrow(m), nrow(m), replace = TRUE))
+  r2_boot <- parallel::mclapply(idx, function(i) {
     a <- adonis2(layer_dist(m[i, , drop = FALSE], layer) ~ colony + timepoint, data = info,
                  by = "terms", permutations = 0)
     a$R2[1:2]
-  })
+  }, mc.cores = n_workers)
+  if (any(vapply(r2_boot, inherits, TRUE, "try-error"))) stop("PERMANOVA bootstrap worker failed")
+  r2_boot <- simplify2array(r2_boot)
   tibble(layer = layer, term = c("colony", "timepoint"), R2 = a_free$R2[1:2],
          R2_lo = apply(r2_boot, 1, quantile, 0.025), R2_hi = apply(r2_boot, 1, quantile, 0.975),
          p = c(a_free$`Pr(>F)`[1], a_block$`Pr(>F)`[2]),
