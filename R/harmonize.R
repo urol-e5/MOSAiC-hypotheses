@@ -143,6 +143,16 @@ harmonize_orthologs <- function(path) {
 }
 
 # Temperature: daily per-site summary (raw stays in data/raw).
+# Gene coordinates from a GFF/GFF3: one row per `gene` feature, id normalized
+# to match the count matrices. Used to aggregate CpGs to gene bodies (H05, H06).
+harmonize_gff <- function(path, species) {
+  readr::read_tsv(path, comment = "#", col_names = FALSE, col_types = "ccciicccc", progress = FALSE) |>
+    filter(X3 == "gene") |>
+    transmute(feature_id = norm_gene_id(sub(";.*$", "", sub("^.*?ID=", "", X9)), species),
+              chrom = X1, start = X4, end = X5, strand = X7) |>
+    distinct(feature_id, .keep_all = TRUE)
+}
+
 harmonize_temperature <- function(path) {
   readr::read_csv(path, col_types = "Tcd", progress = FALSE) |>
     filter(between(temp.C, 10, 40)) |>
@@ -200,6 +210,7 @@ harmonize_all <- function(manifest = yaml::read_yaml("config/upstream.yml"), out
     layers[[paste0("lncrna_", sp)]] <- l$matrix
     write_derived(l$meta, paste0("lncrna_", sp, "_features"), out_dir)
     layers[[paste0("cpg_", sp)]] <- harmonize_cpg(files[[paste0("cpg_", sp)]], sp)
+    write_derived(harmonize_gff(files[[paste0("gff_", sp)]], sp), paste0("gene_coords_", sp), out_dir)
   }
   layers$metabolomics <- harmonize_multi_species_matrix(files$metabolomics)
   layers$lipidomics   <- harmonize_multi_species_matrix(files$lipidomics)

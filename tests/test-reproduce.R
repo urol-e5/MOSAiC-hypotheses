@@ -62,3 +62,11 @@ test_that("design has exactly three species and four timepoints", {
   expect_setequal(unique(d$species), c("Apul", "Peve", "Ptuh"))
   expect_setequal(unique(d$timepoint), paste0("TP", 1:4))
 })
+
+test_that("GFF gene coordinates cover every gene in the count matrices", {
+  for (sp in c("Apul", "Peve", "Ptuh")) {
+    gc <- load_gene_coords(sp)
+    expect_false(anyDuplicated(gc$feature_id) > 0, info = sp)
+    expect_true(all(load_genes(sp)$feature_id %in% gc$feature_id), info = paste(sp, "gene ids in GFF"))
+  }
+})

@@ -1,0 +1,186 @@
+---
+title: "H05: gene-body methylation and expression level and stability"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+source(file.path(root, "R", "methylation.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2); library(splines) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H05", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+n_boot <- 1000
+set.seed(20261006)
+```
+
+## Pre-registered decision rule
+
+> `supported` if rho(GBM, mean expression) > 0.2 and the GBM coefficient on CV
+> is negative with a CI excluding zero, in all three species. `not supported` if
+> either sign is reversed with a CI excluding zero in any species. Otherwise
+> `inconclusive`.
+
+Model: per species, per gene: mean GBM (%), mean vst expression, CV of
+per-timepoint colony-mean expression. Spearman rho(GBM, mean expression); then
+`lm(cv ~ ns(mean_expr, 3) + gbm)` with the standardized GBM coefficient and
+95% CI. Genes need >= 5 CpGs in the gene body; samples as in H04 (both
+`has_cpg` and `has_genes`). Decisions use per-species 95% CIs; no p-value
+enters the rule, so no multiple-testing correction is applied.
+
+Operational choices not spelled out in `hypothesis.md` (none changes the rule):
+
+- **Gene body** is the GFF `gene` feature span (start to end, both strands);
+  a CpG inside overlapping genes counts toward each. CpG positions are parsed
+  from the CpG ids; an off-by-one in their coordinate base cannot matter at
+  gene-body scale.
+- **GBM per gene** is the mean over samples of the per-sample mean percent
+  methylation across the gene's CpGs.
+- **Expression** is vst on the intersected samples with the H01 filter; genes
+  failing that filter are dropped. **CV** = sd / mean of the four
+  per-timepoint means, each the mean over colonies of that timepoint's vst
+  values (vst is a log scale, so CV is of log-expression, as pre-registered).
+- **Standardized coefficient**: `cv` and `gbm` are z-scored before the fit, so
+  the GBM coefficient is in SD of CV per SD of GBM.
+- **Rho CI** is a 95% bootstrap over genes. "Reversed with a CI excluding
+  zero" means rho < 0 with the whole CI below zero, or the GBM coefficient
+  > 0 with the whole CI above zero.
+
+## Data
+
+```{r data}
+build_species <- function(sp, min_cpg) {
+  cpg <- as_count_matrix(load_cpg(sp))
+  ids <- intersect(colnames(cpg), design$sample_id[design$has_cpg %in% TRUE & design$has_genes %in% TRUE])
+  ex <- prep_vst(load_genes(sp) |> select(feature_id, all_of(ids)), design)
+  ids <- intersect(ids, colnames(ex$vst))
+  gb <- gene_body_methylation(cpg[, ids, drop = FALSE], load_gene_coords(sp), min_cpg = min_cpg)
+  info <- design_for(ex$vst[, ids, drop = FALSE], design)
+  v <- ex$vst[, ids, drop = FALSE]
+  tp_means <- sapply(split(seq_along(ids), info$timepoint), function(j) rowMeans(v[, j, drop = FALSE]))
+  genes <- intersect(rownames(v), rownames(gb$gbm))
+  list(
+    per_gene = tibble(species = sp, feature_id = genes,
+                      n_cpg = unname(gb$n_cpg[genes]),
+                      gbm = rowMeans(gb$gbm[genes, , drop = FALSE]),
+                      mean_expr = rowMeans(v[genes, , drop = FALSE]),
+                      cv = apply(tp_means[genes, , drop = FALSE], 1, sd) / rowMeans(tp_means[genes, , drop = FALSE])),
+    n = tibble(species = sp, samples = length(ids), colonies = n_distinct(info$colony),
+               cpg_sites = nrow(cpg), genes_in_gff = nrow(load_gene_coords(sp)),
+               genes_with_min_cpg = nrow(gb$gbm), genes_expressed = nrow(v), genes_used = length(genes),
+               median_cpg_per_gene = median(gb$n_cpg[genes])))
+}
+
+dat <- lapply(species_all, build_species, min_cpg = 5)
+per_gene <- bind_rows(lapply(dat, `[[`, "per_gene"))
+n_tab <- bind_rows(lapply(dat, `[[`, "n"))
+write_csv(per_gene, file.path(out_dir, "per_gene.csv"))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab, format.args = list(big.mark = ","))
+```
+
+CpG sites differ about 20-fold across species (decision D-008), so the number
+of genes reaching 5 CpGs does too.
+
+## Model
+
+```{r model}
+analyse <- function(pg) {
+  bind_rows(lapply(split(pg, pg$species), function(d) {
+    rho <- cor(d$gbm, d$mean_expr, method = "spearman")
+    boot <- replicate(n_boot, { i <- sample.int(nrow(d), replace = TRUE); cor(d$gbm[i], d$mean_expr[i], method = "spearman") })
+    d <- d |> mutate(cv_z = as.numeric(scale(cv)), gbm_z = as.numeric(scale(gbm)))
+    fit <- lm(cv_z ~ ns(mean_expr, 3) + gbm_z, data = d)
+    ci <- confint(fit)["gbm_z", ]
+    tibble(species = d$species[1], n_genes = nrow(d),
+           rho = rho, rho_lo = quantile(boot, 0.025), rho_hi = quantile(boot, 0.975),
+           beta_gbm = unname(coef(fit)["gbm_z"]), beta_lo = ci[1], beta_hi = ci[2],
+           beta_p = summary(fit)$coefficients["gbm_z", 4])
+  }))
+}
+
+decide <- function(est) {
+  est <- est |> mutate(
+    supports = rho > 0.2 & beta_gbm < 0 & beta_hi < 0,
+    reverses = rho_hi < 0 | beta_lo > 0)
+  list(per_species = est,
+       verdict = if (all(est$supports)) "supported" else if (any(est$reverses)) "not supported" else "inconclusive")
+}
+
+primary <- decide(analyse(per_gene))
+write_csv(primary$per_species, file.path(out_dir, "estimates.csv"))
+knitr::kable(primary$per_species, digits = 3)
+```
+
+**Primary verdict: `r primary$verdict`.**
+
+### GBM deciles
+
+```{r deciles, fig.width = 9, fig.height = 5}
+dec <- per_gene |>
+  group_by(species) |>
+  mutate(gbm_decile = ntile(gbm, 10)) |>
+  group_by(species, gbm_decile) |>
+  summarise(gbm_median = median(gbm), n = n(),
+            mean_expr_median = median(mean_expr), mean_expr_q25 = quantile(mean_expr, 0.25), mean_expr_q75 = quantile(mean_expr, 0.75),
+            cv_median = median(cv), cv_q25 = quantile(cv, 0.25), cv_q75 = quantile(cv, 0.75), .groups = "drop")
+write_csv(dec, file.path(out_dir, "gbm_deciles.csv"))
+
+dec_long <- bind_rows(
+  dec |> transmute(species, gbm_decile, panel = "mean vst expression", med = mean_expr_median, lo = mean_expr_q25, hi = mean_expr_q75),
+  dec |> transmute(species, gbm_decile, panel = "CV across timepoints", med = cv_median, lo = cv_q25, hi = cv_q75))
+g <- ggplot(dec_long, aes(gbm_decile, med)) +
+  geom_pointrange(aes(ymin = lo, ymax = hi), size = 0.3) +
+  facet_grid(panel ~ species, scales = "free_y") +
+  scale_x_continuous(breaks = 1:10) +
+  labs(x = "Gene-body methylation decile (1 = lowest)", y = "Median (bars: IQR)") +
+  theme_bw()
+ggsave(file.path(out_dir, "gbm_deciles.png"), g, width = 9, height = 5, dpi = 150)
+g
+```
+
+## Sensitivity checks
+
+### Lower CpG threshold (>= 2 CpGs per gene)
+
+```{r sens-mincpg}
+dat2 <- lapply(species_all, build_species, min_cpg = 2)
+per_gene2 <- bind_rows(lapply(dat2, `[[`, "per_gene"))
+sens <- decide(analyse(per_gene2))
+write_csv(bind_rows(lapply(dat2, `[[`, "n")), file.path(out_dir, "sens_mincpg2_n.csv"))
+write_csv(sens$per_species, file.path(out_dir, "sens_mincpg2_estimates.csv"))
+knitr::kable(sens$per_species, digits = 3)
+```
+
+Verdict with >= 2 CpGs: `r sens$verdict`.
+
+```{r summary}
+write_csv(tibble(analysis = c("primary (>= 5 CpGs)", ">= 2 CpGs"), verdict = c(primary$verdict, sens$verdict)),
+          file.path(out_dir, "verdicts.csv"))
+```
+
+## Caveats
+
+- About 10 colonies per species; GBM and CV are per-gene summaries over
+  `r paste(n_tab$samples, collapse = " / ")` samples (Apul / Peve / Ptuh).
+- CV over four timepoint means is noisy, and on the vst (log) scale it is
+  tied to mean level, which is why mean expression enters as a spline.
+- The upstream 10x-in-all-samples CpG filter is not the same stringency
+  across species (D-008), so GBM is estimated from very different CpG
+  densities; Ptuh is mapped to *P. meandrina* and Peve has a fragmented
+  assembly (N50 0.17 Mb), which also affects gene models.
+- Gene bodies include introns and UTRs where annotated; GFF quality differs
+  by species.

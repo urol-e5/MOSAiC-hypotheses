@@ -22,6 +22,7 @@ load_physiology  <- function() .derived("physiology")
 load_its2        <- function() .derived("its2")
 load_orthologs   <- function(three_way_only = TRUE) .derived(if (three_way_only) "orthologs_three_way" else "orthologs_all")
 load_temperature_daily <- function() .derived("temperature_daily")
+load_gene_coords <- function(species) .derived(paste0("gene_coords_", species))
 
 # Convert a feature x sample tibble to a numeric matrix with rownames.
 as_count_matrix <- function(df) {

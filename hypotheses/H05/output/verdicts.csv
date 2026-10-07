@@ -1,0 +1,3 @@
+analysis,verdict
+primary (>= 5 CpGs),supported
+>= 2 CpGs,supported

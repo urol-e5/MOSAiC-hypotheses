@@ -1,0 +1,4 @@
+species,samples,colonies,cpg_sites,genes_in_gff,genes_with_min_cpg,genes_expressed,genes_used,median_cpg_per_gene
+Apul,39,10,96772,44371,2113,21046,1641,10
+Peve,37,10,242100,40389,3089,20807,1796,15
+Ptuh,32,10,1991606,31840,19970,20975,16600,31

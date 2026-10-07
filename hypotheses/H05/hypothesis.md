@@ -2,7 +2,7 @@
 id: H05
 slug: gene-body-methylation-expression
 title: Gene-body methylation is positively associated with expression level and negatively with its temporal variability
-status: planned
+status: supported
 tier: 2
 layers: [cpg, genes, annotation]
 species: [Apul, Peve, Ptuh]
