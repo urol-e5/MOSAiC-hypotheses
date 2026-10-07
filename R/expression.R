@@ -27,11 +27,15 @@ prep_vst <- function(counts, design = load_design(), min_count = 10, min_frac = 
   list(vst = v, info = p$info, n_raw = p$n_raw)
 }
 
-# DESeq2 timepoint fit used by H02 and H03: ~ colony + timepoint, LRT against
-# ~ colony. Colony is a blocking factor; timepoint levels are TP1..TP4.
-fit_timepoint_deseq <- function(counts, info) {
+# DESeq2 timepoint fit used by H02 and H03: ~ colony + timepoint. Colony is a
+# blocking factor; timepoint levels are TP1..TP4 with TP1 as reference.
+# test = "LRT" (H02) tests against ~ colony; test = "Wald" (H03) gives per-
+# contrast p-values and supports lfcShrink(type = "apeglm"). Betas are the same.
+fit_timepoint_deseq <- function(counts, info, test = c("LRT", "Wald")) {
+  test <- match.arg(test)
   cd <- as.data.frame(info) |>
     dplyr::mutate(colony = factor(colony), timepoint = factor(timepoint, levels = c("TP1", "TP2", "TP3", "TP4")))
   dds <- DESeq2::DESeqDataSetFromMatrix(counts, colData = cd, design = ~ colony + timepoint)
-  DESeq2::DESeq(dds, test = "LRT", reduced = ~ colony, quiet = TRUE)
+  if (test == "LRT") DESeq2::DESeq(dds, test = "LRT", reduced = ~ colony, quiet = TRUE)
+  else DESeq2::DESeq(dds, test = "Wald", quiet = TRUE)
 }

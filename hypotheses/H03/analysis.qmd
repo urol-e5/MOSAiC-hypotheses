@@ -1,0 +1,238 @@
+---
+title: "H03: conserved seasonal response at orthologs"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2) })
+design <- load_design()
+orth <- load_orthologs()
+out_dir <- file.path(root, "hypotheses", "H03", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+sp_pairs <- combn(species_all, 2, simplify = FALSE)
+alpha <- 0.05
+n_perm <- 1000
+n_boot <- 1000
+set.seed(20261006)
+```
+
+## Pre-registered decision rule
+
+> `supported` if rho > 0.2 with permutation p < 0.01 in all three pairs and at
+> least three GO-slim terms are enriched (FDR < 0.05) in all three pairwise
+> concordant sets. `not supported` if any rho <= 0 or no term is shared.
+> Otherwise `inconclusive`.
+
+Model: TP3 vs TP1 from the H02 model (`~ colony + timepoint`, same filter,
+same common ortholog set). Spearman rho of apeglm-shrunken LFCs per species
+pair; null from 1000 permutations of ortholog assignment. GO-slim enrichment
+by Fisher exact test among concordantly DE groups (same sign, FDR < 0.05 in
+both species) against all groups tested in both; BH across terms within each
+pair.
+
+Operational choices not spelled out in `hypothesis.md` (none changes the rule):
+
+- **Fit.** Same design, filter and common ortholog set as H02, fitted with the
+  Wald test so the TP3-vs-TP1 contrast has its own p-value and can be shrunk
+  with apeglm (H02 used the LRT; the coefficients are identical). DE calls use
+  the Wald BH-adjusted p-value with DESeq2's default independent filtering.
+- **Permutation p** is one-sided (the prediction is a positive rho):
+  (1 + #{rho_perm >= rho_obs}) / (1 + 1000). Rho also gets a 95% bootstrap CI
+  over groups.
+- **Enrichment universe** is groups tested in both species of the pair that
+  carry at least one GO-slim term; groups with no GO-slim annotation cannot be
+  enriched for anything. The test is one-sided (enrichment). Odds ratios with
+  95% CIs are reported.
+- **"No term is shared"** means zero terms at FDR < 0.05 in all three pairs.
+
+## Data
+
+```{r data}
+counts_og <- lapply(setNames(species_all, species_all), function(sp) as_count_matrix(genes_by_ortholog(sp, orthologs = orth)))
+prep <- lapply(counts_og, prep_counts, design = design)
+common <- Reduce(intersect, lapply(prep, function(p) rownames(p$counts)))
+
+n_tab <- bind_rows(lapply(species_all, function(sp) {
+  p <- prep[[sp]]
+  tibble(species = sp, samples = ncol(p$counts), colonies = n_distinct(p$info$colony),
+         n_TP1 = sum(p$info$timepoint == "TP1"), n_TP3 = sum(p$info$timepoint == "TP3"),
+         groups_common = length(common))
+}))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab)
+```
+
+```{r goslim}
+goslim <- orth |>
+  filter(group_id %in% common, !is.na(goslim_names), goslim_names != "") |>
+  select(group_id, goslim_names) |>
+  separate_longer_delim(goslim_names, delim = ";") |>
+  mutate(term = trimws(goslim_names)) |>
+  filter(term != "") |>
+  distinct(group_id, term)
+```
+
+`r n_distinct(goslim$group_id)` of `r length(common)` common groups carry at
+least one GO-slim term (`r n_distinct(goslim$term)` distinct terms).
+
+## Model
+
+```{r fit}
+tp3_vs_tp1 <- function(sp) {
+  dds <- fit_timepoint_deseq(prep[[sp]]$counts[common, , drop = FALSE], prep[[sp]]$info, test = "Wald")
+  wald <- DESeq2::results(dds, name = "timepoint_TP3_vs_TP1", alpha = alpha)
+  shr <- DESeq2::lfcShrink(dds, coef = "timepoint_TP3_vs_TP1", type = "apeglm", quiet = TRUE)
+  tibble(species = sp, group_id = rownames(wald), baseMean = wald$baseMean,
+         lfc_mle = wald$log2FoldChange, lfc_shrunk = shr$log2FoldChange,
+         pvalue = wald$pvalue, padj = wald$padj)
+}
+res <- bind_rows(lapply(species_all, tp3_vs_tp1))
+write_csv(res, file.path(out_dir, "tp3_vs_tp1_per_group.csv"))
+
+knitr::kable(res |> group_by(species) |>
+               summarise(tested = sum(!is.na(padj)), de = sum(padj < alpha, na.rm = TRUE),
+                         up_in_TP3 = sum(padj < alpha & lfc_shrunk > 0, na.rm = TRUE),
+                         down_in_TP3 = sum(padj < alpha & lfc_shrunk < 0, na.rm = TRUE)))
+```
+
+```{r fig-scatter, fig.width = 10, fig.height = 3.6}
+wide <- res |> select(species, group_id, lfc_shrunk) |>
+  pivot_wider(names_from = species, values_from = lfc_shrunk)
+pair_long <- bind_rows(lapply(sp_pairs, function(pr)
+  tibble(pair = paste(pr, collapse = " vs "), x = wide[[pr[1]]], y = wide[[pr[2]]])))
+lim <- quantile(abs(c(pair_long$x, pair_long$y)), 0.999, na.rm = TRUE)
+g <- ggplot(pair_long, aes(x, y)) +
+  geom_hline(yintercept = 0, colour = "grey70") + geom_vline(xintercept = 0, colour = "grey70") +
+  geom_point(alpha = 0.15, size = 0.5) +
+  facet_wrap(~ pair) + coord_equal(xlim = c(-lim, lim), ylim = c(-lim, lim)) +
+  labs(x = "TP3 vs TP1 shrunken log2 FC, first species", y = "second species") +
+  theme_bw()
+ggsave(file.path(out_dir, "lfc_scatter.png"), g, width = 10, height = 3.6, dpi = 150)
+write_csv(wide, file.path(out_dir, "lfc_scatter_data.csv"))
+g
+```
+
+## Result against the decision rule
+
+```{r tests}
+analyse <- function(r) {
+  w <- r |> select(species, group_id, lfc_shrunk) |> pivot_wider(names_from = species, values_from = lfc_shrunk)
+
+  rho_tab <- bind_rows(lapply(sp_pairs, function(pr) {
+    x <- w[[pr[1]]]; y <- w[[pr[2]]]
+    rho <- cor(x, y, method = "spearman")
+    perm <- replicate(n_perm, cor(x, sample(y), method = "spearman"))
+    boot <- replicate(n_boot, { i <- sample.int(length(x), replace = TRUE); cor(x[i], y[i], method = "spearman") })
+    tibble(pair = paste(pr, collapse = "-"), n_groups = length(x), rho = rho,
+           rho_lo = quantile(boot, 0.025), rho_hi = quantile(boot, 0.975),
+           perm_p = (1 + sum(perm >= rho)) / (1 + n_perm))
+  }))
+
+  enr <- bind_rows(lapply(sp_pairs, function(pr) {
+    a <- r |> filter(species == pr[1]) |> select(group_id, padj_a = padj, lfc_a = lfc_shrunk)
+    b <- r |> filter(species == pr[2]) |> select(group_id, padj_b = padj, lfc_b = lfc_shrunk)
+    ab <- inner_join(a, b, by = "group_id") |>
+      filter(!is.na(padj_a), !is.na(padj_b), group_id %in% goslim$group_id) |>
+      mutate(concordant = padj_a < alpha & padj_b < alpha & sign(lfc_a) == sign(lfc_b))
+    gs <- goslim |> filter(group_id %in% ab$group_id)
+    conc <- ab$group_id[ab$concordant]
+    bind_rows(lapply(split(gs$group_id, gs$term), function(members) {
+      in_term <- ab$group_id %in% members
+      in_conc <- ab$group_id %in% conc
+      tab <- table(factor(in_term, c(TRUE, FALSE)), factor(in_conc, c(TRUE, FALSE)))
+      f <- fisher.test(tab, alternative = "greater")
+      f2 <- fisher.test(tab)
+      tibble(conc_in_term = tab[1, 1], term_size = sum(in_term), n_concordant = length(conc),
+             universe = nrow(ab), odds_ratio = unname(f2$estimate),
+             or_lo = f2$conf.int[1], or_hi = f2$conf.int[2], p = f$p.value)
+    }), .id = "term") |>
+      mutate(pair = paste(pr, collapse = "-"), .before = 1, fdr = p.adjust(p, "BH"))
+  }))
+
+  shared <- enr |> group_by(term) |>
+    summarise(n_pairs_enriched = sum(fdr < 0.05), .groups = "drop") |>
+    filter(n_pairs_enriched == length(sp_pairs)) |> pull(term)
+
+  verdict <-
+    if (all(rho_tab$rho > 0.2 & rho_tab$perm_p < 0.01) && length(shared) >= 3) "supported" else
+    if (any(rho_tab$rho <= 0) || length(shared) == 0) "not supported" else
+    "inconclusive"
+  list(rho = rho_tab, enr = enr, shared = shared, verdict = verdict)
+}
+
+primary <- analyse(res)
+write_csv(primary$rho, file.path(out_dir, "rho_per_pair.csv"))
+write_csv(primary$enr, file.path(out_dir, "goslim_enrichment.csv"))
+write_csv(tibble(term = primary$shared), file.path(out_dir, "goslim_shared_terms.csv"))
+knitr::kable(primary$rho, digits = 3)
+```
+
+Concordant sets and GO-slim terms enriched at FDR < 0.05:
+
+```{r enr-table}
+knitr::kable(primary$enr |> filter(fdr < 0.05) |> arrange(pair, fdr) |>
+               select(pair, term, conc_in_term, term_size, n_concordant, odds_ratio, or_lo, or_hi, fdr),
+             digits = 3)
+```
+
+Terms enriched in all three pairs (`r length(primary$shared)`):
+`r if (length(primary$shared)) paste(primary$shared, collapse = "; ") else "none"`.
+
+**Primary verdict: `r primary$verdict`.**
+
+## Sensitivity checks
+
+### Ortholog groups with avg_identity >= 60
+
+Ortholog assignment errors would pull rho toward zero. Same model fits,
+restricted to high-identity groups; DE p-values are BH-adjusted again within
+the subset.
+
+```{r sens-ident}
+ident_groups <- orth$group_id[!is.na(orth$avg_identity) & orth$avg_identity >= 60]
+res_ident <- res |> filter(group_id %in% ident_groups) |>
+  group_by(species) |> mutate(padj = p.adjust(pvalue, "BH")) |> ungroup()
+sens <- analyse(res_ident)
+write_csv(sens$rho, file.path(out_dir, "sens_ident_rho_per_pair.csv"))
+write_csv(sens$enr, file.path(out_dir, "sens_ident_goslim_enrichment.csv"))
+knitr::kable(sens$rho, digits = 3)
+```
+
+Shared terms (`r length(sens$shared)`):
+`r if (length(sens$shared)) paste(sens$shared, collapse = "; ") else "none"`.
+Verdict: `r sens$verdict`.
+
+```{r summary}
+write_csv(tibble(analysis = c("primary", "avg_identity >= 60"),
+                 verdict = c(primary$verdict, sens$verdict),
+                 n_shared_terms = c(length(primary$shared), length(sens$shared))),
+          file.path(out_dir, "verdicts.csv"))
+```
+
+## Caveats
+
+- About 10 colonies per species.
+- TP1 (January) and TP3 (September) differ in temperature, light, nutrients
+  and reproductive timing; a conserved response cannot be attributed to any
+  one driver.
+- H02 found about 55% of Apul groups DE across the year against about 6% in
+  Peve and Ptuh, so concordant sets involving Peve or Ptuh will be small and
+  enrichment power low.
+- Only part of the ortholog set carries GO-slim annotation, and GO terms are
+  inherited from SwissProt hits, which favours conserved genes.
+- Groups are not independent (co-regulation), so permutation and Fisher
+  p-values are optimistic.

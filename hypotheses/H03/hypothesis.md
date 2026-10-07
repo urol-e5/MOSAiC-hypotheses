@@ -2,7 +2,7 @@
 id: H03
 slug: conserved-seasonal-response
 title: Seasonal expression responses are conserved across the three species at orthologous genes
-status: planned
+status: not supported
 tier: 1
 layers: [genes]
 species: [Apul, Peve, Ptuh]
