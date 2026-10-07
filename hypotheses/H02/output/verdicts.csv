@@ -1,0 +1,5 @@
+analysis,verdict
+primary,supported
+avg_identity >= 60,supported
+SwissProt name,supported
+downsampled,supported

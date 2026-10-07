@@ -2,7 +2,7 @@
 id: H02
 slug: species-temporal-plasticity
 title: Transcriptional plasticity across the year ranks Acropora > Pocillopora > Porites
-status: planned
+status: supported
 tier: 1
 layers: [genes]
 species: [Apul, Peve, Ptuh]

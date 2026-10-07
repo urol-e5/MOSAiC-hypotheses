@@ -1,0 +1,261 @@
+---
+title: "H02: temporal plasticity across species"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2) })
+design <- load_design()
+orth <- load_orthologs()
+out_dir <- file.path(root, "hypotheses", "H02", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+predicted <- c("Apul", "Ptuh", "Peve")          # predicted order, most to least plastic
+alpha <- 0.05
+set.seed(20261006)
+```
+
+## Pre-registered decision rule
+
+> `supported` if the count of DE groups and the median max-|LFC| both follow
+> Apul > Ptuh > Peve, and the pairwise Wilcoxon tests for adjacent species are
+> significant at Holm-adjusted 0.05. `not supported` if either ordering is
+> reversed between any pair with a significant test. Otherwise `inconclusive`.
+
+Model: DESeq2 per species, `~ colony + timepoint`, LRT against `~ colony`, BH
+FDR 0.05 within species. Secondary: per ortholog group, max |LFC| over the six
+pairwise timepoint contrasts; Kruskal-Wallis across species, pairwise Wilcoxon
+rank-sum with Holm correction. Multiple-testing correction: BH within species
+for DE calls; Holm across the three species pairs.
+
+Operational choices not spelled out in `hypothesis.md` (none changes the rule):
+
+- **Common gene set.** The H01 filter is applied per species, then only groups
+  passing in all three are kept, so DE counts and |LFC| distributions are
+  compared over the same groups (the hypothesis states gene sets must be the
+  same size). Per-species-filter counts are reported alongside.
+- **"Adjacent species"** are Apul–Ptuh and Ptuh–Peve in the predicted order.
+  "Reversed with a significant test" is checked for all three pairs: a pair
+  whose Holm-adjusted Wilcoxon p < 0.05 and whose DE-count or median
+  max-|LFC| ordering is opposite to the prediction.
+- **LFCs** are the unshrunken DESeq2 MLEs from the full model.
+
+## Data
+
+```{r data}
+counts_og <- lapply(setNames(species_all, species_all), function(sp) as_count_matrix(genes_by_ortholog(sp, orthologs = orth)))
+prep <- lapply(counts_og, prep_counts, design = design)
+common <- Reduce(intersect, lapply(prep, function(p) rownames(p$counts)))
+
+n_tab <- bind_rows(lapply(species_all, function(sp) {
+  p <- prep[[sp]]
+  tibble(species = sp, samples = ncol(p$counts), colonies = n_distinct(p$info$colony),
+         groups_in = p$n_raw, groups_pass_filter = nrow(p$counts), groups_common = length(common))
+}))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab)
+```
+
+```{r design-table}
+design_tab <- bind_rows(lapply(species_all, function(sp) prep[[sp]]$info)) |>
+  count(species, timepoint) |>
+  pivot_wider(names_from = timepoint, values_from = n, values_fill = 0)
+write_csv(design_tab, file.path(out_dir, "design_per_timepoint.csv"))
+knitr::kable(design_tab)
+```
+
+Library sizes (all genes, not only orthologs):
+
+```{r libsize}
+libsize <- bind_rows(lapply(species_all, function(sp) {
+  g <- as_count_matrix(load_genes(sp))
+  i <- design_for(g, design)
+  g <- g[, i$has_genes %in% TRUE]
+  tibble(species = sp, sample_id = colnames(g), libsize = colSums(g))
+}))
+write_csv(libsize, file.path(out_dir, "library_sizes.csv"))
+knitr::kable(libsize |> group_by(species) |>
+               summarise(min = min(libsize), median = median(libsize), max = max(libsize)),
+             format.args = list(big.mark = ","))
+```
+
+## Model
+
+```{r fit}
+pairs_tp <- combn(c("TP1", "TP2", "TP3", "TP4"), 2, simplify = FALSE)
+
+# Per species: LRT padj and max |LFC| over pairwise contrasts for the given groups.
+run_species <- function(counts, info, groups) {
+  dds <- fit_timepoint_deseq(counts[groups, , drop = FALSE], info)
+  lrt <- DESeq2::results(dds, alpha = alpha)
+  lfc <- sapply(pairs_tp, function(pr) DESeq2::results(dds, contrast = c("timepoint", pr[2], pr[1]))$log2FoldChange)
+  colnames(lfc) <- vapply(pairs_tp, function(pr) paste0(pr[2], "_vs_", pr[1]), "")
+  bind_cols(tibble(feature_id = rownames(lrt), baseMean = lrt$baseMean, lrt_stat = lrt$stat,
+                   pvalue = lrt$pvalue, padj = lrt$padj),
+            as_tibble(lfc)) |>
+    mutate(max_abs_lfc = apply(abs(lfc), 1, max))
+}
+
+res <- bind_rows(lapply(species_all, function(sp)
+  run_species(prep[[sp]]$counts, prep[[sp]]$info, common) |> mutate(species = sp, .before = 1)))
+write_csv(res, file.path(out_dir, "de_per_group.csv"))
+
+# Per-species-filter DE counts (each species on its own filtered set), descriptive only.
+de_own <- bind_rows(lapply(species_all, function(sp) {
+  r <- run_species(prep[[sp]]$counts, prep[[sp]]$info, rownames(prep[[sp]]$counts))
+  tibble(species = sp, n_tested = nrow(r), n_de = sum(r$padj < alpha, na.rm = TRUE))
+}))
+write_csv(de_own, file.path(out_dir, "de_counts_own_filter.csv"))
+```
+
+```{r fig-lfc, fig.width = 7, fig.height = 4}
+g <- ggplot(res, aes(factor(species, predicted), max_abs_lfc)) +
+  geom_violin(scale = "width", fill = "grey85") +
+  geom_boxplot(width = 0.12, outlier.shape = NA) +
+  coord_cartesian(ylim = c(0, quantile(res$max_abs_lfc, 0.99, na.rm = TRUE))) +
+  labs(x = NULL, y = "max |log2 FC| over pairwise timepoint contrasts") +
+  theme_bw()
+ggsave(file.path(out_dir, "max_abs_lfc_violin.png"), g, width = 7, height = 4, dpi = 150)
+g
+```
+
+## Result against the decision rule
+
+```{r decide}
+summarise_plasticity <- function(r) {
+  de <- r |> group_by(species) |>
+    summarise(n_tested = sum(!is.na(padj)), n_de = sum(padj < alpha, na.rm = TRUE),
+              median_max_abs_lfc = median(max_abs_lfc, na.rm = TRUE), .groups = "drop") |>
+    rowwise() |>
+    mutate(prop_de = n_de / n_tested,
+           prop_lo = prop.test(n_de, n_tested)$conf.int[1],
+           prop_hi = prop.test(n_de, n_tested)$conf.int[2]) |>
+    ungroup()
+
+  kw <- kruskal.test(max_abs_lfc ~ factor(species), data = r)
+
+  pair_tab <- bind_rows(lapply(combn(predicted, 2, simplify = FALSE), function(pr) {
+    x <- r$max_abs_lfc[r$species == pr[1]]; y <- r$max_abs_lfc[r$species == pr[2]]
+    w <- wilcox.test(x, y, conf.int = TRUE)
+    tibble(more = pr[1], less = pr[2], adjacent = abs(match(pr[1], predicted) - match(pr[2], predicted)) == 1,
+           hl_shift = unname(w$estimate), hl_lo = w$conf.int[1], hl_hi = w$conf.int[2], p = w$p.value)
+  })) |>
+    mutate(p_holm = p.adjust(p, "holm"),
+           count_order_ok = de$n_de[match(more, de$species)] > de$n_de[match(less, de$species)],
+           lfc_order_ok = de$median_max_abs_lfc[match(more, de$species)] > de$median_max_abs_lfc[match(less, de$species)])
+
+  ordered <- function(v) all(diff(v[match(predicted, de$species)]) < 0)
+  verdict <-
+    if (ordered(de$n_de) && ordered(de$median_max_abs_lfc) &&
+        all(pair_tab$p_holm[pair_tab$adjacent] < 0.05)) "supported" else
+    if (any(pair_tab$p_holm < 0.05 & !(pair_tab$count_order_ok & pair_tab$lfc_order_ok))) "not supported" else
+    "inconclusive"
+  list(de = de, kw = kw, pairs = pair_tab, verdict = verdict)
+}
+
+primary <- summarise_plasticity(res)
+write_csv(primary$de, file.path(out_dir, "de_counts.csv"))
+write_csv(primary$pairs, file.path(out_dir, "pairwise_wilcoxon.csv"))
+knitr::kable(primary$de, digits = 3)
+knitr::kable(primary$pairs, digits = 4)
+```
+
+Kruskal-Wallis across species: chi-squared = `r round(primary$kw$statistic, 1)`,
+df = `r primary$kw$parameter`, p = `r signif(primary$kw$p.value, 3)`.
+Wilcoxon effect sizes are Hodges-Lehmann shifts in max |log2 FC| (first species
+minus second) with 95% CIs.
+
+**Primary verdict: `r primary$verdict`.**
+
+## Sensitivity checks
+
+Each check re-applies the same decision rule. BH and Holm are recomputed within
+the subset.
+
+### Well-annotated orthologs
+
+```{r sens-annot}
+subset_rerun <- function(keep_groups) {
+  r <- res |> filter(feature_id %in% keep_groups) |>
+    group_by(species) |> mutate(padj = p.adjust(pvalue, "BH")) |> ungroup()
+  summarise_plasticity(r)
+}
+ident_groups <- orth$group_id[!is.na(orth$avg_identity) & orth$avg_identity >= 60]
+sp_groups <- orth$group_id[!is.na(orth$protein_name) & orth$protein_name != ""]
+
+sens_ident <- subset_rerun(ident_groups)
+sens_sp <- subset_rerun(sp_groups)
+sens_tab <- bind_rows(
+  sens_ident$de |> mutate(check = "avg_identity >= 60", verdict = sens_ident$verdict),
+  sens_sp$de |> mutate(check = "SwissProt name", verdict = sens_sp$verdict))
+write_csv(sens_tab, file.path(out_dir, "sens_annotation_de_counts.csv"))
+write_csv(bind_rows(sens_ident$pairs |> mutate(check = "avg_identity >= 60"),
+                    sens_sp$pairs |> mutate(check = "SwissProt name")),
+          file.path(out_dir, "sens_annotation_pairwise_wilcoxon.csv"))
+knitr::kable(sens_tab, digits = 3)
+```
+
+### Downsampled to equal depth
+
+Each sample's counts are binomially thinned so that its full-transcriptome
+library size equals the smallest per-species median
+(`r format(min(tapply(libsize$libsize, libsize$species, median)), big.mark = ",")`).
+Filtering and fitting are then repeated from scratch.
+
+```{r sens-depth}
+target <- min(tapply(libsize$libsize, libsize$species, median))
+thin <- function(m, sp) {
+  ls <- libsize$libsize[libsize$species == sp][match(colnames(m), libsize$sample_id[libsize$species == sp])]
+  p <- pmin(1, target / ls)
+  out <- m
+  for (j in seq_len(ncol(m))) out[, j] <- rbinom(nrow(m), round(m[, j]), p[j])
+  out
+}
+prep_ds <- lapply(species_all, function(sp) {
+  p <- prep_counts(counts_og[[sp]], design)       # sample selection only; filter re-applied below
+  m <- thin(round(counts_og[[sp]][, colnames(p$counts)]), sp)
+  list(counts = filter_expressed(m), info = p$info)
+}) |> setNames(species_all)
+common_ds <- Reduce(intersect, lapply(prep_ds, function(p) rownames(p$counts)))
+res_ds <- bind_rows(lapply(species_all, function(sp)
+  run_species(prep_ds[[sp]]$counts, prep_ds[[sp]]$info, common_ds) |> mutate(species = sp, .before = 1)))
+sens_ds <- summarise_plasticity(res_ds)
+write_csv(sens_ds$de |> mutate(n_common = length(common_ds), verdict = sens_ds$verdict),
+          file.path(out_dir, "sens_downsampled_de_counts.csv"))
+write_csv(sens_ds$pairs, file.path(out_dir, "sens_downsampled_pairwise_wilcoxon.csv"))
+knitr::kable(sens_ds$de, digits = 3)
+```
+
+```{r summary}
+verdicts <- tibble(analysis = c("primary", "avg_identity >= 60", "SwissProt name", "downsampled"),
+                   verdict = c(primary$verdict, sens_ident$verdict, sens_sp$verdict, sens_ds$verdict))
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+knitr::kable(verdicts)
+```
+
+## Caveats
+
+- About 10 colonies per species; DE power differs with per-species n (40, 38,
+  39 samples) and dispersion, so DE counts mix effect size and power.
+- Max |LFC| over six contrasts uses unshrunken MLEs, which are inflated for
+  low-count groups; species with lower depth (Peve) can look more variable
+  for that reason alone. The downsampling check addresses depth, not
+  shrinkage.
+- The Wilcoxon tests treat ortholog groups as independent observations;
+  they are not (co-regulated genes), so p-values are optimistic.
+- Species is confounded with reference-genome quality (Peve N50 0.17 Mb; Ptuh
+  mapped to *P. meandrina*); the annotation subsets are the pre-registered
+  check.
