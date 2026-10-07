@@ -310,6 +310,8 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#d-006-2026-10-06-timepoint-dates" id="toc-d-006-2026-10-06-timepoint-dates" class="nav-link" data-scroll-target="#d-006-2026-10-06-timepoint-dates">D-006 (2026-10-06) Timepoint dates</a></li>
   <li><a href="#d-007-2026-10-06-lncrna-sample-counts-differ-from-mosaics-documentation" id="toc-d-007-2026-10-06-lncrna-sample-counts-differ-from-mosaics-documentation" class="nav-link" data-scroll-target="#d-007-2026-10-06-lncrna-sample-counts-differ-from-mosaics-documentation">D-007 (2026-10-06) lncRNA sample counts differ from MOSAiC’s documentation</a></li>
   <li><a href="#d-008-2026-10-06-cpg-matrix-sizes-are-very-unequal-across-species" id="toc-d-008-2026-10-06-cpg-matrix-sizes-are-very-unequal-across-species" class="nav-link" data-scroll-target="#d-008-2026-10-06-cpg-matrix-sizes-are-very-unequal-across-species">D-008 (2026-10-06) CpG matrix sizes are very unequal across species</a></li>
+  <li><a href="#d-009-2026-10-07-lme4-pinned-to-1.1-37" id="toc-d-009-2026-10-07-lme4-pinned-to-1.1-37" class="nav-link" data-scroll-target="#d-009-2026-10-07-lme4-pinned-to-1.1-37">D-009 (2026-10-07) lme4 pinned to 1.1-37</a></li>
+  <li><a href="#d-010-2026-10-07-h04-runs-on-raven-varpart-is-chunked" id="toc-d-010-2026-10-07-h04-runs-on-raven-varpart-is-chunked" class="nav-link" data-scroll-target="#d-010-2026-10-07-h04-runs-on-raven-varpart-is-chunked">D-010 (2026-10-07) H04 runs on raven; varpart is chunked</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -371,6 +373,14 @@ ul.task-list li input[type="checkbox"] {
 <section id="d-008-2026-10-06-cpg-matrix-sizes-are-very-unequal-across-species" class="level2">
 <h2 class="anchored" data-anchor-id="d-008-2026-10-06-cpg-matrix-sizes-are-very-unequal-across-species">D-008 (2026-10-06) CpG matrix sizes are very unequal across species</h2>
 <p>Sites passing the upstream filter (&gt;= 10x in every sample): Apul 96,772; Peve 242,100; Ptuh 1,991,606. The Ptuh matrix is 397 MB raw. Part of this is fewer Ptuh samples (32) making the all-samples filter easier to pass, but a 20-fold difference suggests the upstream filtering may not be identical across species. Methylation hypotheses (H04 to H06) must report per-species site counts and should consider a common coverage filter applied here.</p>
+</section>
+<section id="d-009-2026-10-07-lme4-pinned-to-1.1-37" class="level2">
+<h2 class="anchored" data-anchor-id="d-009-2026-10-07-lme4-pinned-to-1.1-37">D-009 (2026-10-07) lme4 pinned to 1.1-37</h2>
+<p>variancePartition 1.32.5 (Bioconductor 3.18, R 4.3) imports <code>lme4::findbars</code>, which lme4 2.0 moved to the reformulas package; with lme4 2.0.6 every <code>fitExtractVarPartModel</code> call fails. lme4 1.1-37 is installed from the CRAN archive, from source so it matches the local Matrix ABI. Do not run <code>update.packages()</code> on a machine that runs H01 or H04 without re-pinning: <code>install.packages("https://cloud.r-project.org/src/contrib/Archive/lme4/lme4_1.1-37.tar.gz", repos = NULL, type = "source")</code>. Revisit when moving to a Bioconductor release whose variancePartition supports lme4 2.</p>
+</section>
+<section id="d-010-2026-10-07-h04-runs-on-raven-varpart-is-chunked" class="level2">
+<h2 class="anchored" data-anchor-id="d-010-2026-10-07-h04-runs-on-raven-varpart-is-chunked">D-010 (2026-10-07) H04 runs on raven; varpart is chunked</h2>
+<p>A desktop run of H04 (16 GB, 7 forked workers) swapped once it reached the Ptuh CpGs: each worker grew to about 2 GB, 10.6 GB of swap was in use, and the run was stopped after 8.5 h without finishing. <code>fit_varpart()</code> now fits features in blocks of 100k with gc() between blocks (results verified identical to a single call), and H04 reads <code>H04_WORKERS</code> to cap parallelism. H04 runs on raven, as the README compute tier says. Ptuh accounts for about 85% of the CpG fits (see D-008).</p>
 
 
 </section>
