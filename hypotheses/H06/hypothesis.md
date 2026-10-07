@@ -49,3 +49,36 @@ the mixed-model GBM slope is positive with CI excluding zero in those species.
   Sensitivity: repeat with 2 kb upstream windows.
 
 ## Amendments
+
+### Amendment 1 (2026-10-07), before any H06 analysis was run
+
+**Problem.** The Model section pairs a colony-averaged statistic (rho between
+per-gene delta-GBM and delta-expression, each averaged over colonies) with a
+null that shuffles colony labels. A mean over colonies does not depend on how
+colonies are paired, so every permutation reproduces the observed rho and the
+test cannot reject. Two terms were also undefined: how per-colony
+delta-expression is obtained (the H02/H03 DESeq2 fits give only pooled
+fold changes, and are restricted to three-way orthologs) and what
+"differentially methylated" means.
+
+**Change.** The original text above is kept; these replace it where they
+conflict.
+
+- *Deltas.* For each colony with TP1 and TP3 in both layers:
+  dGBM_c = GBM(TP3) − GBM(TP1) per gene (gene-body mean percent, >= 5 CpGs,
+  as H05), and dExpr_c = vst(TP3) − vst(TP1) per gene (H01 filter, vst on
+  samples with both layers). All genes with GBM, not only orthologs.
+- *Statistic.* Per-colony coupling: rho_c = Spearman(dGBM_c, dExpr_c) across
+  genes, and T = mean over colonies of rho_c. In the decision rule, "rho"
+  means T.
+- *Null.* Pair each colony's dGBM with another colony's dExpr: permute colony
+  labels in the expression layer (1000 permutations), recompute T. One-sided
+  p = (1 + #{T_perm >= T}) / 1001. This tests within-colony coupling beyond
+  the seasonal shift that all colonies share.
+- *DM genes.* The top 10% of genes by |mean over colonies of dGBM_c|, per
+  species. Used for the "stronger in DM genes" comparison and for the mixed
+  model, which is fit on TP1 and TP3 samples of the paired colonies.
+- The originally stated colony-averaged rho is reported as a descriptive
+  number with a bootstrap CI; it does not enter the decision.
+
+The decision rule text is unchanged.
