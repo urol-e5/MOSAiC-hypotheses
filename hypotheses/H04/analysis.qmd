@@ -1,0 +1,290 @@
+---
+title: "H04: methylation vs expression stability within colony"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+source(file.path(root, "R", "varpart.R"))
+suppressPackageStartupMessages({
+  library(tidyr); library(ggplot2); library(vegan); library(BiocParallel)
+})
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H04", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+n_perm <- 999
+n_boot <- 1000        # bootstrap over features for median variance fractions
+n_boot_r2 <- 200      # bootstrap over features for PERMANOVA R2 intervals
+set.seed(20261006)
+# Compute tier is raven (README): about 2.1 M CpGs get a mixed model each.
+# H04_WORKERS sets parallel workers (default: cores - 1); each needs about
+# 2 GB at chunk = 1e5, so keep workers x 2 GB under free RAM.
+# For a dry run set H04_MAX_CPG (e.g. 20000) to randomly subsample CpGs per
+# species; the n table records it. Leave unset for the real run.
+n_workers <- as.integer(Sys.getenv("H04_WORKERS", max(1, parallel::detectCores() - 1)))
+bp <- MulticoreParam(workers = n_workers, progressbar = FALSE)
+max_cpg <- as.numeric(Sys.getenv("H04_MAX_CPG", "Inf"))
+```
+
+## Pre-registered decision rule
+
+> `supported` if PERMANOVA R2(colony) is higher for methylation than expression
+> in all three species and median colony fraction (variancePartition) is higher
+> for methylation with non-overlapping 95% CIs. `not supported` if the reverse
+> holds in any species. Otherwise `inconclusive`.
+
+Model: per species, on samples with both `has_cpg` and `has_genes`:
+PERMANOVA `~ colony + timepoint` (sequential terms; Bray-Curtis on expression
+vst, Euclidean on percent methylation), 999 permutations, with permutations
+restricted within colony for the timepoint term. Variance partition
+`~ (1|colony) + (1|timepoint) + (1|site)` per feature on both layers (genes
+filtered as in H01; CpGs as delivered, >= 10x in all samples). No hypothesis
+tests enter the decision, so no multiple-testing correction applies.
+
+Operational choices not spelled out in `hypothesis.md` (none changes the rule):
+
+- **CpGs with zero variance** across the intersected samples (almost all
+  0% methylated) are dropped before variance partitioning; a mixed model
+  cannot be fit to a constant. Counts are reported.
+- **Two PERMANOVA runs per layer.** R2 does not depend on permutations. The
+  colony p-value comes from unrestricted permutations; the timepoint p-value
+  from permutations blocked within colony (`permute::how(blocks = colony)`).
+  R2 gets a 95% interval from `r n_boot_r2` bootstrap resamples of features.
+- **"Paired bootstrap over features."** CpGs and genes are different
+  features, so the two layers are resampled independently within the same
+  replicate, giving a CI on the methylation-minus-expression difference in
+  median colony fraction. The decision itself uses the per-layer CIs
+  (non-overlap), as the rule states.
+- **"The reverse holds"** in a species means both parts reversed: R2(colony)
+  higher for expression, and median colony fraction higher for expression
+  with non-overlapping CIs. Mixed outcomes are `inconclusive`.
+- **Supported** requires both parts in all three species.
+
+## Data
+
+```{r data}
+load_layers <- function(sp) {
+  cpg <- as_count_matrix(load_cpg(sp))
+  ids <- intersect(colnames(cpg), design$sample_id[design$has_cpg %in% TRUE & design$has_genes %in% TRUE])
+  ex <- prep_vst(load_genes(sp) |> select(feature_id, all_of(ids)), design)
+  ids <- intersect(ids, colnames(ex$vst))
+  cpg <- cpg[, ids, drop = FALSE]
+  n_cpg_in <- nrow(cpg)
+  cpg <- cpg[matrixStats::rowSds(cpg) > 0, , drop = FALSE]
+  n_cpg_var <- nrow(cpg)
+  if (is.finite(max_cpg) && nrow(cpg) > max_cpg) cpg <- cpg[sort(sample.int(nrow(cpg), max_cpg)), , drop = FALSE]
+  list(cpg = cpg, vst = ex$vst[, ids, drop = FALSE], info = design_for(cpg, design),
+       n = tibble(species = sp, samples = length(ids), colonies = n_distinct(design_for(cpg, design)$colony),
+                  genes_kept = nrow(ex$vst), cpg_in = n_cpg_in, cpg_variable = n_cpg_var,
+                  cpg_used = nrow(cpg), subsampled = is.finite(max_cpg) && n_cpg_var > max_cpg))
+}
+dat <- lapply(setNames(species_all, species_all), load_layers)
+
+n_tab <- bind_rows(lapply(dat, `[[`, "n"))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab, format.args = list(big.mark = ","))
+```
+
+Note: genes are filtered and vst-transformed on the intersected sample set,
+so expression numbers differ slightly from H01.
+
+```{r design-table}
+design_tab <- bind_rows(lapply(dat, `[[`, "info")) |>
+  count(species, colony, timepoint) |>
+  pivot_wider(names_from = timepoint, values_from = n, values_fill = 0) |>
+  arrange(species, colony)
+write_csv(design_tab, file.path(out_dir, "design_per_colony.csv"))
+knitr::kable(design_tab)
+```
+
+## Model
+
+### PERMANOVA
+
+```{r permanova}
+layer_dist <- function(m, layer) {
+  if (layer == "expression") vegdist(t(m), method = "bray") else dist(t(m))
+}
+
+permanova_one <- function(m, info, layer) {
+  info <- as.data.frame(info) |> mutate(colony = factor(colony), timepoint = factor(timepoint))
+  d <- layer_dist(m, layer)
+  a_free <- adonis2(d ~ colony + timepoint, data = info, by = "terms", permutations = n_perm)
+  a_block <- adonis2(d ~ colony + timepoint, data = info, by = "terms",
+                     permutations = permute::how(blocks = info$colony, nperm = n_perm))
+  r2_boot <- replicate(n_boot_r2, {
+    i <- sample.int(nrow(m), nrow(m), replace = TRUE)
+    a <- adonis2(layer_dist(m[i, , drop = FALSE], layer) ~ colony + timepoint, data = info,
+                 by = "terms", permutations = 0)
+    a$R2[1:2]
+  })
+  tibble(layer = layer, term = c("colony", "timepoint"), R2 = a_free$R2[1:2],
+         R2_lo = apply(r2_boot, 1, quantile, 0.025), R2_hi = apply(r2_boot, 1, quantile, 0.975),
+         p = c(a_free$`Pr(>F)`[1], a_block$`Pr(>F)`[2]),
+         p_permutation = c("unrestricted", "within colony"))
+}
+
+perm <- bind_rows(lapply(species_all, function(sp) bind_rows(
+  permanova_one(dat[[sp]]$vst, dat[[sp]]$info, "expression"),
+  permanova_one(dat[[sp]]$cpg, dat[[sp]]$info, "methylation")) |>
+    mutate(species = sp, .before = 1)))
+write_csv(perm, file.path(out_dir, "permanova.csv"))
+knitr::kable(perm, digits = 3)
+```
+
+### Variance partition
+
+```{r varpart}
+vp <- bind_rows(lapply(species_all, function(sp) bind_rows(
+  fit_varpart(dat[[sp]]$vst, dat[[sp]]$info, BPPARAM = bp) |> mutate(layer = "expression"),
+  fit_varpart(dat[[sp]]$cpg, dat[[sp]]$info, BPPARAM = bp) |> mutate(layer = "methylation")) |>
+    mutate(species = sp, .before = 1)))
+vp_cpg_mean <- bind_rows(lapply(species_all, function(sp)
+  tibble(species = sp, feature_id = rownames(dat[[sp]]$cpg), mean_meth = rowMeans(dat[[sp]]$cpg))))
+vp <- vp |> left_join(vp_cpg_mean, by = c("species", "feature_id"))
+
+# Per-feature CpG results can exceed 100 MB for Ptuh: write per-species
+# summaries here and the full table gzipped only if it stays under 10 MB.
+vp_file <- file.path(out_dir, "varpart_per_feature.csv.gz")
+write_csv(vp, vp_file)
+if (file.size(vp_file) > 10e6) {
+  message("varpart_per_feature.csv.gz is ", round(file.size(vp_file) / 1e6), " MB: move to gannet, record URL in RESULT.md")
+}
+```
+
+```{r fig-varpart, fig.width = 9, fig.height = 4}
+long <- vp |>
+  pivot_longer(c(colony, timepoint, site, Residuals), names_to = "component", values_to = "fraction") |>
+  mutate(component = factor(component, c("colony", "timepoint", "site", "Residuals")))
+summ <- long |> group_by(species, layer, component) |>
+  summarise(median = median(fraction), q25 = quantile(fraction, 0.25), q75 = quantile(fraction, 0.75), .groups = "drop")
+write_csv(summ, file.path(out_dir, "varpart_summary.csv"))
+g <- ggplot(summ, aes(component, median, fill = layer)) +
+  geom_col(position = position_dodge(0.8), width = 0.7) +
+  geom_errorbar(aes(ymin = q25, ymax = q75), position = position_dodge(0.8), width = 0.25) +
+  facet_wrap(~ species) +
+  scale_fill_manual(values = c(expression = "grey40", methylation = "grey75")) +
+  labs(x = NULL, y = "Median fraction of variance (bars: IQR)", fill = NULL) +
+  theme_bw()
+ggsave(file.path(out_dir, "varpart_by_layer.png"), g, width = 9, height = 4, dpi = 150)
+g
+```
+
+## Result against the decision rule
+
+```{r decide}
+boot_layers <- function(vp, B = n_boot) {
+  bind_rows(lapply(split(vp, vp$species), function(d) {
+    e <- d$colony[d$layer == "expression"]; m <- d$colony[d$layer == "methylation"]
+    et <- d$timepoint[d$layer == "expression"]; mt <- d$timepoint[d$layer == "methylation"]
+    bs <- replicate(B, {
+      ie <- sample.int(length(e), replace = TRUE); im <- sample.int(length(m), replace = TRUE)
+      c(median(e[ie]), median(m[im]), median(et[ie]), median(mt[im]))
+    })
+    q <- function(r) quantile(r, c(0.025, 0.975))
+    tibble(species = d$species[1],
+           colony_expr = median(e), colony_expr_lo = q(bs[1, ])[1], colony_expr_hi = q(bs[1, ])[2],
+           colony_meth = median(m), colony_meth_lo = q(bs[2, ])[1], colony_meth_hi = q(bs[2, ])[2],
+           diff_meth_minus_expr = median(m) - median(e),
+           diff_lo = q(bs[2, ] - bs[1, ])[1], diff_hi = q(bs[2, ] - bs[1, ])[2],
+           timepoint_expr = median(et), timepoint_meth = median(mt),
+           timepoint_diff_lo = q(bs[4, ] - bs[3, ])[1], timepoint_diff_hi = q(bs[4, ] - bs[3, ])[2])
+  }))
+}
+
+decide <- function(perm, ci) {
+  r2 <- perm |> filter(term == "colony") |> select(species, layer, R2) |>
+    pivot_wider(names_from = layer, values_from = R2, names_prefix = "R2_colony_")
+  per_sp <- ci |> left_join(r2, by = "species") |>
+    mutate(r2_meth_higher = R2_colony_methylation > R2_colony_expression,
+           vp_meth_higher = colony_meth > colony_expr & colony_meth_lo > colony_expr_hi,
+           vp_expr_higher = colony_expr > colony_meth & colony_expr_lo > colony_meth_hi,
+           supports = r2_meth_higher & vp_meth_higher,
+           reverses = !r2_meth_higher & vp_expr_higher)
+  verdict <- if (all(per_sp$supports)) "supported" else
+    if (any(per_sp$reverses)) "not supported" else "inconclusive"
+  list(per_species = per_sp, verdict = verdict)
+}
+
+ci <- boot_layers(vp)
+dec <- decide(perm, ci)
+write_csv(dec$per_species, file.path(out_dir, "decision_per_species.csv"))
+knitr::kable(dec$per_species |> select(species, R2_colony_expression, R2_colony_methylation,
+                                       colony_expr, colony_expr_lo, colony_expr_hi,
+                                       colony_meth, colony_meth_lo, colony_meth_hi,
+                                       supports, reverses), digits = 3)
+```
+
+Timepoint share (secondary prediction: smaller for methylation):
+
+```{r timepoint}
+knitr::kable(ci |> select(species, timepoint_expr, timepoint_meth, timepoint_diff_lo, timepoint_diff_hi), digits = 4)
+```
+
+**Primary verdict: `r dec$verdict`.**
+
+## Sensitivity checks
+
+### CpGs by mean-methylation tercile
+
+The 10x-in-all filter favours well-covered sites. Each tercile of mean
+methylation (within species) is compared against the same expression layer.
+
+```{r sens-tercile}
+tercile_runs <- lapply(1:3, function(k) {
+  sub <- lapply(setNames(species_all, species_all), function(sp) {
+    mm <- rowMeans(dat[[sp]]$cpg)
+    cut_pts <- quantile(mm, c(1/3, 2/3))
+    t_k <- findInterval(mm, cut_pts, left.open = TRUE) + 1
+    rownames(dat[[sp]]$cpg)[t_k == k]
+  })
+  perm_k <- bind_rows(lapply(species_all, function(sp) bind_rows(
+    perm |> filter(species == sp, layer == "expression"),
+    permanova_one(dat[[sp]]$cpg[sub[[sp]], , drop = FALSE], dat[[sp]]$info, "methylation") |>
+      mutate(species = sp, .before = 1))))
+  vp_k <- vp |> filter(layer == "expression" | feature_id %in% unlist(sub))
+  d <- decide(perm_k, boot_layers(vp_k))
+  list(per_species = d$per_species |> mutate(tercile = k, .before = 1), verdict = d$verdict,
+       range = sapply(sub, function(ids) paste(round(range(vp_cpg_mean$mean_meth[vp_cpg_mean$feature_id %in% ids]), 1), collapse = "-")))
+})
+sens_tab <- bind_rows(lapply(tercile_runs, `[[`, "per_species"))
+write_csv(sens_tab, file.path(out_dir, "sens_tercile_decision.csv"))
+knitr::kable(sens_tab |> select(tercile, species, R2_colony_expression, R2_colony_methylation,
+                                colony_expr, colony_meth, colony_meth_lo, colony_meth_hi, supports, reverses),
+             digits = 3)
+```
+
+```{r summary}
+verdicts <- tibble(analysis = c("primary", paste("tercile", 1:3)),
+                   verdict = c(dec$verdict, vapply(tercile_runs, `[[`, "", "verdict")))
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+knitr::kable(verdicts)
+```
+
+## Caveats
+
+- About 10 colonies per species; Ptuh has `r n_tab$samples[n_tab$species == "Ptuh"]` samples
+  with both layers and several colonies are missing timepoints (design table).
+- R2 values from Bray-Curtis on expression and Euclidean on percent
+  methylation are on different distance scales, as pre-registered; the
+  variance-partition comparison is the scale-free one.
+- Most CpGs are near 0% methylation; their variance is mostly sampling noise
+  in read counts, which inflates the residual share. The tercile check shows
+  how much this matters.
+- Bootstrap intervals resample features, not colonies, and CpGs within a gene
+  are correlated, so the CIs are optimistic.
+- Species is confounded with reference quality (Peve N50 0.17 Mb; Ptuh mapped
+  to *P. meandrina*).

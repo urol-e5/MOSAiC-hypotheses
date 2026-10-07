@@ -16,6 +16,7 @@ knitr::opts_knit$set(root.dir = root)
 setwd(root)
 source(file.path(root, "R", "load.R"))
 source(file.path(root, "R", "expression.R"))
+source(file.path(root, "R", "varpart.R"))
 suppressPackageStartupMessages({
   library(tidyr); library(ggplot2); library(variancePartition); library(BiocParallel)
 })
@@ -71,11 +72,7 @@ knitr::kable(design_tab)
 ```{r fit}
 form_full <- ~ (1 | colony) + (1 | timepoint) + (1 | site)
 
-fit_vp <- function(v, info, form) {
-  info <- as.data.frame(info) |> mutate(across(c(colony, timepoint, site), factor))
-  vp <- fitExtractVarPartModel(v, form, info, BPPARAM = bp)
-  as_tibble(as.data.frame(vp), rownames = "feature_id")
-}
+fit_vp <- function(v, info, form) fit_varpart(v, info, form, BPPARAM = bp)
 
 vp_full <- bind_rows(lapply(species_all, function(sp)
   fit_vp(prep[[sp]]$vst, prep[[sp]]$info, form_full) |> mutate(species = sp, .before = 1)))
@@ -103,16 +100,7 @@ g
 ## Result against the decision rule
 
 ```{r bootstrap}
-boot_medians <- function(vp, components = c("colony", "timepoint"), B = n_boot) {
-  bind_rows(lapply(split(vp, vp$species), function(d) {
-    n <- nrow(d)
-    est <- sapply(components, function(k) median(d[[k]]))
-    bs <- replicate(B, { i <- sample.int(n, n, replace = TRUE); sapply(components, function(k) median(d[[k]][i])) })
-    bs <- matrix(bs, nrow = length(components), dimnames = list(components, NULL))
-    tibble(species = d$species[1], component = components, median = est,
-           lo = apply(bs, 1, quantile, 0.025), hi = apply(bs, 1, quantile, 0.975))
-  }))
-}
+boot_medians <- function(vp) boot_median_ci(vp, B = n_boot)
 
 decide <- function(ci) {
   per_sp <- ci |>

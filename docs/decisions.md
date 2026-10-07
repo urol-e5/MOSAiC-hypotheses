@@ -70,3 +70,23 @@ fewer Ptuh samples (32) making the all-samples filter easier to pass, but a
 20-fold difference suggests the upstream filtering may not be identical
 across species. Methylation hypotheses (H04 to H06) must report per-species
 site counts and should consider a common coverage filter applied here.
+
+## D-009 (2026-10-07) lme4 pinned to 1.1-37
+
+variancePartition 1.32.5 (Bioconductor 3.18, R 4.3) imports `lme4::findbars`,
+which lme4 2.0 moved to the reformulas package; with lme4 2.0.6 every
+`fitExtractVarPartModel` call fails. lme4 1.1-37 is installed from the CRAN
+archive, from source so it matches the local Matrix ABI. Do not run
+`update.packages()` on a machine that runs H01 or H04 without re-pinning:
+`install.packages("https://cloud.r-project.org/src/contrib/Archive/lme4/lme4_1.1-37.tar.gz", repos = NULL, type = "source")`.
+Revisit when moving to a Bioconductor release whose variancePartition supports lme4 2.
+
+## D-010 (2026-10-07) H04 runs on raven; varpart is chunked
+
+A desktop run of H04 (16 GB, 7 forked workers) swapped once it reached the
+Ptuh CpGs: each worker grew to about 2 GB, 10.6 GB of swap was in use, and
+the run was stopped after 8.5 h without finishing. `fit_varpart()` now fits
+features in blocks of 100k with gc() between blocks (results verified
+identical to a single call), and H04 reads `H04_WORKERS` to cap parallelism.
+H04 runs on raven, as the README compute tier says. Ptuh accounts for about
+85% of the CpG fits (see D-008).

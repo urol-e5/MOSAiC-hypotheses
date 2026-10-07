@@ -23,3 +23,6 @@ upstream-drift.csv
 
 # Rendered hypothesis notebooks (outputs/ holds the committed results)
 hypotheses/*/analysis.html
+
+# Per-feature CpG tables exceed 10 MB; they go to gannet (CLAUDE.md section 4)
+hypotheses/H04/output/varpart_per_feature.csv.gz

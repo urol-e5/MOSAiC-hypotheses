@@ -39,7 +39,8 @@ list(
   }, format = "file"),
 
   # ---- Hypotheses (local or raven; not run in Actions, see D-004) ---------------
-  tar_quarto(H01, "hypotheses/H01/analysis.qmd", extra_files = "R/expression.R"),
+  tar_quarto(H01, "hypotheses/H01/analysis.qmd", extra_files = c("R/expression.R", "R/varpart.R")),
   tar_quarto(H02, "hypotheses/H02/analysis.qmd", extra_files = "R/expression.R"),
-  tar_quarto(H03, "hypotheses/H03/analysis.qmd", extra_files = "R/expression.R")
+  tar_quarto(H03, "hypotheses/H03/analysis.qmd", extra_files = "R/expression.R"),
+  tar_quarto(H04, "hypotheses/H04/analysis.qmd", extra_files = c("R/expression.R", "R/varpart.R"))   # raven
 )
