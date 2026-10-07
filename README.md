@@ -68,6 +68,14 @@ Or all at once: `Rscript -e 'targets::tar_make()'`.
 | H12 | 3 | Nutrient context modulates seasonal physiology | desktop |
 | H13 | 4 | One multi-omics latent factor separates summer from winter | desktop |
 | H14 | 4 | Storage lipids track biomass and calcification | desktop |
+| H15 | 2 | Methylation changes persist after temperature reverses; expression reverts | desktop |
+| H16 | 2 | Expression change precedes methylation change | desktop |
+| H17 | 2 | lncRNAs co-vary with cis neighbors above an expression-matched null | desktop |
+| H18 | 4 | Methylation and cis-lncRNA explain independent parts of expression change | desktop |
+| H19 | 4 | Higher methylome turnover goes with lower biomass and lipid reserves | desktop |
+| H20 | 3 | Transcriptome–temperature mismatch predicts later loss of biomass | desktop |
+| H21 | 3 | Frontloading–plasticity trade-off in stress orthologs | desktop |
+| H22 | 4 | Expression forecasts next-timepoint physiology at held-out sites | desktop |
 
 Compute: **desktop** runs on a laptop (16 GB, 8 cores) in under an hour.
 **raven** needs more memory or hours of per-feature model fits: H04 fits a

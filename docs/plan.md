@@ -146,6 +146,28 @@ Each entry below is a candidate `hypotheses/Hxx/hypothesis.md`. They are ordered
 - **H13. A single latent factor explains covariation across omics layers and aligns with season.** MOFA2 on gene, miRNA, lncRNA, methylation, metabolome, lipidome for overlapping samples. Prediction: factor 1 separates TP1/TP2 from TP3/TP4; a second factor separates colonies.
 - **H14. Seasonal lipid and metabolite shifts reflect energetic state.** Lipid class ratios (storage vs membrane) and key metabolites vs AFDW and calcification. Ties to the E5 energetic framework.
 
+### 2.5b Second slate (2026-10-07): field-wide open questions
+
+Ten open questions on environmental epigenetic memory (Q1–Q10) were checked
+against H01–H14. None was already covered; eight map onto MOSAiC data as new
+pre-registrations:
+
+| Q | Question | Hypothesis | What the data can and cannot say |
+|---|---|---|---|
+| Q1 | Persistence and decay of marks | H15 | Persistence over about 2 months (TP3→TP4) only |
+| Q2 | Soma-to-germline transmission | none | No gamete or larval samples. Not testable |
+| Q3 | Causal direction | H16 | Temporal precedence, not causation |
+| Q4 | F0–F1 methylation rebound | none (H15 secondary) | No offspring. H15 reports within-generation overshoot past baseline as a descriptive analog |
+| Q5 | ncRNA functional validation | H17 | Cis correlation above a null and its size; not functional validation |
+| Q6 | Channel integration | H18 | Methylation and lncRNA only; miRNA needs target predictions added to the manifest |
+| Q7 | Energetic cost of plasticity | H19 | Colony-level association, n about 27 pooled |
+| Q8 | Mismatch threshold | H20 | Memory signal and its cost; the threshold itself is not estimable (9 site × interval rates) |
+| Q9 | Cross-taxa generality of plasticity–frontloading trade-off | H21 | Three coral genera only; code goes in `R/` for reuse on bivalve data |
+| Q10 | Held-out predictive performance | H22 | Held-out site and held-out species as proxies; no independent cohort |
+
+Q2 and Q4 need a parent–offspring design (e.g. a spawning or larval-rearing
+experiment) and are left for a different dataset.
+
 ### 2.6 Operating rules (go in `CLAUDE.md`)
 
 These rules make the repo safe to run with an agent in the loop:
