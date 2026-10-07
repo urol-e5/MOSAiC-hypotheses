@@ -2,7 +2,7 @@
 id: H07
 slug: mirna-conservation
 title: Seasonal miRNA expression profiles are conserved across species for shared miRNA families
-status: planned
+status: inconclusive
 tier: 2
 layers: [mirna]
 species: [Apul, Peve, Ptuh]

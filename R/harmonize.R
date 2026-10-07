@@ -99,6 +99,15 @@ harmonize_genes <- function(path, species) harmonize_matrix(path, ",", 1, specie
 
 harmonize_mirna <- function(path, species) harmonize_matrix(path, "\t", "Name", species = species)$matrix
 
+# ShortStack Results.txt -> one row per confirmed miRNA locus (MIRNA == "Y"),
+# with the raw known-miRNA annotation string (NA for novel loci). H07.
+harmonize_mirna_results <- function(path) {
+  readr::read_tsv(path, col_types = readr::cols(.default = "c"), progress = FALSE) |>
+    filter(MIRNA == "Y") |>
+    transmute(feature_id = Name, locus = Locus, major_rna = MajorRNA, dicer_call = DicerCall,
+              known_mirnas = na_if(known_miRNAs, "NA"))
+}
+
 harmonize_lncrna <- function(path, species) {
   h <- harmonize_matrix(path, "\t", "Geneid",
                         drop_cols = c("Chr", "Start", "End", "Strand", "Length"),
@@ -206,6 +215,7 @@ harmonize_all <- function(manifest = yaml::read_yaml("config/upstream.yml"), out
   for (sp in c("Apul", "Peve", "Ptuh")) {
     layers[[paste0("genes_", sp)]] <- harmonize_genes(files[[paste0("genes_", sp)]], sp)
     layers[[paste0("mirna_", sp)]] <- harmonize_mirna(files[[paste0("mirna_", sp)]], sp)
+    write_derived(harmonize_mirna_results(files[[paste0("mirna_results_", sp)]]), paste0("mirna_", sp, "_features"), out_dir)
     l <- harmonize_lncrna(files[[paste0("lncrna_", sp)]], sp)
     layers[[paste0("lncrna_", sp)]] <- l$matrix
     write_derived(l$meta, paste0("lncrna_", sp, "_features"), out_dir)

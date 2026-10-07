@@ -63,6 +63,30 @@ files:
     dest: data/raw/mirna/Ptuh_miRNA_counts_formatted.txt
     source_page: quarto/counts.qmd
 
+  # ---- miRNA annotation: ShortStack Results.txt (known-miRNA column; H07) ----
+  # Pinned to timeseries_molecular commit 900110b (2026-10-07), not refs/heads/main.
+  - id: mirna_results_Apul
+    layer: mirna
+    species: Apul
+    format: tsv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries_molecular/900110b5d85b6069623220f877d9cfb2de01a5af/D-Apul/output/04-Apul-sRNA-discovery-ShortStack/ShortStack_out/Results.txt
+    dest: data/raw/mirna/Apul_ShortStack_Results.txt
+    source_page: docs/mirna-notes.md
+  - id: mirna_results_Peve
+    layer: mirna
+    species: Peve
+    format: tsv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries_molecular/900110b5d85b6069623220f877d9cfb2de01a5af/E-Peve/output/08-Peve-sRNA-discovery-ShortStack/ShortStack_out/Results.txt
+    dest: data/raw/mirna/Peve_ShortStack_Results.txt
+    source_page: docs/mirna-notes.md
+  - id: mirna_results_Ptuh
+    layer: mirna
+    species: Ptuh
+    format: tsv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries_molecular/900110b5d85b6069623220f877d9cfb2de01a5af/F-Ptua/output/04-Ptua-sRNA-discovery-ShortStack/ShortStack_out/Results.txt
+    dest: data/raw/mirna/Ptuh_ShortStack_Results.txt
+    source_page: docs/mirna-notes.md
+
   # ---- lncRNA counts (featureCounts; filtered <10 counts in >50% samples) ---
   - id: lncrna_Apul
     layer: lncrna

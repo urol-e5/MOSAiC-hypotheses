@@ -1,0 +1,214 @@
+---
+title: "H07: seasonal profiles of homologous miRNAs"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H07", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+sp_pairs <- combn(species_all, 2, simplify = FALSE)
+n_boot <- 1000
+set.seed(20261006)
+```
+
+## Pre-registered decision rule
+
+> `supported` if the median r among homologous pairs exceeds the non-homologous
+> median by > 0.3 with Wilcoxon p < 0.05, for at least two species pairs.
+> `not supported` if homologous pairs are not higher in any species pair.
+> Otherwise `inconclusive`.
+
+Model: DESeq2-normalized counts, per-timepoint colony means, z-scored within
+miRNA. Pearson r between homologous cross-species pairs; null from all
+non-homologous cross-species pairs; Wilcoxon rank-sum of homologous vs
+non-homologous r.
+
+Operational choices not spelled out in `hypothesis.md` (none changes the rule):
+
+- **Family.** A confirmed locus (ShortStack `MIRNA = Y`) belongs to every
+  family `miR-<number>` named anywhere in its `known_miRNAs` annotation
+  (case-insensitive; e.g. `Adi-Mir-2036_3p ... nve-miR-2036-3p` gives
+  miR-2036). Lab-specific names without a miRBase number (`spi-mir-temp-25`,
+  `ami-miR-P-novel-8`) do not define a family. Two loci in different species
+  are homologous if they share a family. Loci with no family are kept in the
+  null as non-homologous partners.
+- **Library QC.** Samples with fewer than 1,000 total miRNA reads are
+  dropped (decision D-011: eight Peve libraries have 0 to 351 reads, one
+  Ptuh library 401). Counts per species are in the n table.
+- **Normalization.** DESeq2 median-of-ratios size factors (`poscounts`
+  estimator, since every miRNA has zeros in some sample) on the remaining
+  samples with `has_mirna`.
+- **Wilcoxon** is two-sided; the direction is enforced by the median
+  difference in the rule. The rule counts species pairs at unadjusted
+  p < 0.05, as written; Holm-adjusted p across the three pairs is reported
+  alongside. The median difference gets a 95% bootstrap CI (resampling both
+  groups).
+
+## Data
+
+```{r data}
+family_of <- function(ann) {
+  lapply(ann, function(a) {
+    if (is.na(a)) return(character(0))
+    hits <- regmatches(a, gregexpr("(?i)mir-[0-9]+", a, perl = TRUE))[[1]]
+    if (length(hits) == 0) return(character(0))
+    unique(paste0("miR-", sub("(?i)^mir-", "", hits, perl = TRUE)))
+  })
+}
+
+feat <- bind_rows(lapply(species_all, function(sp) {
+  f <- load_mirna_features(sp)
+  tibble(species = sp, feature_id = f$feature_id, known_mirnas = f$known_mirnas, family = family_of(f$known_mirnas))
+}))
+
+profiles <- function(sp, transform = identity) {
+  m <- as_count_matrix(load_mirna(sp))
+  info <- design_for(m, design)
+  info0 <- info
+  keep <- info$has_mirna %in% TRUE & colnames(m) %in% mirna_qc_samples(m)
+  m <- round(m[, keep, drop = FALSE]); info <- info[keep, ]
+  dds <- DESeq2::DESeqDataSetFromMatrix(m, colData = as.data.frame(info), design = ~ 1)
+  dds <- DESeq2::estimateSizeFactors(dds, type = "poscounts")
+  norm <- transform(DESeq2::counts(dds, normalized = TRUE))
+  tp <- sapply(split(seq_len(ncol(norm)), info$timepoint), function(j) rowMeans(norm[, j, drop = FALSE]))
+  z <- t(scale(t(tp)))
+  list(z = z, n = tibble(species = sp, samples = ncol(m), dropped_low_depth = sum(info0$has_mirna %in% TRUE) - ncol(m), colonies = n_distinct(info$colony), loci = nrow(m),
+                         loci_with_family = sum(lengths(feat$family[feat$species == sp]) > 0)))
+}
+
+prof <- lapply(setNames(species_all, species_all), profiles)
+n_tab <- bind_rows(lapply(prof, `[[`, "n"))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab)
+```
+
+```{r families}
+fam_tab <- feat |> filter(lengths(family) > 0) |> unnest_longer(family) |>
+  select(species, family, feature_id) |> arrange(family, species)
+write_csv(fam_tab, file.path(out_dir, "families_per_locus.csv"))
+knitr::kable(fam_tab |> group_by(family) |>
+               summarise(species = paste(sort(unique(species)), collapse = ", "), loci = n(), .groups = "drop"))
+```
+
+## Model
+
+```{r pairs}
+all_pairs <- function(prof) {
+  bind_rows(lapply(sp_pairs, function(pr) {
+    za <- prof[[pr[1]]]$z; zb <- prof[[pr[2]]]$z
+    r <- cor(t(za), t(zb))
+    fa <- feat |> filter(species == pr[1]); fb <- feat |> filter(species == pr[2])
+    fam_a <- setNames(fa$family, fa$feature_id); fam_b <- setNames(fb$family, fb$feature_id)
+    expand_grid(a = rownames(za), b = rownames(zb)) |>
+      mutate(pair = paste(pr, collapse = "-"), r = r[cbind(a, b)],
+             shared = mapply(function(x, y) paste(intersect(fam_a[[x]], fam_b[[y]]), collapse = ";"), a, b),
+             homologous = shared != "")
+  }))
+}
+
+test_pairs <- function(pp) {
+  out <- bind_rows(lapply(split(pp, pp$pair), function(d) {
+    h <- d$r[d$homologous]; nh <- d$r[!d$homologous]
+    w <- wilcox.test(h, nh)
+    bs <- replicate(n_boot, median(sample(h, replace = TRUE)) - median(sample(nh, replace = TRUE)))
+    tibble(pair = d$pair[1], n_homologous = length(h), n_nonhomologous = length(nh),
+           median_r_homologous = median(h), median_r_nonhomologous = median(nh),
+           diff = median(h) - median(nh), diff_lo = quantile(bs, 0.025), diff_hi = quantile(bs, 0.975),
+           p = w$p.value)
+  }))
+  out <- out |> mutate(p_holm = p.adjust(p, "holm"), passes = diff > 0.3 & p < 0.05)
+  verdict <- if (sum(out$passes) >= 2) "supported" else if (all(out$diff <= 0)) "not supported" else "inconclusive"
+  list(per_pair = out, verdict = verdict)
+}
+
+pp <- all_pairs(prof)
+write_csv(pp, file.path(out_dir, "pair_correlations.csv"))
+primary <- test_pairs(pp)
+write_csv(primary$per_pair, file.path(out_dir, "homologous_vs_null.csv"))
+knitr::kable(primary$per_pair, digits = 3)
+```
+
+Homologous pairs:
+
+```{r hom-table}
+knitr::kable(pp |> filter(homologous) |> arrange(pair, shared) |> select(pair, shared, a, b, r), digits = 3)
+```
+
+**Primary verdict: `r primary$verdict`.**
+
+```{r fig-r, fig.width = 8, fig.height = 3.5}
+g <- ggplot(pp, aes(r, fill = homologous)) +
+  geom_histogram(data = filter(pp, !homologous), aes(y = after_stat(density)), bins = 20, fill = "grey80") +
+  geom_vline(data = filter(pp, homologous), aes(xintercept = r), colour = "black") +
+  facet_wrap(~ pair) +
+  labs(x = "Pearson r of z-scored timepoint profiles (lines: homologous pairs)", y = "Density, non-homologous pairs") +
+  theme_bw() + theme(legend.position = "none")
+ggsave(file.path(out_dir, "r_homologous_vs_null.png"), g, width = 8, height = 3.5, dpi = 150)
+g
+```
+
+```{r fig-profiles, fig.width = 9, fig.height = 5}
+shared_fams <- fam_tab |> group_by(family) |> filter(n_distinct(species) >= 2) |> ungroup()
+prof_long <- bind_rows(lapply(species_all, function(sp) {
+  z <- prof[[sp]]$z
+  as_tibble(z, rownames = "feature_id") |> mutate(species = sp) |>
+    pivot_longer(starts_with("TP"), names_to = "timepoint", values_to = "z")
+})) |> inner_join(shared_fams, by = c("species", "feature_id"), relationship = "many-to-many")
+write_csv(prof_long, file.path(out_dir, "profiles_shared_families.csv"))
+g2 <- ggplot(prof_long, aes(timepoint, z, colour = species, group = interaction(species, feature_id))) +
+  geom_line() + geom_point(size = 1) + facet_wrap(~ family) +
+  labs(x = NULL, y = "z-scored mean normalized count") + theme_bw()
+ggsave(file.path(out_dir, "profiles_shared_families.png"), g2, width = 9, height = 5, dpi = 150)
+g2
+```
+
+## Sensitivity checks
+
+The pre-registered check is the pair count, reported above. Additional,
+**not pre-registered**: the same test with profiles built from log2(normalized
+count + 1) colony means, since linear means are sensitive to single-colony
+outliers. It does not enter the verdict.
+
+```{r sens-log}
+prof_log <- lapply(setNames(species_all, species_all), profiles, transform = function(x) log2(x + 1))
+sens_log <- test_pairs(all_pairs(prof_log))
+write_csv(sens_log$per_pair, file.path(out_dir, "sens_log2_homologous_vs_null.csv"))
+knitr::kable(sens_log$per_pair, digits = 3)
+```
+
+Verdict on log2 profiles: `r sens_log$verdict`.
+
+```{r summary}
+write_csv(tibble(analysis = c("primary (linear)", "log2 (not pre-registered)"),
+                 verdict = c(primary$verdict, sens_log$verdict)),
+          file.path(out_dir, "verdicts.csv"))
+```
+
+## Caveats
+
+- About 10 colonies per species; profiles have only four timepoints, so each
+  Pearson r has 2 degrees of freedom and is very noisy (|r| > 0.95 is needed
+  for nominal significance of a single pair).
+- 5 to 7 homologous pairs per species pair. The same locus appears in many
+  null pairs, and the null pairs are not independent, so Wilcoxon p-values
+  are approximate.
+- Family assignment depends on how ShortStack matched loci to the miRBase
+  and cnidarian databases; novel and lab-named loci are excluded by design.
+- Species is confounded with reference quality (Peve N50 0.17 Mb; Ptuh mapped
+  to *P. meandrina*).

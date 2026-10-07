@@ -70,3 +70,12 @@ test_that("GFF gene coordinates cover every gene in the count matrices", {
     expect_true(all(load_genes(sp)$feature_id %in% gc$feature_id), info = paste(sp, "gene ids in GFF"))
   }
 })
+
+test_that("ShortStack annotation covers exactly the confirmed miRNA loci (51 / 48 / 40)", {
+  expected <- c(Apul = 51L, Peve = 48L, Ptuh = 40L)
+  for (sp in names(expected)) {
+    f <- load_mirna_features(sp)
+    expect_equal(nrow(f), expected[[sp]], info = sp)
+    expect_setequal(f$feature_id, load_mirna(sp)$feature_id)
+  }
+})

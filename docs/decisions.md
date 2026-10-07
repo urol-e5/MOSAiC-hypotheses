@@ -90,3 +90,23 @@ features in blocks of 100k with gc() between blocks (results verified
 identical to a single call), and H04 reads `H04_WORKERS` to cap parallelism.
 H04 runs on raven, as the README compute tier says. Ptuh accounts for about
 85% of the CpG fits (see D-008).
+
+## D-011 (2026-10-07) miRNA libraries below 1,000 reads are dropped
+
+The upstream miRNA count matrices contain near-empty libraries. Peve, eight
+below 1,000 total reads against a median of about 20,000: POR-236-TP2 (0),
+POR-74-TP4 (3), POR-262-TP3 (5), POR-262-TP4 (5), POR-69-TP2 (55),
+POR-83-TP3 (69), POR-262-TP2 (241), POR-216-TP4 (351); the next lowest is
+1,368. Ptuh, one: POC-52-TP1 (401, median about 72,000). DESeq2 cannot size-factor an all-zero sample and
+the others are noise. Analyses using miRNA call `mirna_qc_samples()`
+(R/expression.R), which keeps samples with >= 1,000 total reads. The design
+table's `has_mirna` flags are unchanged, so the reproduction gate still
+matches MOSAiC's published sample counts. Worth an upstream issue on
+urol-e5/timeseries_molecular.
+
+Peve miRNA depth is also confounded with timepoint among the libraries that
+pass the 1,000-read filter (29 of 37): median total reads TP1 182k, TP2 82k,
+TP3 52k, TP4 11k (n = 10 / 7 / 6 / 6; median poscounts size factors 3.5,
+0.56, 0.57, 0.31). All eight failed libraries are TP2 to TP4. Peve miRNA
+timepoint effects (H07, H13) should be read as possibly technical until this
+is checked upstream.

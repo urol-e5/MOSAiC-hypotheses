@@ -39,3 +39,10 @@ fit_timepoint_deseq <- function(counts, info, test = c("LRT", "Wald")) {
   if (test == "LRT") DESeq2::DESeq(dds, test = "LRT", reduced = ~ colony, quiet = TRUE)
   else DESeq2::DESeq(dds, test = "Wald", quiet = TRUE)
 }
+
+# miRNA library QC (decision D-011): drop samples whose total miRNA count is
+# below min_reads. Upstream Peve has eight libraries with 0 to 351 reads in
+# total and Ptuh one with 401, against species medians of about 20k and 72k.
+mirna_qc_samples <- function(m, min_reads = 1000) {
+  colnames(m)[colSums(m) >= min_reads]
+}
