@@ -2,7 +2,7 @@
 id: H04
 slug: methylation-stability
 title: DNA methylation is more stable within colonies over time than gene expression
-status: planned
+status: inconclusive
 tier: 2
 layers: [cpg, genes]
 species: [Apul, Peve, Ptuh]

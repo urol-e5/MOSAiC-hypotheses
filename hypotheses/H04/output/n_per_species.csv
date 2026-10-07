@@ -1,0 +1,4 @@
+species,samples,colonies,genes_kept,cpg_in,cpg_variable,cpg_used,subsampled
+Apul,39,10,21046,96772,94445,94445,FALSE
+Peve,37,10,20807,242100,238957,238957,FALSE
+Ptuh,32,10,20975,1991606,1797003,1797003,FALSE

@@ -110,3 +110,20 @@ TP3 52k, TP4 11k (n = 10 / 7 / 6 / 6; median poscounts size factors 3.5,
 0.56, 0.57, 0.31). All eight failed libraries are TP2 to TP4. Peve miRNA
 timepoint effects (H07, H13) should be read as possibly technical until this
 is checked upstream.
+
+## D-012 (2026-10-07) R environment on raven
+
+Raven's system R is 4.3.3 with no project packages and no 4.3 user library.
+Packages were installed into `~/R/x86_64-pc-linux-gnu-library/4.3` (R adds it
+automatically once it exists) from Bioconductor 3.18, matching the desktop,
+with lme4 pinned to 1.1-37 (D-009). Two workarounds were needed, neither a
+system change:
+
+- `fs`: raven has no libuv headers. Install with `USE_BUNDLED_LIBUV=1`.
+- `Deriv` (needed by doBy -> pbkrtest -> lmerTest -> variancePartition): the
+  current CRAN release requires R >= 4.5. Install the archived 4.2.0:
+  `install.packages("https://cloud.r-project.org/src/contrib/Archive/Deriv/Deriv_4.2.0.tar.gz", repos = NULL, type = "source")`.
+
+A fresh fetch on raven reproduced every md5 in `config/upstream.lock.yml`; only
+`fetched_on` dates changed, and that diff was discarded. The reproduction gate
+passed before H04 ran.
