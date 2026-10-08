@@ -88,4 +88,38 @@ reporting; the decision uses CIs.
 
 ## Amendments
 
-(Leave empty. Dated entries only, added if the decision rule has to change.)
+### Amendment 1 (2026-10-08), before any H21 analysis was run
+
+**Problem.** The stress set was defined "as in H11", but H11 was withdrawn
+before its gene set was used. "Ubiquitin-proteasome terms" matches 189 of
+10,381 three-way ortholog groups, mostly E3 ligases, deubiquitinases and
+autophagy proteins, which would swamp the heat-shock signal. Several details
+of the test were not fixed.
+
+**Change.** The original text above is kept; these replace it where they
+conflict. The decision rule is unchanged.
+
+- *Stress set* (`output/stress_set.csv`, written before any statistic):
+  (i) H11's documented successor rule: "heat shock", "heat-shock" or
+  "chaperon" anywhere in the SwissProt protein name (21 groups; known
+  false positives such as SPT6 and COQ8A are kept, not curated);
+  (ii) antioxidants: superoxide dismutase, catalase, peroxiredoxin or
+  glutathione peroxidase in the recommended name (text before the first
+  parenthesis), 4 groups; (iii) proteasome: recommended name starting
+  "Proteasome subunit" or "26S proteasome", 12 groups. Union 37 groups
+  before the expression filter.
+- *Sensitivity*: set (i) alone.
+- *Oldham r*: Pearson correlation across colonies of (warm + cool)/2 with
+  warm − cool, per gene. This is a monotone function of var(warm) −
+  var(cool), so r < 0 means colonies converge in the warm season.
+- *Colony bootstrap CI*: resample colonies, recompute every gene's r, take
+  the median over the stress set.
+- *Background and p*: null median r of random gene sets with the same
+  mean-expression-decile composition as the stress set (1000 draws from
+  non-stress orthologs). One-sided p = (1 + #{null median <= observed}) /
+  1001; "lower than background" means p < 0.05. Reported difference =
+  observed median − mean null median.
+- *Pitman–Morgan*: reported as the fraction of stress and background genes
+  with p < 0.05. Blomqvist: per gene, slope b of (warm − cool) on cool,
+  corrected with k = 1 − R, R = cor(TP3, TP4) across colonies clipped to
+  [0.05, 1]: beta = (b + k) / (1 − k); median per set, descriptive.
