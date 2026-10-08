@@ -1,0 +1,158 @@
+---
+title: "H12: nutrient context and the seasonal trajectory of host physiology"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2); library(lme4) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H12", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+traits <- c("cells.cm2", "chla.ug.cm2", "Host_AFDW.mg.cm2")
+tps <- c("TP1", "TP2", "TP3", "TP4")
+```
+
+## Pre-registered decision rule
+
+> `supported` if the interaction is significant (FDR < 0.05) for at least two
+> of three traits in at least two species. `not supported` if no interaction
+> reaches FDR < 0.2 in any species. Otherwise `inconclusive`.
+
+Model: `lmer(log(trait) ~ timepoint * nutrient + (1|colony))` per species and
+trait; likelihood-ratio test of the interaction; BH across the three traits
+within species. Species with any species × site × nutrient cell below three
+colonies are `inconclusive` without fitting.
+
+Implementation notes (not in `hypothesis.md`; none changes the rule):
+
+- The likelihood-ratio test compares ML fits (`REML = FALSE`) of the full
+  model and `timepoint + nutrient`.
+- Non-positive trait values cannot be logged and are excluded; counts are in
+  the n table.
+- Effect sizes (CLAUDE.md §3): fitted log-scale means per timepoint ×
+  nutrient from the REML fit with Wald 95% CIs, and the difference between
+  high- and low-nutrient sites in the TP1→TP3 change (ratio of fold changes,
+  back-transformed) with a Wald CI.
+
+## Design balance (first deliverable)
+
+```{r balance}
+phys <- load_physiology() |> select(sample_id, all_of(traits)) |>
+  inner_join(design |> select(sample_id, species, colony, timepoint, site, nutrient), by = "sample_id") |>
+  mutate(timepoint = factor(timepoint, levels = tps), nutrient = factor(nutrient, levels = c("Low", "Medium", "High")))
+balance <- phys |> distinct(species, colony, site, nutrient) |> count(species, site, nutrient, name = "colonies")
+write_csv(balance, file.path(out_dir, "design_balance.csv"))
+knitr::kable(balance |> pivot_wider(names_from = c(site, nutrient), values_from = colonies, names_sep = " / "))
+```
+
+Site and nutrient are perfectly confounded: each site has one nutrient level.
+The interaction tested is therefore equally a timepoint × site interaction.
+
+```{r eligible}
+eligible <- balance |> group_by(species) |> summarise(min_cell = min(colonies), eligible = min_cell >= 3, .groups = "drop")
+knitr::kable(eligible)
+```
+
+## Model
+
+```{r fit}
+fit_one <- function(sp, tr) {
+  d <- phys |> filter(species == sp) |> transmute(colony, timepoint, nutrient, y = .data[[tr]]) |>
+    filter(is.finite(y), y > 0) |> mutate(ly = log(y))
+  full <- lmer(ly ~ timepoint * nutrient + (1 | colony), data = d, REML = FALSE)
+  red <- lmer(ly ~ timepoint + nutrient + (1 | colony), data = d, REML = FALSE)
+  a <- anova(red, full)
+  reml <- lmer(ly ~ timepoint * nutrient + (1 | colony), data = d)
+  # fitted means per cell
+  grid <- expand.grid(timepoint = factor(tps, levels = tps), nutrient = factor(levels(d$nutrient), levels = levels(d$nutrient)))
+  X <- model.matrix(~ timepoint * nutrient, grid)
+  X <- X[, names(fixef(reml)), drop = FALSE]
+  V <- as.matrix(vcov(reml)); b <- fixef(reml)
+  est <- drop(X %*% b); se <- sqrt(rowSums((X %*% V) * X))
+  means <- tibble(species = sp, trait = tr, grid, log_mean = est, lo = est - 1.96 * se, hi = est + 1.96 * se)
+  # (TP3 - TP1) change at High minus at Low
+  row <- function(tp, nu) which(grid$timepoint == tp & grid$nutrient == nu)
+  cvec <- (X[row("TP3", "High"), ] - X[row("TP1", "High"), ]) - (X[row("TP3", "Low"), ] - X[row("TP1", "Low"), ])
+  ce <- sum(cvec * b); cse <- sqrt(drop(t(cvec) %*% V %*% cvec))
+  list(test = tibble(species = sp, trait = tr, n_samples = nrow(d), colonies = n_distinct(d$colony),
+                     excluded_nonpositive_or_missing = sum(phys$species == sp) - nrow(d),
+                     chisq = a$Chisq[2], df = a$Df[2], p = a$`Pr(>Chisq)`[2],
+                     ratio_TP1toTP3_change_high_vs_low = exp(ce), ratio_lo = exp(ce - 1.96 * cse), ratio_hi = exp(ce + 1.96 * cse),
+                     singular = isSingular(reml)),
+       means = means)
+}
+
+res <- lapply(species_all, function(sp) lapply(traits, function(tr) fit_one(sp, tr)))
+res <- unlist(res, recursive = FALSE)
+tests <- bind_rows(lapply(res, `[[`, "test")) |> group_by(species) |> mutate(fdr = p.adjust(p, "BH")) |> ungroup() |>
+  left_join(eligible |> select(species, eligible), by = "species")
+means <- bind_rows(lapply(res, `[[`, "means"))
+write_csv(tests, file.path(out_dir, "interaction_tests.csv"))
+write_csv(means, file.path(out_dir, "fitted_means.csv"))
+knitr::kable(tests |> select(-singular), digits = 4)
+```
+
+```{r decide}
+per <- tests |> filter(eligible) |> group_by(species) |>
+  summarise(traits_fdr05 = sum(fdr < 0.05), traits_fdr20 = sum(fdr < 0.2), .groups = "drop")
+verdict <- if (sum(per$traits_fdr05 >= 2) >= 2) "supported" else if (all(per$traits_fdr20 == 0)) "not supported" else "inconclusive"
+write_csv(per |> mutate(verdict = verdict), file.path(out_dir, "decision.csv"))
+knitr::kable(per)
+```
+
+**Verdict: `r verdict`.**
+
+```{r fig, fig.width = 9, fig.height = 7}
+fd <- means |> mutate(across(c(log_mean, lo, hi), exp, .names = "{.col}_bt"))
+write_csv(fd, file.path(out_dir, "figure_data.csv"))
+g <- ggplot(fd, aes(timepoint, log_mean_bt, colour = nutrient, group = nutrient)) +
+  geom_line(position = position_dodge(0.3)) +
+  geom_pointrange(aes(ymin = lo_bt, ymax = hi_bt), position = position_dodge(0.3), size = 0.3) +
+  facet_grid(trait ~ species, scales = "free_y") +
+  scale_y_log10() +
+  scale_colour_manual(values = c(Low = "#4daf4a", Medium = "#ff7f00", High = "#984ea3"),
+                      labels = c(Low = "Low (Mahana)", Medium = "Medium (Hilton)", High = "High (Manava)")) +
+  labs(x = NULL, y = "Fitted mean (log scale), 95% CI", colour = "Nutrient (site)") +
+  theme_bw() + theme(legend.position = "bottom")
+ggsave(file.path(out_dir, "trajectories.png"), g, width = 9, height = 7, dpi = 150)
+g
+```
+
+## Sensitivity
+
+The pre-registration names no sensitivity analysis beyond the balance
+crosstab. As a descriptive check on the confound, the same interaction test
+with only the two sites that also carry the molecular layers (Mahana, Manava;
+low vs high) is reported below; it does not enter the verdict.
+
+```{r sens}
+phys_all <- phys
+phys <- phys_all |> filter(site %in% c("Mahana", "Manava")) |> mutate(nutrient = droplevels(nutrient))
+sens <- bind_rows(lapply(species_all, function(sp) bind_rows(lapply(traits, function(tr) fit_one(sp, tr)$test)))) |>
+  group_by(species) |> mutate(fdr = p.adjust(p, "BH")) |> ungroup()
+phys <- phys_all
+write_csv(sens, file.path(out_dir, "sens_two_sites.csv"))
+knitr::kable(sens |> select(species, trait, n_samples, chisq, df, p, fdr, ratio_TP1toTP3_change_high_vs_low, ratio_lo, ratio_hi), digits = 4)
+```
+
+## Caveats
+
+- Physiology covers about 15 colonies per site per species (45–50 per
+  species), unlike the molecular layers (about 10 per species, two sites).
+- Site and nutrient are perfectly confounded; a site effect of any kind
+  (depth, flow, light, temperature micro-differences) is indistinguishable
+  from a nutrient effect.
+- Sampling is uneven across timepoints (*Acropora*: 42 / 24 / 21 / 29).
