@@ -1,0 +1,306 @@
+---
+title: "H17: lncRNA–neighbor gene coupling vs an expression-matched null"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H17", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+n_null <- 1000      # null draws of the median
+n_cand <- 100       # candidate null partners per cis pair
+n_boot <- 2000      # bootstrap over pairs for the median-r CI
+max_dist <- 100000
+bins <- c(0, 2000, 10000, 50000, 100000)
+bin_labels <- c("0-2 kb", "2-10 kb", "10-50 kb", "50-100 kb")
+set.seed(20261007)
+```
+
+## Pre-registered decision rule
+
+> - `supported` if dr > 0 with null p < 0.01 and dr >= 0.05 in all three
+>   species, and the distance-decay rho is negative in at least two.
+> - `not supported` if dr < 0.02 or null p >= 0.05 in at least two species.
+> - `inconclusive` otherwise.
+
+dr = median Pearson r over cis pairs (lncRNA and gene on the same scaffold,
+not overlapping, nearest edges <= 10 kb apart) minus the mean of 1000 null
+medians, each from one expression-matched partner per cis pair drawn from
+other scaffolds. Both layers are vst'd on the same samples and residualized
+on colony. Amendment 1 (`hypothesis.md`, before any analysis) fixes the
+null construction and records that lncRNA strand is unknown upstream (D-014):
+the orientation split is dropped and the read-through check removes all pairs
+within 2 kb.
+
+Implementation notes (not in `hypothesis.md`; none changes the rule):
+
+- Distance is the gap between the nearest ends of the two intervals in bp;
+  pairs with gap <= 0 overlap. Bins are (0, 2], (2, 10], (10, 50] and
+  (50, 100] kb.
+- Mean-vst deciles are computed over all filtered genes of the species
+  after vst and before residualization.
+- Distance-decay rho is the Spearman correlation of the four bin medians
+  with bin rank (1–4); with four points it is a sign check, as
+  pre-registered.
+- The decision uses one-sided null p (is cis r larger than the null). The
+  `not supported` clause "null p >= 0.05" uses the same p.
+
+## Data
+
+```{r data}
+residualize <- function(m, info, terms) {
+  X <- model.matrix(as.formula(paste("~", paste(terms, collapse = " + "))), data = info)
+  t(qr.resid(qr(X), t(m)))
+}
+zrows <- function(m) { m <- m - rowMeans(m); m / sqrt(rowSums(m^2)) }   # rows with unit norm: r = dot product
+
+prep_species <- function(sp) {
+  ids <- design |> filter(species == sp, has_genes %in% TRUE, has_lncrna %in% TRUE) |> pull(sample_id)
+  g <- prep_vst(load_genes(sp) |> select(feature_id, any_of(ids)), design)
+  l <- prep_vst(load_lncrna(sp) |> select(feature_id, any_of(ids)), design)
+  ids <- intersect(colnames(g$vst), colnames(l$vst))
+  G <- g$vst[, ids]; L <- l$vst[, ids]
+  info <- design_for(G, design) |> mutate(colony = factor(colony), timepoint = factor(timepoint))
+  gc <- load_gene_coords(sp) |> filter(feature_id %in% rownames(G))
+  lc <- load_lncrna_features(sp) |> transmute(feature_id, chrom = Chr, start = Start, end = End) |>
+    filter(feature_id %in% rownames(L))
+  decile <- dplyr::ntile(rowMeans(G), 10); names(decile) <- rownames(G)
+  list(species = sp, G = G, L = L, info = info, gc = gc, lc = lc, decile = decile,
+       n = tibble(species = sp, samples = length(ids), colonies = n_distinct(info$colony),
+                  df_after_colony = length(ids) - n_distinct(info$colony),
+                  lncrna = nrow(L), genes = nrow(G),
+                  lncrna_with_coords = nrow(lc), genes_with_coords = nrow(gc)))
+}
+
+# All pairs of `a` x `b` intervals on the same scaffold within max_dist,
+# with gap distance (<= 0 means overlap). `same` drops self-pairs and
+# keeps each unordered pair once (for gene-gene).
+neighbor_pairs <- function(xa, xb, same = FALSE) {
+  ga <- GenomicRanges::GRanges(xa$chrom, IRanges::IRanges(xa$start, xa$end))
+  gb <- GenomicRanges::GRanges(xb$chrom, IRanges::IRanges(xb$start, xb$end))
+  h <- GenomicRanges::findOverlaps(ga, gb, maxgap = max_dist, ignore.strand = TRUE)
+  i <- S4Vectors::queryHits(h); j <- S4Vectors::subjectHits(h)
+  if (same) { keep <- i < j; i <- i[keep]; j <- j[keep] }
+  tibble(a = xa$feature_id[i], b = xb$feature_id[j], chrom = xa$chrom[i],
+         gap = pmax(xa$start[i], xb$start[j]) - pmin(xa$end[i], xb$end[j])) |>
+    filter(gap <= max_dist) |>
+    mutate(overlap = gap <= 0, bin = cut(gap, bins, labels = bin_labels, right = TRUE))
+}
+
+dat <- lapply(setNames(species_all, species_all), prep_species)
+n_tab <- bind_rows(lapply(dat, `[[`, "n"))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab, format.args = list(big.mark = ","))
+```
+
+## Model
+
+```{r functions}
+# Pearson r for row pairs (ia of A, ib of B), A and B already z-normed by row.
+pair_r <- function(A, B, ia, ib, chunk = 2e5) {
+  out <- numeric(length(ia))
+  for (s in seq(1, length(ia), by = chunk)) {
+    k <- s:min(length(ia), s + chunk - 1)
+    out[k] <- rowSums(A[ia[k], , drop = FALSE] * B[ib[k], , drop = FALSE])
+  }
+  out
+}
+
+# Observed r for pairs, plus null medians for the cis (<= 10 kb, non-overlap) set.
+# `A`, `B`: z-normed matrices of the two layers; pairs$a in A, pairs$b in B.
+# Null partners for pair p come from B rows on other scaffolds in the decile of pairs$b[p].
+run_set <- function(d, A, B, pairs, b_coords, cis_filter) {
+  pairs$r <- pair_r(A, B, match(pairs$a, rownames(A)), match(pairs$b, rownames(B)))
+  cis <- pairs |> filter(!overlap, cis_filter(gap))
+  b_chrom <- setNames(b_coords$chrom, b_coords$feature_id)[rownames(B)]
+  b_dec <- d$decile[rownames(B)]
+  pools <- split(seq_len(nrow(B)), b_dec)
+  # candidates: n_cand per cis pair, same decile, other scaffold
+  cand <- matrix(NA_integer_, nrow(cis), n_cand)
+  dec_cis <- d$decile[cis$b]
+  for (p in seq_len(nrow(cis))) {
+    pool <- pools[[as.character(dec_cis[p])]]
+    pool <- pool[b_chrom[pool] != cis$chrom[p]]
+    cand[p, ] <- pool[sample.int(length(pool), n_cand)]
+  }
+  ia <- rep(match(cis$a, rownames(A)), times = n_cand)
+  cand_r <- matrix(pair_r(A, B, ia, as.vector(cand)), nrow(cis), n_cand)
+  null_med <- replicate(n_null, median(cand_r[cbind(seq_len(nrow(cis)), sample.int(n_cand, nrow(cis), replace = TRUE))]))
+  obs_med <- median(cis$r)
+  boot_med <- replicate(n_boot, median(sample(cis$r, replace = TRUE)))
+  list(pairs = pairs, cis = cis, null_med = null_med,
+       summary = tibble(cis_pairs = nrow(cis), cis_lncrna = n_distinct(cis$a),
+                        median_r = obs_med, median_r_lo = quantile(boot_med, 0.025), median_r_hi = quantile(boot_med, 0.975),
+                        null_median_mean = mean(null_med),
+                        dr = obs_med - mean(null_med),
+                        dr_lo = obs_med - quantile(null_med, 0.975), dr_hi = obs_med - quantile(null_med, 0.025),
+                        p = (1 + sum(null_med >= obs_med)) / (1 + n_null)))
+}
+
+bin_table <- function(pairs) {
+  pairs |> filter(!overlap) |> group_by(bin) |>
+    summarise(pairs = n(), median_r = median(r), mean_r = mean(r), .groups = "drop")
+}
+
+analyse <- function(d, terms = "colony", cis_filter = function(g) g <= 10000) {
+  L <- zrows(residualize(d$L, d$info, terms)); G <- zrows(residualize(d$G, d$info, terms))
+  pairs <- neighbor_pairs(d$lc, d$gc)
+  rs <- run_set(d, L, G, pairs, d$gc, cis_filter)
+  bt <- bin_table(rs$pairs)
+  decay <- suppressWarnings(cor(seq_len(nrow(bt)), bt$median_r, method = "spearman"))
+  ov <- rs$pairs |> filter(overlap)
+  list(summary = tibble(species = d$species) |> bind_cols(rs$summary) |>
+         mutate(decay_rho = decay, overlap_pairs = nrow(ov), overlap_median_r = if (nrow(ov)) median(ov$r) else NA_real_),
+       bins = bt |> mutate(species = d$species, .before = 1),
+       null_med = tibble(species = d$species, null_median = rs$null_med),
+       pairs = rs$pairs |> mutate(species = d$species, .before = 1))
+}
+
+decide <- function(s) {
+  s <- s |> mutate(passes = dr > 0 & p < 0.01 & dr >= 0.05, fails = dr < 0.02 | p >= 0.05)
+  verdict <- if (all(s$passes) && sum(s$decay_rho < 0, na.rm = TRUE) >= 2) "supported"
+    else if (sum(s$fails) >= 2) "not supported"
+    else "inconclusive"
+  list(per_species = s, verdict = verdict)
+}
+```
+
+```{r fit}
+res <- lapply(dat, analyse)
+primary <- decide(bind_rows(lapply(res, `[[`, "summary")))
+bins_tab <- bind_rows(lapply(res, `[[`, "bins"))
+write_csv(primary$per_species, file.path(out_dir, "cis_vs_null_summary.csv"))
+write_csv(bins_tab, file.path(out_dir, "r_by_distance_bin.csv"))
+write_csv(bind_rows(lapply(res, `[[`, "null_med")), file.path(out_dir, "null_medians.csv"))
+knitr::kable(primary$per_species |> select(species, cis_pairs, cis_lncrna, median_r, null_median_mean, dr, dr_lo, dr_hi, p,
+                                           decay_rho, passes, fails), digits = 4)
+```
+
+**Primary verdict: `r primary$verdict`.**
+
+Pairs and median r per distance bin (non-overlapping pairs):
+
+```{r bins}
+knitr::kable(bins_tab, digits = 4, format.args = list(big.mark = ","))
+```
+
+Overlapping lncRNA–gene pairs (excluded from the test; shared reads can
+create correlation):
+
+```{r overlap}
+knitr::kable(primary$per_species |> select(species, overlap_pairs, overlap_median_r), digits = 4)
+```
+
+```{r fig-bins, fig.width = 9, fig.height = 3.8}
+nulls <- primary$per_species |> select(species, null_median_mean)
+g <- ggplot(bins_tab, aes(bin, median_r)) +
+  geom_hline(data = nulls, aes(yintercept = null_median_mean), linetype = 2, colour = "grey40") +
+  geom_point(aes(size = pairs), colour = "#1b6ca8") + geom_line(aes(group = 1), colour = "#1b6ca8") +
+  facet_wrap(~ species) + scale_size_area(max_size = 4) +
+  labs(x = "lncRNA-gene distance (nearest edges)", y = "Median r (colony-residualized)", size = "Pairs") +
+  theme_bw() + theme(axis.text.x = element_text(angle = 30, hjust = 1))
+ggsave(file.path(out_dir, "r_by_distance.png"), g, width = 9, height = 3.8, dpi = 150)
+g
+```
+
+Dashed line: mean null median (expression-matched genes on other scaffolds,
+for the <= 10 kb set). Data in `r_by_distance_bin.csv` and
+`cis_vs_null_summary.csv`.
+
+**Orientation split (Model step 6):** not estimable. Upstream lncRNA
+features carry no strand (all `+`, D-014).
+
+## Sensitivity checks
+
+### Timepoint also residualized
+
+```{r sens-tp}
+res_tp <- lapply(dat, analyse, terms = c("colony", "timepoint"))
+sens_tp <- decide(bind_rows(lapply(res_tp, `[[`, "summary")))
+write_csv(sens_tp$per_species, file.path(out_dir, "sens_timepoint_resid_summary.csv"))
+write_csv(bind_rows(lapply(res_tp, `[[`, "bins")), file.path(out_dir, "sens_timepoint_resid_bins.csv"))
+knitr::kable(sens_tp$per_species |> select(species, cis_pairs, median_r, null_median_mean, dr, dr_lo, dr_hi, p, decay_rho), digits = 4)
+```
+
+### Read-through: drop all pairs within 2 kb
+
+```{r sens-rt}
+res_rt <- lapply(dat, analyse, cis_filter = function(g) g > 2000 & g <= 10000)
+sens_rt <- decide(bind_rows(lapply(res_rt, `[[`, "summary")))
+write_csv(sens_rt$per_species, file.path(out_dir, "sens_no_2kb_summary.csv"))
+knitr::kable(sens_rt$per_species |> select(species, cis_pairs, median_r, null_median_mean, dr, dr_lo, dr_hi, p, decay_rho), digits = 4)
+```
+
+### Gene–gene neighbor baseline
+
+Same distances, same null construction, with gene pairs in place of
+lncRNA–gene pairs (each unordered pair once; the null partner is matched to
+the second gene's decile). A lncRNA-specific cis effect should exceed this.
+
+```{r sens-gg}
+gg_one <- function(d) {
+  G <- zrows(residualize(d$G, d$info, "colony"))
+  pairs <- neighbor_pairs(d$gc, d$gc, same = TRUE)
+  rs <- run_set(d, G, G, pairs, d$gc, function(g) g <= 10000)
+  list(summary = tibble(species = d$species) |> bind_cols(rs$summary),
+       bins = bin_table(rs$pairs) |> mutate(species = d$species, .before = 1))
+}
+gg <- lapply(dat, gg_one)
+gg_tab <- bind_rows(lapply(gg, `[[`, "summary")) |>
+  left_join(primary$per_species |> select(species, dr_lncrna = dr), by = "species") |>
+  mutate(dr_lncrna_minus_gene = dr_lncrna - dr)
+write_csv(gg_tab, file.path(out_dir, "sens_gene_gene_summary.csv"))
+write_csv(bind_rows(lapply(gg, `[[`, "bins")), file.path(out_dir, "sens_gene_gene_bins.csv"))
+knitr::kable(gg_tab |> select(species, cis_pairs, median_r, null_median_mean, dr, dr_lo, dr_hi, p, dr_lncrna, dr_lncrna_minus_gene), digits = 4)
+```
+
+```{r fig-gg, fig.width = 9, fig.height = 3.8}
+cmp <- bind_rows(bins_tab |> mutate(pair_type = "lncRNA-gene"),
+                 bind_rows(lapply(gg, `[[`, "bins")) |> mutate(pair_type = "gene-gene"))
+write_csv(cmp, file.path(out_dir, "lncrna_vs_gene_gene_bins.csv"))
+g2 <- ggplot(cmp, aes(bin, median_r, colour = pair_type, group = pair_type)) +
+  geom_line() + geom_point() + facet_wrap(~ species) +
+  scale_colour_manual(values = c(`lncRNA-gene` = "#1b6ca8", `gene-gene` = "grey45")) +
+  labs(x = "Distance (nearest edges)", y = "Median r (colony-residualized)", colour = NULL) +
+  theme_bw() + theme(axis.text.x = element_text(angle = 30, hjust = 1), legend.position = "bottom")
+ggsave(file.path(out_dir, "lncrna_vs_gene_gene.png"), g2, width = 9, height = 4, dpi = 150)
+g2
+```
+
+```{r summary}
+verdicts <- tibble(analysis = c("primary (colony-residualized, <= 10 kb)", "timepoint also residualized", "pairs within 2 kb dropped"),
+                   verdict = c(primary$verdict, sens_tp$verdict, sens_rt$verdict))
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+knitr::kable(verdicts)
+```
+
+## Caveats
+
+- About 10 colonies per species; samples and residual df in the first table.
+- Pairs are not independent: one lncRNA can pair with several genes, and one
+  gene with several lncRNAs. The null keeps that structure (one partner per
+  observed pair), but the bootstrap CI on the median resamples pairs as if
+  independent and is optimistic.
+- Both layers come from the same libraries (see H08). Null partners are
+  measured in the same samples, so per-sample technical structure is in both
+  the observed and the null medians and cancels in dr; it does not cancel for
+  local (scaffold-level) effects, which is what the gene–gene baseline
+  addresses.
+- Correlation is not function. A positive dr would show cis co-variation
+  above background, not that the lncRNA regulates the gene.
+- lncRNA strand unknown (D-014).

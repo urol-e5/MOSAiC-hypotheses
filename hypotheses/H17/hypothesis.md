@@ -2,7 +2,7 @@
 id: H17
 slug: lncrna-cis-neighbor-coupling
 title: lncRNAs co-vary with neighboring protein-coding genes more than with expression-matched distant genes, decaying with distance
-status: planned
+status: supported
 tier: 2
 layers: [lncrna, genes, annotation]
 species: [Apul, Peve, Ptuh]

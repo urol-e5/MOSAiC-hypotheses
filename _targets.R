@@ -47,6 +47,7 @@ list(
   tar_quarto(H06, "hypotheses/H06/analysis.qmd", extra_files = c("R/expression.R", "R/methylation.R")),
   tar_quarto(H15, "hypotheses/H15/analysis.qmd", extra_files = c("R/expression.R", "R/methylation.R")),
   tar_quarto(H16, "hypotheses/H16/analysis.qmd", extra_files = c("R/expression.R", "R/methylation.R")),
+  tar_quarto(H17, "hypotheses/H17/analysis.qmd", extra_files = "R/expression.R"),
   tar_quarto(H07, "hypotheses/H07/analysis.qmd", extra_files = "R/expression.R"),
   tar_quarto(H08, "hypotheses/H08/analysis.qmd", extra_files = "R/expression.R"),   # raven
   tar_quarto(H09, "hypotheses/H09/analysis.qmd", extra_files = "R/expression.R")    # raven

@@ -1,0 +1,4 @@
+analysis,verdict
+"primary (colony-residualized, <= 10 kb)",supported
+timepoint also residualized,supported
+pairs within 2 kb dropped,supported
