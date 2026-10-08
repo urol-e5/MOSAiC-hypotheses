@@ -16,6 +16,7 @@ knitr::opts_knit$set(root.dir = root)
 setwd(root)
 source(file.path(root, "R", "load.R"))
 source(file.path(root, "R", "expression.R"))
+source(file.path(root, "R", "neighbors.R"))
 suppressPackageStartupMessages({ library(tidyr); library(ggplot2) })
 design <- load_design()
 out_dir <- file.path(root, "hypotheses", "H17", "output")
@@ -77,29 +78,13 @@ prep_species <- function(sp) {
   G <- g$vst[, ids]; L <- l$vst[, ids]
   info <- design_for(G, design) |> mutate(colony = factor(colony), timepoint = factor(timepoint))
   gc <- load_gene_coords(sp) |> filter(feature_id %in% rownames(G))
-  lc <- load_lncrna_features(sp) |> transmute(feature_id, chrom = Chr, start = Start, end = End) |>
-    filter(feature_id %in% rownames(L))
+  lc <- lncrna_coords(sp) |> filter(feature_id %in% rownames(L))
   decile <- dplyr::ntile(rowMeans(G), 10); names(decile) <- rownames(G)
   list(species = sp, G = G, L = L, info = info, gc = gc, lc = lc, decile = decile,
        n = tibble(species = sp, samples = length(ids), colonies = n_distinct(info$colony),
                   df_after_colony = length(ids) - n_distinct(info$colony),
                   lncrna = nrow(L), genes = nrow(G),
                   lncrna_with_coords = nrow(lc), genes_with_coords = nrow(gc)))
-}
-
-# All pairs of `a` x `b` intervals on the same scaffold within max_dist,
-# with gap distance (<= 0 means overlap). `same` drops self-pairs and
-# keeps each unordered pair once (for gene-gene).
-neighbor_pairs <- function(xa, xb, same = FALSE) {
-  ga <- GenomicRanges::GRanges(xa$chrom, IRanges::IRanges(xa$start, xa$end))
-  gb <- GenomicRanges::GRanges(xb$chrom, IRanges::IRanges(xb$start, xb$end))
-  h <- GenomicRanges::findOverlaps(ga, gb, maxgap = max_dist, ignore.strand = TRUE)
-  i <- S4Vectors::queryHits(h); j <- S4Vectors::subjectHits(h)
-  if (same) { keep <- i < j; i <- i[keep]; j <- j[keep] }
-  tibble(a = xa$feature_id[i], b = xb$feature_id[j], chrom = xa$chrom[i],
-         gap = pmax(xa$start[i], xb$start[j]) - pmin(xa$end[i], xb$end[j])) |>
-    filter(gap <= max_dist) |>
-    mutate(overlap = gap <= 0, bin = cut(gap, bins, labels = bin_labels, right = TRUE))
 }
 
 dat <- lapply(setNames(species_all, species_all), prep_species)

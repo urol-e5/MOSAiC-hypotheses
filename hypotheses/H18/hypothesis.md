@@ -88,4 +88,38 @@ of three species.
 
 ## Amendments
 
-(Leave empty. Dated entries only, added if the decision rule has to change.)
+### Amendment 1 (2026-10-07), before any H18 analysis was run
+
+**Problem.** Model step 3 gives one null ("permute colony labels of the
+methylation layer") for both unique fractions. That is a null for unique_M
+but not for unique_L. The rule also does not say how "> 0",
+"indistinguishable from the null" and the three patterns are judged, or in
+which order, so noise could be classified as "redundant".
+
+**Change.** The original text above is kept; these replace it where they
+conflict. The thresholds in the pattern definitions are unchanged.
+
+- *Nulls.* unique_M: pair each colony's methylation (gene body and lncRNA
+  locus) with another colony's expression and lncRNA, on the timepoints
+  both have (1000 permutations). unique_L: pair each colony's lncRNA with
+  another colony's gene expression and methylation (1000). Centering and
+  standardizing are redone after pairing.
+- *"> 0" and "indistinguishable".* A unique fraction is > 0 if it exceeds
+  its permutation null with one-sided p < 0.05,
+  p = (1 + #{null >= observed}) / 1001; it is indistinguishable from the
+  null if p >= 0.05.
+- *Per-species classification, in this order.*
+  1. *No signal*: unique_M and unique_L both indistinguishable from null.
+  2. *Hierarchical*: path a (M_L → L) colony-bootstrap CI excludes 0, the
+     indirect effect a×b CI excludes 0, and a×b / c >= 0.25 where c is the
+     total effect of M_L on E (same sign as a×b).
+  3. *Independent*: both unique fractions > 0 and shared < 25% of the
+     combined-model R².
+  4. *Redundant*: shared >= the larger unique fraction and the combined R²
+     exceeds the 95th percentile of the combined R² under each of the two
+     nulls.
+  5. Otherwise *unclassified*.
+- *Decision.* `supported` if >= 2 species are independent. `not supported`
+  if >= 2 are redundant, or >= 2 are hierarchical. `inconclusive` if >= 2
+  have no signal, or otherwise.
+- *Shared fraction* can be negative (suppression); it is reported as is.

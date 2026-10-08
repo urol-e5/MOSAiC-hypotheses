@@ -153,7 +153,7 @@ lncRNA in all three species (15,559 / 8,319 / 11,236). Gene coordinates from
 the GFFs are about half `-`, so this is a property of the lncRNA SAF/GTF
 used upstream, not of harmonization. Treat lncRNA strand as unknown. H17
 drops its orientation split and excludes all pairs within 2 kb in its
-read-through check (H17 Amendment 1). Worth an issue on
-`urol-e5/timeseries_molecular` asking whether stranded lncRNA coordinates
-exist.
+read-through check (H17 Amendment 1). Asked upstream whether stranded
+lncRNA coordinates exist:
+<https://github.com/urol-e5/timeseries_molecular/issues/139>.
 
