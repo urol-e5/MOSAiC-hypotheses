@@ -316,6 +316,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#d-012-2026-10-07-r-environment-on-raven" id="toc-d-012-2026-10-07-r-environment-on-raven" class="nav-link" data-scroll-target="#d-012-2026-10-07-r-environment-on-raven">D-012 (2026-10-07) R environment on raven</a></li>
   <li><a href="#d-013-2026-10-07-h04-permanova-bootstrap-runs-in-parallel" id="toc-d-013-2026-10-07-h04-permanova-bootstrap-runs-in-parallel" class="nav-link" data-scroll-target="#d-013-2026-10-07-h04-permanova-bootstrap-runs-in-parallel">D-013 (2026-10-07) H04 PERMANOVA bootstrap runs in parallel</a></li>
   <li><a href="#d-014-2026-10-07-lncrna-features-have-no-strand" id="toc-d-014-2026-10-07-lncrna-features-have-no-strand" class="nav-link" data-scroll-target="#d-014-2026-10-07-lncrna-features-have-no-strand">D-014 (2026-10-07) lncRNA features have no strand</a></li>
+  <li><a href="#d-015-2026-10-08-cpg-matrices-carry-no-coverage" id="toc-d-015-2026-10-08-cpg-matrices-carry-no-coverage" class="nav-link" data-scroll-target="#d-015-2026-10-08-cpg-matrices-carry-no-coverage">D-015 (2026-10-08) CpG matrices carry no coverage</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -408,6 +409,10 @@ ul.task-list li input[type="checkbox"] {
 <section id="d-014-2026-10-07-lncrna-features-have-no-strand" class="level2">
 <h2 class="anchored" data-anchor-id="d-014-2026-10-07-lncrna-features-have-no-strand">D-014 (2026-10-07) lncRNA features have no strand</h2>
 <p><code>lncrna_&lt;species&gt;_features</code> comes from the featureCounts table header (<code>Chr</code>, <code>Start</code>, <code>End</code>, <code>Strand</code>, <code>Length</code>) of the upstream <code>*_lncRNA_counts.clean.filtered.txt</code> files, and <code>Strand</code> is <code>+</code> for every lncRNA in all three species (15,559 / 8,319 / 11,236). Gene coordinates from the GFFs are about half <code>-</code>, so this is a property of the lncRNA SAF/GTF used upstream, not of harmonization. Treat lncRNA strand as unknown. H17 drops its orientation split and excludes all pairs within 2 kb in its read-through check (H17 Amendment 1). Asked upstream whether stranded lncRNA coordinates exist: <a href="https://github.com/urol-e5/timeseries_molecular/issues/139" class="uri">https://github.com/urol-e5/timeseries_molecular/issues/139</a>.</p>
+</section>
+<section id="d-015-2026-10-08-cpg-matrices-carry-no-coverage" class="level2">
+<h2 class="anchored" data-anchor-id="d-015-2026-10-08-cpg-matrices-carry-no-coverage">D-015 (2026-10-08) CpG matrices carry no coverage</h2>
+<p><code>cpg_&lt;species&gt;</code> comes from <code>merged-WGBS-CpG-counts_filtered.csv</code>, which holds percent methylation for CpGs with &gt;= 10x in every sample, and no read counts. Anything that needs per-sample coverage (binomial noise models, depth filters above 10x, beta-binomial tests) cannot be done from the manifest as it stands. H19 uses the 10x floor as a fixed noise bound (H19 Amendment 1). If coverage becomes necessary, the per-sample Bismark coverage files would have to be added to <code>config/upstream.yml</code>; they are large and should be read on raven.</p>
 
 
 </section>
