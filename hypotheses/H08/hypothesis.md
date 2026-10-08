@@ -2,7 +2,7 @@
 id: H08
 slug: lncrna-mrna-coexpression-null
 title: lncRNA-mRNA co-expression at a fixed correlation threshold exceeds a permutation null
-status: planned
+status: supported
 tier: 2
 layers: [lncrna, genes]
 species: [Apul, Peve, Ptuh]

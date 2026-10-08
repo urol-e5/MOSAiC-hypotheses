@@ -1,0 +1,248 @@
+---
+title: "H09: host expression modules and symbiont physiology"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H09", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+traits <- c("cells.cm2", "chla.ug.cm2", "calc.umol.cm2.hr", "Host_AFDW.mg.cm2")
+set.seed(20261006)
+
+# Compute tier is raven (README): a single-block signed TOM on ~21k genes
+# needs roughly 12-15 GB. H09_MAX_BLOCK (default 25000 = one block per
+# species) can be lowered for a desktop dry run; WGCNA then pre-clusters
+# genes into blocks, which changes module assignment, so a lowered value is
+# recorded in the n table and is not valid for the real run.
+max_block <- as.integer(Sys.getenv("H09_MAX_BLOCK", "25000"))
+n_threads <- as.integer(Sys.getenv("H09_THREADS", max(1, parallel::detectCores() - 1)))
+WGCNA::allowWGCNAThreads(n_threads)
+```
+
+## Pre-registered decision rule
+
+> `supported` if, in all three species, at least one module has a trait slope
+> with FDR < 0.05 and CI excluding zero, and that module shows at least one
+> enriched GO-slim term (FDR < 0.1). `not supported` if no module in any species
+> passes. Otherwise `inconclusive`.
+
+Model: WGCNA signed network on vst expression (H01 filter), soft threshold by
+scale-free fit, minimum module size 30. Per module eigengene and trait
+(`cells.cm2`, `chla.ug.cm2`, `calc.umol.cm2.hr`, `Host_AFDW.mg.cm2`):
+`lmer(ME ~ scale(trait) + timepoint + (1|colony))`. BH FDR across module x
+trait tests within each species. GO-slim enrichment by Fisher test for each
+module with a significant trait slope.
+
+Operational choices not spelled out in `hypothesis.md` (none changes the rule):
+
+- **Soft threshold**: the lowest power in 1-10, 12-30 (even) with signed
+  scale-free R^2 >= 0.8. If none reaches 0.8, the WGCNA FAQ default for a
+  signed network at this sample size is used (14 for 30-40 samples, 12 above
+  40), and that is flagged in the output.
+- **WGCNA settings** beyond the pre-registered ones are package defaults:
+  `TOMType = "signed"`, `deepSplit = 2`, `mergeCutHeight = 0.25`. The grey
+  module (unassigned genes) is not tested.
+- **Slope p-values** use Satterthwaite degrees of freedom (`lmerTest`); CIs
+  are Wald 95%.
+- **Any of the four traits** qualifies, as the rule says ("a trait slope"),
+  though the prediction names `cells.cm2` and `chla.ug.cm2`; results are
+  reported per trait.
+- **"Passes"** means both parts: a significant trait slope and an enriched
+  term in that module.
+- **GO-slim** terms come from both ortholog tables (`orthologs_all`, which
+  includes two-way groups); a gene takes the union of its groups' terms.
+  The universe is network genes with at least one term; tests are one-sided,
+  BH within module.
+
+## Data
+
+```{r data}
+phys <- load_physiology() |> select(sample_id, all_of(traits))
+goslim_all <- load_orthologs(three_way_only = FALSE)
+
+gene_terms <- function(sp) {
+  key <- switch(sp, Apul = "apul_gene", Peve = "peve_gene", Ptuh = "ptuh_gene")
+  goslim_all |> select(gene = all_of(key), goslim_names) |>
+    filter(!is.na(gene), !is.na(goslim_names), goslim_names != "") |>
+    separate_longer_delim(goslim_names, delim = ";") |>
+    mutate(term = trimws(goslim_names)) |> filter(term != "") |> distinct(gene, term)
+}
+
+prep_species <- function(sp) {
+  ids <- design$sample_id[design$species == sp & design$has_genes %in% TRUE & design$has_physiology %in% TRUE]
+  ex <- prep_vst(load_genes(sp) |> select(feature_id, any_of(ids)), design)
+  info <- design_for(ex$vst, design) |> left_join(phys, by = "sample_id")
+  list(vst = ex$vst, info = info, terms = gene_terms(sp) |> filter(gene %in% rownames(ex$vst)),
+       n = tibble(species = sp, samples = ncol(ex$vst), colonies = n_distinct(info$colony),
+                  genes = nrow(ex$vst), genes_with_goslim = n_distinct(gene_terms(sp)$gene[gene_terms(sp)$gene %in% rownames(ex$vst)]),
+                  !!!setNames(lapply(traits, function(t) sum(!is.na(info[[t]]))), paste0("n_", traits))))
+}
+dat <- lapply(setNames(species_all, species_all), prep_species)
+n_tab <- bind_rows(lapply(dat, `[[`, "n"))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab, format.args = list(big.mark = ","))
+```
+
+## Model
+
+### Networks
+
+```{r networks}
+powers <- c(1:10, seq(12, 30, 2))
+build_network <- function(d) {
+  # blockwiseModules() calls cor() by name and needs WGCNA's version, which
+  # takes weights arguments stats::cor() lacks (WGCNA FAQ). Scope it to this call.
+  assign("cor", WGCNA::cor, envir = globalenv())
+  on.exit(rm("cor", envir = globalenv()), add = TRUE)
+  x <- t(d$vst)
+  invisible(capture.output(
+    sft <- WGCNA::pickSoftThreshold(x, powerVector = powers, networkType = "signed", verbose = 0)))
+  fit <- sft$fitIndices
+  ok <- fit$Power[-sign(fit$slope) * fit$SFT.R.sq >= 0.8]
+  power <- if (length(ok)) min(ok) else if (nrow(x) > 40) 12 else 14
+  net <- WGCNA::blockwiseModules(x, power = power, networkType = "signed", TOMType = "signed",
+                                 minModuleSize = 30, maxBlockSize = max_block, mergeCutHeight = 0.25,
+                                 numericLabels = TRUE, saveTOMs = FALSE, randomSeed = 20261006, verbose = 0)
+  list(power = power, power_from_fit = length(ok) > 0, fit = fit,
+       modules = setNames(net$colors, colnames(x)), MEs = net$MEs)
+}
+nets <- lapply(dat, build_network)
+
+net_tab <- bind_rows(lapply(species_all, function(sp) {
+  m <- nets[[sp]]$modules
+  tibble(species = sp, power = nets[[sp]]$power, power_from_scale_free_fit = nets[[sp]]$power_from_fit,
+         max_block = max_block, modules = length(setdiff(unique(m), 0)), genes_unassigned = sum(m == 0),
+         median_module_size = median(table(m[m != 0])))
+}))
+write_csv(net_tab, file.path(out_dir, "networks.csv"))
+write_csv(bind_rows(lapply(species_all, function(sp) tibble(species = sp, sp_fit = list(nets[[sp]]$fit)) |> unnest(sp_fit))),
+          file.path(out_dir, "soft_threshold_fit.csv"))
+write_csv(bind_rows(lapply(species_all, function(sp) tibble(species = sp, feature_id = names(nets[[sp]]$modules), module = nets[[sp]]$modules))),
+          file.path(out_dir, "module_membership.csv"))
+knitr::kable(net_tab)
+```
+
+### Eigengene-trait models
+
+```{r me-models}
+fit_me <- function(sp, with_timepoint = TRUE) {
+  d <- dat[[sp]]; MEs <- nets[[sp]]$MEs
+  MEs <- MEs[, setdiff(colnames(MEs), "ME0"), drop = FALSE]
+  bind_rows(lapply(colnames(MEs), function(me) bind_rows(lapply(traits, function(tr) {
+    df <- d$info |> mutate(ME = MEs[, me], z = as.numeric(scale(.data[[tr]])),
+                           timepoint = factor(timepoint), colony = factor(colony)) |> filter(!is.na(z))
+    form <- if (with_timepoint) ME ~ z + timepoint + (1 | colony) else ME ~ z + (1 | colony)
+    fit <- lmerTest::lmer(form, data = df)
+    co <- summary(fit)$coefficients["z", ]
+    ci <- confint(fit, parm = "z", method = "Wald")
+    tibble(species = sp, module = sub("^ME", "", me), trait = tr, n = nrow(df),
+           slope = co[["Estimate"]], slope_lo = ci[1], slope_hi = ci[2], p = co[["Pr(>|t|)"]])
+  })))) |>
+    mutate(fdr = p.adjust(p, "BH"), significant = fdr < 0.05 & (slope_lo > 0 | slope_hi < 0))
+}
+
+enrich_module <- function(sp, mod) {
+  terms <- dat[[sp]]$terms
+  universe <- unique(terms$gene)
+  members <- intersect(names(nets[[sp]]$modules)[nets[[sp]]$modules == as.integer(mod)], universe)
+  bind_rows(lapply(split(terms$gene, terms$term), function(tg) {
+    a <- sum(members %in% tg); b <- length(members) - a
+    c <- sum(universe %in% tg) - a; dd <- length(universe) - a - b - c
+    tibble(in_module_in_term = a, module_annotated = length(members), term_size = length(tg),
+           odds_ratio = (a * dd) / max(1, b * c),
+           p = fisher.test(matrix(c(a, c, b, dd), 2), alternative = "greater")$p.value)
+  }), .id = "term") |>
+    mutate(species = sp, module = mod, .before = 1, fdr = p.adjust(p, "BH"))
+}
+
+analyse <- function(with_timepoint) {
+  me <- bind_rows(lapply(species_all, fit_me, with_timepoint = with_timepoint))
+  sig_mods <- me |> filter(significant) |> distinct(species, module)
+  enr <- if (nrow(sig_mods)) bind_rows(Map(enrich_module, sig_mods$species, sig_mods$module)) else tibble()
+  enriched <- if (nrow(enr)) enr |> group_by(species, module) |>
+    summarise(n_terms_fdr10 = sum(fdr < 0.1), top_term = term[which.min(p)], top_fdr = min(fdr), .groups = "drop") else
+    tibble(species = character(), module = character(), n_terms_fdr10 = integer())
+  per_sp <- tibble(species = species_all) |>
+    left_join(me |> group_by(species) |> summarise(tests = n(), significant_slopes = sum(significant), .groups = "drop"), by = "species") |>
+    left_join(enriched |> group_by(species) |> summarise(modules_passing = sum(n_terms_fdr10 > 0), .groups = "drop"), by = "species") |>
+    mutate(modules_passing = coalesce(modules_passing, 0L), passes = modules_passing > 0)
+  verdict <- if (all(per_sp$passes)) "supported" else if (!any(per_sp$passes)) "not supported" else "inconclusive"
+  list(me = me, enr = enr, enriched = enriched, per_species = per_sp, verdict = verdict)
+}
+
+primary <- analyse(with_timepoint = TRUE)
+write_csv(primary$me, file.path(out_dir, "eigengene_trait_models.csv"))
+write_csv(primary$enr, file.path(out_dir, "goslim_enrichment_significant_modules.csv"))
+write_csv(primary$per_species, file.path(out_dir, "decision_per_species.csv"))
+knitr::kable(primary$per_species)
+```
+
+Significant module x trait slopes (FDR < 0.05, CI excluding zero):
+
+```{r sig-table}
+knitr::kable(primary$me |> filter(significant) |> left_join(primary$enriched, by = c("species", "module")) |>
+               arrange(species, fdr), digits = 4)
+```
+
+**Primary verdict: `r primary$verdict`.**
+
+```{r fig, fig.width = 10, fig.height = 4}
+g <- ggplot(primary$me, aes(slope, -log10(p), colour = significant)) +
+  geom_vline(xintercept = 0, colour = "grey70") +
+  geom_point(alpha = 0.7) + facet_grid(species ~ trait) +
+  scale_colour_manual(values = c(`FALSE` = "grey60", `TRUE` = "black")) +
+  labs(x = "Eigengene slope per SD of trait", y = "-log10 p", colour = "FDR < 0.05") +
+  theme_bw() + theme(legend.position = "bottom")
+ggsave(file.path(out_dir, "eigengene_trait_volcano.png"), g, width = 10, height = 6, dpi = 150)
+g
+```
+
+## Sensitivity checks
+
+### Without timepoint in the model
+
+Symbiont traits are seasonal; removing timepoint lets shared seasonal signal
+count toward the trait.
+
+```{r sens-notp}
+sens <- analyse(with_timepoint = FALSE)
+write_csv(sens$me, file.path(out_dir, "sens_no_timepoint_models.csv"))
+write_csv(sens$per_species, file.path(out_dir, "sens_no_timepoint_decision.csv"))
+knitr::kable(sens$per_species)
+```
+
+Verdict without timepoint: `r sens$verdict`.
+
+```{r summary}
+write_csv(tibble(analysis = c("primary (with timepoint)", "without timepoint"), verdict = c(primary$verdict, sens$verdict)),
+          file.path(out_dir, "verdicts.csv"))
+```
+
+## Caveats
+
+- About 10 colonies per species, four timepoints; eigengene-trait slopes are
+  estimated from about 40 samples with colony as a random effect.
+- WGCNA module structure depends on soft threshold and tree-cut settings;
+  modules are not validated by resampling here.
+- Only about a quarter of genes carry GO-slim terms, inherited from
+  SwissProt hits through ortholog groups, which favours conserved genes.
+- Physiology is measured on a separate fragment of the same colony at the
+  same timepoint.
+- Species is confounded with reference quality (Peve N50 0.17 Mb; Ptuh mapped
+  to *P. meandrina*).

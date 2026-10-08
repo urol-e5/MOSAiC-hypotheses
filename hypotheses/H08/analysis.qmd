@@ -1,0 +1,217 @@
+---
+title: "H08: lncRNA-mRNA co-expression against a permutation null"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H08", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+thresholds <- c(0.8, 0.9, 0.95)
+set.seed(20261006)
+
+# Compute tier is raven (README): each species needs about 800 passes over
+# 1e8 to 3e8 lncRNA x mRNA correlations (about 25 s per Apul pass with
+# reference BLAS). Permutations run in parallel with forked workers; each
+# needs about 200 MB. H08_WORKERS sets the count (default cores - 1).
+# H08_N_PERM (default 200, as pre-registered) may be lowered for a dry run.
+n_workers <- as.integer(Sys.getenv("H08_WORKERS", max(1, parallel::detectCores() - 1)))
+n_perm <- as.integer(Sys.getenv("H08_N_PERM", "200"))
+```
+
+## Pre-registered decision rule
+
+> `supported` if the observed count exceeds the null 95th percentile at all
+> three thresholds in all three species. `not supported` if the observed count
+> falls inside the null at |r| >= 0.9 in any species. Otherwise `inconclusive`.
+
+Model: Pearson r on vst values for all lncRNA x mRNA pairs, samples with both
+layers, features filtered as in H01. Null: 200 permutations of lncRNA sample
+order; a within-timepoint permutation is also reported. Count of pairs with
+|r| >= 0.8, 0.9, 0.95, observed vs null. No correction across thresholds or
+species: the rule is stated per threshold and species.
+
+Operational choices not spelled out in `hypothesis.md` (none changes the rule):
+
+- **Which null decides.** The full permutation, as the Model section names
+  it. The within-timepoint permutation (lncRNA labels shuffled only among
+  samples from the same timepoint, so the seasonal signal both layers share
+  is kept in the null) and the colony-residualized analysis are reported
+  with their own verdicts.
+- **"Exceeds"** is strictly greater than the null 95th percentile; "falls
+  inside the null" is less than or equal to it.
+- **vst** is computed separately for each layer (blind, design `~ 1`).
+- **Residualizing on colony** removes colony means from each feature of both
+  layers (least squares on a colony factor) before z-scoring; the same nulls
+  are then applied to the residualized lncRNA matrix.
+- **Permutation indices** are drawn once, before any correlations, so the run
+  is reproducible regardless of the number of workers. Empirical
+  p = (1 + #{null >= observed}) / (1 + n_perm).
+
+## Data
+
+```{r data}
+prep_layers <- function(sp) {
+  ids <- design$sample_id[design$species == sp & design$has_lncrna %in% TRUE & design$has_genes %in% TRUE]
+  g <- prep_vst(load_genes(sp) |> select(feature_id, any_of(ids)), design)
+  l <- prep_vst(load_lncrna(sp) |> select(feature_id, any_of(ids)), design)
+  ids <- intersect(colnames(g$vst), colnames(l$vst))
+  list(G = g$vst[, ids], L = l$vst[, ids], info = design_for(g$vst[, ids], design),
+       n = tibble(species = sp, samples = length(ids), colonies = n_distinct(design_for(g$vst[, ids], design)$colony),
+                  lncrna_in = l$n_raw, lncrna_kept = nrow(l$vst), genes_in = g$n_raw, genes_kept = nrow(g$vst),
+                  pairs = nrow(l$vst) * nrow(g$vst)))
+}
+dat <- lapply(setNames(species_all, species_all), prep_layers)
+n_tab <- bind_rows(lapply(dat, `[[`, "n"))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab, format.args = list(big.mark = ","))
+```
+
+## Model
+
+```{r functions}
+zrows <- function(m) { m <- m - rowMeans(m); m / sqrt(rowSums(m^2)) }   # unit-norm rows: r = crossprod
+
+residualize_colony <- function(m, info) {
+  X <- model.matrix(~ factor(info$colony))
+  m - t(qr.fitted(qr(X), t(m)))
+}
+
+# Number of lncRNA x mRNA pairs with |r| >= each threshold. Rows of L and G are
+# unit-norm, so r = L %*% t(G). Chunks keep memory near chunk x nrow(G) doubles.
+count_edges <- function(L, G, chunk = 1000) {
+  cnt <- numeric(length(thresholds))
+  for (s in split(seq_len(nrow(L)), ceiling(seq_len(nrow(L)) / chunk))) {
+    r <- abs(tcrossprod(L[s, , drop = FALSE], G))
+    cnt <- cnt + vapply(thresholds, function(t) sum(r >= t), numeric(1))
+  }
+  setNames(cnt, paste0("r", thresholds))
+}
+
+perm_indices <- function(info, within_timepoint) {
+  n <- nrow(info)
+  lapply(seq_len(n_perm), function(b) {
+    if (!within_timepoint) return(sample.int(n))
+    idx <- seq_len(n)
+    for (g in split(seq_len(n), info$timepoint)) idx[g] <- g[sample.int(length(g))]
+    idx
+  })
+}
+
+run_null <- function(L, G, perms) {
+  res <- parallel::mclapply(perms, function(p) count_edges(L[, p, drop = FALSE], G),
+                            mc.cores = n_workers, mc.preschedule = FALSE)
+  bad <- vapply(res, function(x) is.null(x) || inherits(x, "try-error"), logical(1))
+  if (any(bad)) stop(sum(bad), " permutation workers failed: ", paste(unique(unlist(lapply(res[bad], as.character))), collapse = " | "))
+  do.call(rbind, res)
+}
+
+summarise_null <- function(obs, null_mat, sp, null_type, analysis) {
+  q95 <- apply(null_mat, 2, quantile, 0.95)
+  med <- apply(null_mat, 2, median)
+  tibble(species = sp, analysis = analysis, null = null_type, threshold = thresholds,
+         observed = obs, null_median = med, null_q95 = q95, null_max = apply(null_mat, 2, max),
+         ratio_to_null_median = obs / pmax(1, med),
+         p_emp = (1 + colSums(sweep(null_mat, 2, obs, `>=`))) / (1 + nrow(null_mat)),
+         exceeds = obs > q95)
+}
+
+decide <- function(s) {
+  v <- if (all(s$exceeds)) "supported" else if (any(!s$exceeds[s$threshold == 0.9])) "not supported" else "inconclusive"
+  v
+}
+```
+
+```{r run}
+perms <- lapply(dat, function(d) list(full = perm_indices(d$info, FALSE), within_tp = perm_indices(d$info, TRUE)))
+
+run_species <- function(sp, residualize) {
+  d <- dat[[sp]]
+  L <- d$L; G <- d$G
+  if (residualize) { L <- residualize_colony(L, d$info); G <- residualize_colony(G, d$info) }
+  L <- zrows(L); G <- zrows(G)
+  analysis <- if (residualize) "colony-residualized" else "primary"
+  obs <- count_edges(L, G)
+  nf <- run_null(L, G, perms[[sp]]$full)
+  nt <- run_null(L, G, perms[[sp]]$within_tp)
+  list(summary = bind_rows(summarise_null(obs, nf, sp, "full permutation", analysis),
+                           summarise_null(obs, nt, sp, "within-timepoint", analysis)),
+       null = bind_rows(as_tibble(nf) |> mutate(perm = row_number(), null = "full permutation"),
+                        as_tibble(nt) |> mutate(perm = row_number(), null = "within-timepoint")) |>
+         mutate(species = sp, analysis = analysis, .before = 1))
+}
+
+runs <- c(lapply(species_all, run_species, residualize = FALSE),
+          lapply(species_all, run_species, residualize = TRUE))
+summ <- bind_rows(lapply(runs, `[[`, "summary"))
+nulls <- bind_rows(lapply(runs, `[[`, "null"))
+write_csv(summ, file.path(out_dir, "edge_counts_vs_null.csv"))
+write_csv(nulls, file.path(out_dir, "null_counts.csv"))
+```
+
+## Result against the decision rule
+
+```{r decide}
+primary <- summ |> filter(analysis == "primary", null == "full permutation")
+knitr::kable(primary, digits = 3, format.args = list(big.mark = ","))
+verdicts <- summ |> group_by(analysis, null) |> group_modify(~ tibble(verdict = decide(.x))) |> ungroup()
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+```
+
+**Primary verdict (full permutation): `r verdicts$verdict[verdicts$analysis == "primary" & verdicts$null == "full permutation"]`.**
+
+```{r fig, fig.width = 10, fig.height = 6}
+plot_null <- nulls |> pivot_longer(starts_with("r0"), names_to = "threshold", values_to = "count") |>
+  mutate(threshold = as.numeric(sub("^r", "", threshold)))
+g <- ggplot(plot_null, aes(factor(threshold), count + 1)) +
+  geom_boxplot(aes(fill = null), outlier.size = 0.5, position = position_dodge(0.8)) +
+  geom_point(data = summ |> distinct(species, analysis, threshold, observed),
+             aes(factor(threshold), observed + 1), inherit.aes = FALSE, shape = 4, size = 3, stroke = 1.2) +
+  scale_y_log10() + facet_grid(analysis ~ species) +
+  scale_fill_manual(values = c(`full permutation` = "grey85", `within-timepoint` = "grey55")) +
+  labs(x = "|r| threshold", y = "Pairs at or above threshold + 1 (log scale); x = observed", fill = NULL) +
+  theme_bw()
+ggsave(file.path(out_dir, "edges_vs_null.png"), g, width = 10, height = 6, dpi = 150)
+g
+```
+
+## Sensitivity checks
+
+Within-timepoint null and colony residualization, each with the same rule:
+
+```{r sens}
+knitr::kable(verdicts)
+knitr::kable(summ |> filter(!(analysis == "primary" & null == "full permutation")) |>
+               select(species, analysis, null, threshold, observed, null_median, null_q95, ratio_to_null_median, p_emp, exceeds),
+             digits = 3, format.args = list(big.mark = ","))
+```
+
+## Caveats
+
+- About 10 colonies per species, measured at four timepoints. The full
+  permutation breaks colony and season structure that both layers share, so
+  exceeding it shows shared structure, not necessarily lncRNA-specific
+  co-regulation; the within-timepoint and colony-residualized nulls narrow
+  that down.
+- lncRNA features were already filtered upstream (fewer than 10 counts in
+  more than 50% of samples removed); the H01 filter removes few more (see
+  the n table).
+- Edge counts at a threshold are not independent across pairs: one lncRNA
+  correlated with a gene module contributes many edges.
+- Species is confounded with reference quality (Peve N50 0.17 Mb; Ptuh mapped
+  to *P. meandrina*), which affects lncRNA annotation.
