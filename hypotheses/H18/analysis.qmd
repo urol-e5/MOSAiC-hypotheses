@@ -62,11 +62,14 @@ Implementation notes (not in `hypothesis.md`; none changes the rule):
   gene×colony mean over the same samples, so the outcome has zero mean in
   every gene and colony and the `(1|colony) + (1|gene)` intercepts are
   structurally zero. The pre-registered `lmer` fits and their Nakagawa
-  marginal R² are computed on the observed data and compared with OLS below.
+  marginal R² are computed on the observed data before any resampling, for
+  both the primary analysis and the >= 20 CpG sensitivity subset.
   If they agree to within 1e-4 for every R² and commonality fraction, the
   permutation and bootstrap refits use the closed-form OLS solution (from
-  the correlation matrix of E, M, L, M_L). If not, the rule is applied to
-  the `lmer` values and RESULT.md says so. (H16 needed `lmer` throughout
+  the correlation matrix of E, M, L, M_L). If any comparison is non-finite
+  or differs by >= 1e-4, execution stops before resampling or a verdict for
+  that analysis. A full mixed-model resampling implementation is required
+  before continuing. (H16 needed `lmer` throughout
   because its lagged outcome was not centered on the same samples; that
   does not apply here.)
 - Pairs: for each gene with a GBM value, the nearest lncRNA (smallest gap,
@@ -189,12 +192,34 @@ lmer_check <- function(x, d) {
          any_singular = any(c(a[["singular"]], m[["singular"]], l[["singular"]]) == 1))
 }
 
+# Enforce the observed-data prerequisite for using OLS in resampling.
+# Include the single-predictor R2 values as well as all commonality fractions.
+check_ols_equivalence <- function(obs, mixed, tolerance = 1e-4) {
+  metrics <- c("R2_combined", "R2_M", "R2_L", "unique_M", "unique_L", "shared")
+  delta <- vapply(metrics, function(v) {
+    observed <- obs[[v]]
+    fitted <- mixed[[paste0(v, "_lmer")]]
+    if (length(observed) != 1L || length(fitted) != 1L) return(NA_real_)
+    observed - fitted
+  }, numeric(1))
+  if (any(!is.finite(delta)) || any(abs(delta) >= tolerance)) {
+    stop("H18 OLS/lmer equivalence check failed: all R2 and commonality differences ",
+         "must be finite and < ", tolerance,
+         ". Resampling and verdict are blocked; use full mixed-model refits.")
+  }
+  tibble::as_tibble(as.list(setNames(delta, paste0("d_", metrics)))) |>
+    mutate(max_abs = max(abs(delta)), within_tolerance = TRUE,
+           any_singular = mixed$any_singular)
+}
+
 random_derangement <- function(k) { repeat { p <- sample.int(k); if (any(p != seq_len(k))) return(p) } }
 
-analyse <- function(d, rows = seq_len(nrow(d$pairs)), lmer_fit = TRUE) {
+analyse <- function(d, rows = seq_len(nrow(d$pairs))) {
   k <- length(d$cols); id <- seq_len(k)
   obs_long <- make_long(d, id, id, id, rows)
   obs <- stats_of(obs_long)
+  mixed <- lmer_check(obs_long, d)
+  check <- check_ols_equivalence(obs, mixed) |> mutate(species = d$species, .before = 1)
   perm_M_idx <- replicate(n_perm, random_derangement(k), simplify = FALSE)
   perm_L_idx <- replicate(n_perm, random_derangement(k), simplify = FALSE)
   boot_idx <- replicate(n_boot, sample.int(k, replace = TRUE), simplify = FALSE)
@@ -216,8 +241,8 @@ analyse <- function(d, rows = seq_len(nrow(d$pairs)), lmer_fit = TRUE) {
               indirect = obs[["indirect"]], indirect_lo = q(boot, "indirect", 0.025), indirect_hi = q(boot, "indirect", 0.975),
               total_c = obs[["total_c"]], total_c_lo = q(boot, "total_c", 0.025), total_c_hi = q(boot, "total_c", 0.975),
               prop_mediated = obs[["prop_mediated"]])
-  if (lmer_fit) s <- bind_cols(s, lmer_check(obs_long, d))
-  list(summary = s, null = bind_rows(as_tibble(nullM) |> mutate(null = "methylation permuted"),
+  s <- bind_cols(s, mixed)
+  list(summary = s, check = check, null = bind_rows(as_tibble(nullM) |> mutate(null = "methylation permuted"),
                                      as_tibble(nullL) |> mutate(null = "lncRNA permuted")) |> mutate(species = d$species))
 }
 
@@ -264,11 +289,7 @@ knitr::kable(primary$per_species |> select(species, rows_path, path_a, path_a_lo
 OLS vs the pre-registered `lmer` fits on the observed data:
 
 ```{r lmer-check}
-chk <- primary$per_species |> transmute(species,
-  d_R2_combined = R2_combined - R2_combined_lmer, d_unique_M = unique_M - unique_M_lmer,
-  d_unique_L = unique_L - unique_L_lmer, d_shared = shared - shared_lmer, any_singular)
-chk <- chk |> mutate(max_abs = pmax(abs(d_R2_combined), abs(d_unique_M), abs(d_unique_L), abs(d_shared)),
-                     within_tolerance = max_abs < 1e-4)
+chk <- bind_rows(lapply(res, `[[`, "check"))
 write_csv(chk, file.path(out_dir, "ols_vs_lmer.csv"))
 knitr::kable(chk, digits = 7)
 ```
@@ -297,8 +318,9 @@ Points are commonality fractions; bars are 95% colony-bootstrap intervals.
 ## Sensitivity check: genes with >= 20 CpGs
 
 ```{r sens}
-res20 <- lapply(dat, function(d) analyse(d, which(d$pairs$n_cpg >= 20), lmer_fit = FALSE))
+res20 <- lapply(dat, function(d) analyse(d, which(d$pairs$n_cpg >= 20)))
 sens20 <- decide(bind_rows(lapply(res20, `[[`, "summary")))
+write_csv(bind_rows(lapply(res20, `[[`, "check")), file.path(out_dir, "sens_mincpg20_ols_vs_lmer.csv"))
 write_csv(sens20$per_species, file.path(out_dir, "sens_mincpg20_summary.csv"))
 knitr::kable(sens20$per_species |> select(species, pairs, R2_combined, unique_M, p_unique_M, unique_L, p_unique_L, shared, pattern), digits = 5)
 ```

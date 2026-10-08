@@ -12,7 +12,8 @@ discovered after the fact.
   the workaround in `docs/decisions.md`.
 - Every external file is listed in `config/upstream.yml` and checksummed in
   `config/upstream.lock.yml`. Do not read URLs that are not in the manifest.
-  Add the entry, run `Rscript R/fetch.R`, commit the lock.
+  Add the entry, review the inputs, run `Rscript R/fetch.R --refresh-lock`,
+  commit the lock. Normal fetches verify checksums and never update the lock.
 - Analyses read only through `R/load.R`, never from `data/raw/`.
 
 ## 2. Pre-registration is mandatory

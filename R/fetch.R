@@ -1,8 +1,10 @@
 # Fetch upstream files listed in config/upstream.yml and record checksums.
 #
 # Usage (from repo root):
-#   Rscript R/fetch.R            # download anything missing, write/update lock
-#   Rscript R/fetch.R --force    # re-download everything
+#   Rscript R/fetch.R            # download anything missing, verify against lock
+#   Rscript R/fetch.R --force    # re-download everything, still verify against lock
+#   Rscript R/fetch.R --refresh-lock # explicitly accept current files / new entries
+#   Rscript R/fetch.R --force --refresh-lock # download and accept a new baseline
 #   Rscript R/fetch.R --check    # re-download to temp, compare md5 to lock, exit 1 on drift
 #
 # Also sourced by _targets.R; the functions below are the API.
@@ -41,9 +43,17 @@ download_one <- function(url, dest, quiet = TRUE) {
 }
 
 # Download every manifest entry (if missing or force), return a data.frame of
-# id, dest, md5, bytes, fetched_on, and write the lock file.
-fetch_all <- function(force = FALSE, manifest = read_manifest(), write_lock = TRUE) {
+# id, dest, md5, bytes, fetched_on. Normal runs never modify the lock.
+# Updating or creating a baseline requires refresh_lock = TRUE.
+fetch_all <- function(force = FALSE, manifest = read_manifest(), write_lock = TRUE,
+                      refresh_lock = FALSE) {
   lock <- read_lock()
+  if (!refresh_lock) {
+    missing <- vapply(manifest$files, function(f) is.null(lock[[f$id]]$md5), logical(1))
+    if (any(missing)) stop("Files missing from checksum lock: ",
+                           paste(vapply(manifest$files[missing], `[[`, "", "id"), collapse = ", "),
+                           ". Review inputs, then run `Rscript R/fetch.R --refresh-lock`.")
+  }
   rows <- lapply(manifest$files, function(f) {
     need <- force || !file.exists(f$dest)
     if (need) {
@@ -54,14 +64,17 @@ fetch_all <- function(force = FALSE, manifest = read_manifest(), write_lock = TR
     prev <- lock[[f$id]]
     fetched_on <- if (!need && !is.null(prev$fetched_on)) prev$fetched_on else as.character(Sys.Date())
     if (!is.null(prev$md5) && prev$md5 != md5) {
-      message("  NOTE: ", f$id, " md5 changed since lock (", prev$md5, " -> ", md5, ")")
+      if (!refresh_lock) stop("Checksum mismatch for ", f$id, " (expected ", prev$md5,
+                              ", got ", md5, "). Lock unchanged. Review the change before running ",
+                              "`Rscript R/fetch.R --refresh-lock`.")
+      message("  Refreshing: ", f$id, " md5 changed (", prev$md5, " -> ", md5, ")")
     }
     data.frame(id = f$id, layer = f$layer, species = f$species, dest = f$dest,
                md5 = md5, bytes = file.info(f$dest)$size,
                fetched_on = fetched_on, stringsAsFactors = FALSE)
   })
   out <- do.call(rbind, rows)
-  if (write_lock) write_lock_file(out, manifest)
+  if (write_lock && refresh_lock) write_lock_file(out, manifest)
   out
 }
 
@@ -79,7 +92,7 @@ write_lock_file <- function(df, manifest = read_manifest(), path = lock_path) {
 # Returns a data.frame with one row per drifted/missing file (0 rows = clean).
 check_drift <- function(manifest = read_manifest()) {
   lock <- read_lock()
-  if (!length(lock)) stop("No lock file; run `Rscript R/fetch.R` first.")
+  if (!length(lock)) stop("No lock file; review inputs and run `Rscript R/fetch.R --refresh-lock` first.")
   tmpdir <- tempfile("upstream-check-")
   dir.create(tmpdir)
   on.exit(unlink(tmpdir, recursive = TRUE), add = TRUE)
@@ -109,7 +122,7 @@ if (sys.nframe() == 0L) {
     }
     cat("Upstream clean: all", length(read_manifest()$files), "files match the lock.\n")
   } else {
-    res <- fetch_all(force = "--force" %in% args)
+    res <- fetch_all(force = "--force" %in% args, refresh_lock = "--refresh-lock" %in% args)
     print(res[, c("id", "bytes", "md5", "fetched_on")], row.names = FALSE)
   }
 }

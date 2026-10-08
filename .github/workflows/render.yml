@@ -34,6 +34,8 @@ jobs:
             purrr
             ggplot2
             testthat
+            targets
+            tarchetypes
             knitr
             rmarkdown
             quarto

@@ -12,8 +12,10 @@ list(
   # ---- Upstream --------------------------------------------------------------
   tar_target(manifest_file, "config/upstream.yml", format = "file"),
   tar_target(manifest, yaml::read_yaml(manifest_file)),
+  tar_target(lock_file, "config/upstream.lock.yml", format = "file"),
   tar_target(raw_files, {
-    fetch_all(manifest = manifest, write_lock = TRUE)
+    lock_file
+    fetch_all(manifest = manifest, write_lock = FALSE)
     vapply(manifest$files, `[[`, "", "dest")
   }, format = "file"),
 
@@ -39,18 +41,48 @@ list(
   }, format = "file"),
 
   # ---- Hypotheses (local or raven; not run in Actions, see D-004) ---------------
-  tar_quarto(H01, "hypotheses/H01/analysis.qmd", extra_files = c("R/expression.R", "R/varpart.R")),
-  tar_quarto(H02, "hypotheses/H02/analysis.qmd", extra_files = "R/expression.R"),
-  tar_quarto(H03, "hypotheses/H03/analysis.qmd", extra_files = "R/expression.R"),
-  tar_quarto(H04, "hypotheses/H04/analysis.qmd", extra_files = c("R/expression.R", "R/varpart.R")),   # raven
-  tar_quarto(H05, "hypotheses/H05/analysis.qmd", extra_files = c("R/expression.R", "R/methylation.R")),
-  tar_quarto(H06, "hypotheses/H06/analysis.qmd", extra_files = c("R/expression.R", "R/methylation.R")),
-  tar_quarto(H15, "hypotheses/H15/analysis.qmd", extra_files = c("R/expression.R", "R/methylation.R")),
-  tar_quarto(H16, "hypotheses/H16/analysis.qmd", extra_files = c("R/expression.R", "R/methylation.R")),
-  tar_quarto(H17, "hypotheses/H17/analysis.qmd", extra_files = c("R/expression.R", "R/neighbors.R")),
-  tar_quarto(H18, "hypotheses/H18/analysis.qmd", extra_files = c("R/expression.R", "R/methylation.R", "R/neighbors.R")),
-  tar_quarto(H07, "hypotheses/H07/analysis.qmd", extra_files = "R/expression.R"),
-  tar_quarto(H08, "hypotheses/H08/analysis.qmd", extra_files = "R/expression.R"),   # raven
-  tar_quarto(H09, "hypotheses/H09/analysis.qmd", extra_files = "R/expression.R"),   # raven
-  tar_quarto(H10, "hypotheses/H10/analysis.qmd")
+  # execute_params is evaluated at run time: declare both dependencies while
+  # passing no extra Quarto parameters. Data changes must invalidate analyses
+  # even when the reproduction gate returns the same successful test results.
+  tar_quarto(H01, "hypotheses/H01/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = c("R/expression.R", "R/varpart.R")),
+  tar_quarto(H02, "hypotheses/H02/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = "R/expression.R"),
+  tar_quarto(H03, "hypotheses/H03/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = "R/expression.R"),
+  tar_quarto(H04, "hypotheses/H04/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = c("R/expression.R", "R/varpart.R")),   # raven
+  tar_quarto(H05, "hypotheses/H05/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = c("R/expression.R", "R/methylation.R")),
+  tar_quarto(H06, "hypotheses/H06/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = c("R/expression.R", "R/methylation.R")),
+  tar_quarto(H15, "hypotheses/H15/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = c("R/expression.R", "R/methylation.R")),
+  tar_quarto(H16, "hypotheses/H16/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = c("R/expression.R", "R/methylation.R")),
+  tar_quarto(H17, "hypotheses/H17/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = c("R/expression.R", "R/neighbors.R")),
+  tar_quarto(H18, "hypotheses/H18/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = c("R/expression.R", "R/methylation.R", "R/neighbors.R")),
+  tar_quarto(H07, "hypotheses/H07/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = "R/expression.R"),
+  tar_quarto(H08, "hypotheses/H08/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = "R/expression.R"),   # raven
+  tar_quarto(H09, "hypotheses/H09/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = "R/expression.R"),   # raven
+  tar_quarto(H10, "hypotheses/H10/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() })
 )

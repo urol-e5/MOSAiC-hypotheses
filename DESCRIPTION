@@ -29,6 +29,8 @@ Imports:
     matrixStats,
     jsonlite,
     DESeq2,
+    apeglm,
+    WGCNA,
     edgeR,
     limma,
     vegan,

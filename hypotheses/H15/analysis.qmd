@@ -46,9 +46,9 @@ selection redone inside each resample.
 
 Implementation notes (not in `hypothesis.md`; none changes the rule):
 
-- The rule's two `inconclusive` clauses are checked before
-  `not supported`: if the GBM b31 CI includes 0 in two or more species there
-  is no shift whose persistence can be measured, and the verdict is
+- The rule's no-shift `inconclusive` clause is checked before
+  `supported` or `not supported`: if the GBM b31 CI includes 0 in two or
+  more species there is no shift whose persistence can be measured, and the verdict is
   `inconclusive` regardless of dP.
 - In a bootstrap resample a colony drawn twice is not its own LOCO
   reference: D for a draw is the mean over draws of *other* original
@@ -174,8 +174,8 @@ decide <- function(s) {
   s <- s |> mutate(dP_boot_p_holm = p.adjust(dP_boot_p, "holm"),
                    shift_gbm = b31_gbm_lo > 0 | b31_gbm_hi < 0,
                    passes = dP_lo > 0 & P_gbm > P_T)
-  verdict <- if (sum(s$passes) >= 2) "supported"
-    else if (sum(!s$shift_gbm) >= 2) "inconclusive"
+  verdict <- if (sum(!s$shift_gbm) >= 2) "inconclusive"
+    else if (sum(s$passes) >= 2) "supported"
     else if (sum(s$dP <= 0) >= 2) "not supported"
     else "inconclusive"
   list(per_species = s, verdict = verdict)

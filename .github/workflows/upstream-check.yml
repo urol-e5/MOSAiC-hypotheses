@@ -32,7 +32,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          body="$(printf 'The weekly upstream check found files whose MD5 no longer matches `config/upstream.lock.yml`.\n\n```\n%s\n```\n\nDecide whether to refresh the lock (`Rscript R/fetch.R --force`, rerun the reproduction gate, commit) or pin the old copy.\n' "$(cat upstream-drift.csv)")"
+          body="$(printf 'The weekly upstream check found files whose MD5 no longer matches `config/upstream.lock.yml`.\n\n```\n%s\n```\n\nDecide whether to refresh the lock (`Rscript R/fetch.R --force --refresh-lock`, rerun the reproduction gate, commit) or pin the old copy.\n' "$(cat upstream-drift.csv)")"
           existing=$(gh issue list --label upstream-drift --state open --json number --jq '.[0].number')
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --body "$body"

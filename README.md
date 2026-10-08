@@ -39,7 +39,15 @@ Rscript tests/run.R        # reproduction gate
 quarto render reports      # status board + QC
 ```
 
-Or all at once: `Rscript -e 'targets::tar_make()'`.
+Or all at once: `Rscript -e 'targets::tar_make()'`. Hypothesis targets wait
+for the reproduction gate and rerun when harmonized inputs change.
+
+Normal fetches (including `--force`) verify files against the committed lock
+and fail on checksum mismatches or unrecorded inputs. To intentionally accept
+reviewed upstream changes, run `Rscript R/fetch.R --force --refresh-lock`,
+rerun harmonization and the reproduction gate, and commit the updated lock.
+Use `--refresh-lock` without `--force` to record reviewed local files or new
+manifest entries.
 
 ## Adding a hypothesis
 
