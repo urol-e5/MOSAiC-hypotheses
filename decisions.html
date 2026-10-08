@@ -315,6 +315,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#d-011-2026-10-07-mirna-libraries-below-1000-reads-are-dropped" id="toc-d-011-2026-10-07-mirna-libraries-below-1000-reads-are-dropped" class="nav-link" data-scroll-target="#d-011-2026-10-07-mirna-libraries-below-1000-reads-are-dropped">D-011 (2026-10-07) miRNA libraries below 1,000 reads are dropped</a></li>
   <li><a href="#d-012-2026-10-07-r-environment-on-raven" id="toc-d-012-2026-10-07-r-environment-on-raven" class="nav-link" data-scroll-target="#d-012-2026-10-07-r-environment-on-raven">D-012 (2026-10-07) R environment on raven</a></li>
   <li><a href="#d-013-2026-10-07-h04-permanova-bootstrap-runs-in-parallel" id="toc-d-013-2026-10-07-h04-permanova-bootstrap-runs-in-parallel" class="nav-link" data-scroll-target="#d-013-2026-10-07-h04-permanova-bootstrap-runs-in-parallel">D-013 (2026-10-07) H04 PERMANOVA bootstrap runs in parallel</a></li>
+  <li><a href="#d-014-2026-10-07-lncrna-features-have-no-strand" id="toc-d-014-2026-10-07-lncrna-features-have-no-strand" class="nav-link" data-scroll-target="#d-014-2026-10-07-lncrna-features-have-no-strand">D-014 (2026-10-07) lncRNA features have no strand</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -403,6 +404,10 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="d-013-2026-10-07-h04-permanova-bootstrap-runs-in-parallel">D-013 (2026-10-07) H04 PERMANOVA bootstrap runs in parallel</h2>
 <p>In the first raven run the R2 bootstrap (200 resamples, one Euclidean distance over up to 1.8 M CpGs each) ran serially and took about 1 h 45 min of the 3 h 44 min total. <code>permanova_one()</code> now draws all bootstrap indices serially in the main process, in the same order <code>replicate()</code> did, and forks only the <code>adonis2</code> fits with <code>parallel::mclapply</code> (<code>H04_WORKERS</code> cores). <code>adonis2(..., permutations = 0)</code> uses no random numbers, so the draws and the RNG state afterwards are unchanged: rerunning the purled qmd for Apul reproduced the committed <code>permanova.csv</code> rows exactly (tolerance 0). Each Ptuh worker holds one resampled copy of the matrix, about 1 GB.</p>
 <p>Open: variancePartition fits ran at about 0.24 s per feature per worker with 47 workers, against 0.026 s in a single-process benchmark. Check whether threaded BLAS inside forked workers is the cause before the next large run.</p>
+</section>
+<section id="d-014-2026-10-07-lncrna-features-have-no-strand" class="level2">
+<h2 class="anchored" data-anchor-id="d-014-2026-10-07-lncrna-features-have-no-strand">D-014 (2026-10-07) lncRNA features have no strand</h2>
+<p><code>lncrna_&lt;species&gt;_features</code> comes from the featureCounts table header (<code>Chr</code>, <code>Start</code>, <code>End</code>, <code>Strand</code>, <code>Length</code>) of the upstream <code>*_lncRNA_counts.clean.filtered.txt</code> files, and <code>Strand</code> is <code>+</code> for every lncRNA in all three species (15,559 / 8,319 / 11,236). Gene coordinates from the GFFs are about half <code>-</code>, so this is a property of the lncRNA SAF/GTF used upstream, not of harmonization. Treat lncRNA strand as unknown. H17 drops its orientation split and excludes all pairs within 2 kb in its read-through check (H17 Amendment 1). Worth an issue on <code>urol-e5/timeseries_molecular</code> asking whether stranded lncRNA coordinates exist.</p>
 
 
 </section>
