@@ -1,0 +1,4 @@
+species,samples,colonies,genes,genes_with_goslim,n_cells.cm2,n_chla.ug.cm2,n_calc.umol.cm2.hr,n_Host_AFDW.mg.cm2
+Apul,39,10,21066,4775,39,39,38,39
+Peve,38,10,20841,4269,38,38,38,37
+Ptuh,39,10,20796,4333,39,39,37,39

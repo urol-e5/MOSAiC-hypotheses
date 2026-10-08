@@ -2,7 +2,7 @@
 id: H09
 slug: symbiont-state-expression-modules
 title: Symbiont density and chlorophyll predict host gene-expression modules
-status: planned
+status: not supported
 tier: 3
 layers: [genes, physiology]
 species: [Apul, Peve, Ptuh]
