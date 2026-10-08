@@ -1,0 +1,255 @@
+---
+title: "H19: methylome turnover and energy reserves"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H19", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+n_boot <- 2000
+cov_floor <- 10
+set.seed(20261008)
+```
+
+## Pre-registered decision rule
+
+> - `supported` if the pooled slope is negative with 95% CI excluding 0 and
+>   the per-species estimate is negative in at least two species.
+> - `not supported` if the pooled slope is >= 0, or the CI includes 0 and
+>   |slope| < 0.2 SD.
+> - `inconclusive` otherwise.
+
+Amendment 2 (after the first run showed the median-over-all-CpGs score is
+degenerate; written before any association was seen) restricts turnover to
+CpGs with species-mean methylation 10–90% and uses the mean over them.
+
+Pooled slope: `lm(z(AFDW_mean) ~ z(turnover_meth) + species)`, z within
+species, one row per colony with CpG data at >= 3 timepoints. Per-species
+estimate: Spearman rho (Amendment 1). Amendment 1 (`hypothesis.md`, before
+any analysis) also fixes the noise correction at the 10x coverage floor
+because the CpG layer has no coverage (D-015), and defines the lipid ratio
+as log((TG + DG + CE) / (LPC + Cer)).
+
+Implementation notes (not in `hypothesis.md`; none changes the rule):
+
+- Methylation turnover uses all of a colony's CpG timepoints (3 or 4);
+  expression turnover uses the same timepoints where expression exists.
+- Colony means of physiology, lipid ratio and log(Methionine/SAM) are taken
+  over all of that colony's samples in the layer, at any timepoint.
+- The rule is applied as written to the primary model. Secondary and
+  sensitivity models are reported with the same slope, CI and rho columns;
+  verdicts for sensitivity models use the same rule.
+
+## Data
+
+```{r turnover}
+turnover_species <- function(sp) {
+  cpg <- as_count_matrix(load_cpg(sp)) / 100
+  mu <- rowMeans(cpg)
+  cpg <- cpg[mu >= 0.1 & mu <= 0.9, , drop = FALSE]   # Amendment 2: CpGs that can vary
+  smp <- design |> filter(species == sp, has_cpg %in% TRUE, sample_id %in% colnames(cpg))
+  keep_cols <- smp |> count(colony) |> filter(n >= 3) |> pull(colony)
+  ex <- prep_vst(load_genes(sp), design)
+  one <- function(col, tps = NULL) {
+    s <- smp |> filter(colony == col, is.null(tps) | timepoint %in% tps)
+    if (nrow(s) < 3) return(NULL)
+    p <- cpg[, s$sample_id, drop = FALSE]
+    raw <- matrixStats::rowVars(p)
+    noise <- rowMeans(p * (1 - p)) / cov_floor
+    e_ids <- intersect(s$sample_id, colnames(ex$vst))
+    tibble(species = sp, colony = col, n_tp = nrow(s),
+           turnover_meth = mean(raw - noise), turnover_meth_median = median(raw - noise),
+           turnover_meth_raw = mean(raw),
+           turnover_expr = if (length(e_ids) >= 3) median(matrixStats::rowVars(ex$vst[, e_ids, drop = FALSE])) else NA_real_,
+           n_tp_expr = length(e_ids))
+  }
+  list(all = bind_rows(lapply(keep_cols, one)),
+       tp134 = bind_rows(lapply(keep_cols, one, tps = c("TP1", "TP3", "TP4"))),
+       n_cpg = nrow(cpg), n_cpg_all = length(mu))
+}
+tv <- lapply(setNames(species_all, species_all), turnover_species)
+turn <- bind_rows(lapply(tv, `[[`, "all"))
+turn134 <- bind_rows(lapply(tv, `[[`, "tp134"))
+```
+
+```{r phenotypes}
+colony_info <- design |> distinct(colony, species, site, nutrient)
+phys <- load_physiology() |> select(sample_id, Host_AFDW.mg.cm2, prot_mg.cm2, cells.cm2) |>
+  left_join(design |> select(sample_id, colony), by = "sample_id") |>
+  group_by(colony) |>
+  summarise(AFDW = mean(Host_AFDW.mg.cm2, na.rm = TRUE),
+            AFDW_per_prot = mean(Host_AFDW.mg.cm2 / prot_mg.cm2, na.rm = TRUE),
+            cells = mean(cells.cm2, na.rm = TRUE), n_phys = n(), .groups = "drop")
+
+lip <- load_lipidomics()
+lclass <- sub("[ (].*", "", lip$feature_id)
+lipid_map <- tibble(feature_id = lip$feature_id, class = lclass,
+                    group = case_when(lclass %in% c("TG", "DG", "CE") ~ "storage",
+                                      lclass %in% c("LPC", "Cer") ~ "membrane", TRUE ~ "neither"))
+write_csv(lipid_map, file.path(out_dir, "lipid_class_map.csv"))
+lm_ <- as_count_matrix(lip)
+ratio <- tibble(sample_id = colnames(lm_),
+                storage = colSums(lm_[lipid_map$group == "storage", , drop = FALSE], na.rm = TRUE),
+                membrane = colSums(lm_[lipid_map$group == "membrane", , drop = FALSE], na.rm = TRUE)) |>
+  mutate(log_ratio = log(storage / membrane)) |>
+  left_join(design |> select(sample_id, colony), by = "sample_id") |>
+  group_by(colony) |> summarise(lipid_ratio = mean(log_ratio[is.finite(log_ratio)]), n_lipid = n(), .groups = "drop")
+
+met <- load_metabolomics()
+mm <- as_count_matrix(met)
+metab <- tibble(sample_id = colnames(mm), met = mm["Methionine", ], sam = mm["S-Adenosylmethionine (SAM)", ]) |>
+  mutate(log_met_sam = log(met / sam)) |>
+  left_join(design |> select(sample_id, colony), by = "sample_id") |>
+  group_by(colony) |> summarise(log_met_sam = mean(log_met_sam[is.finite(log_met_sam)]), n_metab = n(), .groups = "drop")
+
+dat <- turn |> left_join(colony_info, by = c("colony", "species")) |>
+  left_join(phys, by = "colony") |> left_join(ratio, by = "colony") |> left_join(metab, by = "colony")
+write_csv(dat, file.path(out_dir, "colony_table.csv"))
+
+n_tab <- dat |> group_by(species) |>
+  summarise(colonies = n(), with_4_tp = sum(n_tp == 4), with_afdw = sum(is.finite(AFDW)),
+            with_lipid = sum(is.finite(lipid_ratio)), with_met_sam = sum(is.finite(log_met_sam)), .groups = "drop") |>
+  left_join(tibble(species = species_all, cpgs_all = sapply(tv, `[[`, "n_cpg_all"), cpgs_10_90 = sapply(tv, `[[`, "n_cpg")), by = "species")
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab, format.args = list(big.mark = ","))
+```
+
+Lipid classes (`lipid_class_map.csv`):
+
+```{r lipid-map}
+knitr::kable(lipid_map |> count(class, group))
+```
+
+## Model
+
+```{r functions}
+zs <- function(x) if (sum(is.finite(x)) > 1 && sd(x, na.rm = TRUE) > 0) (x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE) else x * NA
+
+fit_one <- function(d, response, predictor = "turnover_meth", covars = character()) {
+  d <- d |> filter(is.finite(.data[[response]]), is.finite(.data[[predictor]]),
+                   if (length(covars)) if_all(all_of(covars), ~ !is.na(.x)) else TRUE) |>
+    group_by(species) |> filter(n() >= 3) |>
+    mutate(y = zs(.data[[response]]), x = zs(.data[[predictor]]),
+           across(all_of(covars), ~ if (is.numeric(.x)) zs(.x) else .x, .names = "c_{.col}")) |> ungroup()
+  rhs <- paste(c("x", "species", if (length(covars)) paste0("c_", covars)), collapse = " + ")
+  f <- lm(as.formula(paste("y ~", rhs)), data = d)
+  ci <- confint(f)["x", ]
+  rho <- d |> group_by(species) |> group_modify(function(g, k) {
+    b <- replicate(n_boot, { i <- sample.int(nrow(g), replace = TRUE); suppressWarnings(cor(g$x[i], g$y[i], method = "spearman")) })
+    tibble(n = nrow(g), rho = cor(g$x, g$y, method = "spearman"),
+           rho_lo = quantile(b, 0.025, na.rm = TRUE), rho_hi = quantile(b, 0.975, na.rm = TRUE))
+  }) |> ungroup()
+  list(fit = tibble(response = response, predictor = predictor, covariates = paste(covars, collapse = "+"),
+                    n = nrow(d), slope = unname(coef(f)["x"]), lo = ci[1], hi = ci[2],
+                    p = summary(f)$coefficients["x", 4],
+                    n_rho_negative = sum(rho$rho < 0, na.rm = TRUE)),
+       rho = rho |> mutate(response = response, covariates = paste(covars, collapse = "+"), .before = 1),
+       data = d)
+}
+
+decide <- function(r) {
+  with(r, if (slope < 0 && hi < 0 && n_rho_negative >= 2) "supported"
+          else if (slope >= 0 || (lo <= 0 && hi >= 0 && abs(slope) < 0.2)) "not supported"
+          else "inconclusive")
+}
+```
+
+```{r primary}
+prim <- fit_one(dat, "AFDW")
+primary_verdict <- decide(prim$fit)
+write_csv(prim$fit |> mutate(verdict = primary_verdict), file.path(out_dir, "primary.csv"))
+write_csv(prim$rho, file.path(out_dir, "primary_per_species_rho.csv"))
+knitr::kable(prim$fit, digits = 3)
+knitr::kable(prim$rho, digits = 3)
+```
+
+**Primary verdict: `r primary_verdict`.**
+
+```{r fig, fig.width = 9, fig.height = 3.6}
+fd <- prim$data |> select(species, colony, x, y)
+write_csv(fd, file.path(out_dir, "figure_data.csv"))
+g <- ggplot(fd, aes(x, y)) +
+  geom_smooth(method = "lm", se = FALSE, colour = "grey60", linewidth = 0.6) +
+  geom_point(colour = "#1b6ca8", size = 2) + facet_wrap(~ species) +
+  labs(x = "Excess methylation turnover (z within species)", y = "Host AFDW, colony mean (z within species)") +
+  theme_bw()
+ggsave(file.path(out_dir, "afdw_vs_turnover.png"), g, width = 9, height = 3.6, dpi = 150)
+g
+```
+
+## Secondary (BH across the three)
+
+```{r secondary}
+sec <- list(fit_one(dat, "lipid_ratio"), fit_one(dat, "log_met_sam"),
+            fit_one(dat, "AFDW", covars = "turnover_expr"))
+sec_tab <- bind_rows(lapply(sec, `[[`, "fit")) |> mutate(p_bh = p.adjust(p, "BH"))
+write_csv(sec_tab, file.path(out_dir, "secondary.csv"))
+write_csv(bind_rows(lapply(sec, `[[`, "rho")), file.path(out_dir, "secondary_per_species_rho.csv"))
+knitr::kable(sec_tab, digits = 3)
+```
+
+Predicted signs: lipid ratio negative, log(Methionine/SAM) positive, AFDW
+negative after adjusting for expression turnover.
+
+## Sensitivity checks
+
+```{r sensitivity}
+dat134 <- turn134 |> left_join(colony_info, by = c("colony", "species")) |> left_join(phys, by = "colony")
+sens <- list(
+  `TP1, TP3, TP4 only` = fit_one(dat134, "AFDW"),
+  `site covariate` = fit_one(dat, "AFDW", covars = "site"),
+  `AFDW per protein` = fit_one(dat, "AFDW_per_prot"),
+  `uncorrected variance` = fit_one(dat, "AFDW", predictor = "turnover_meth_raw"),
+  `median over CpGs` = fit_one(dat, "AFDW", predictor = "turnover_meth_median"),
+  `cells.cm2 covariate` = fit_one(dat, "AFDW", covars = "cells"))
+sens_tab <- bind_rows(lapply(names(sens), function(k) sens[[k]]$fit |> mutate(check = k, .before = 1))) |>
+  rowwise() |> mutate(verdict = decide(pick(everything()))) |> ungroup()
+write_csv(sens_tab, file.path(out_dir, "sensitivity.csv"))
+knitr::kable(sens_tab, digits = 3)
+```
+
+Rank agreement of corrected and uncorrected turnover within species:
+
+```{r rank-agree}
+ra <- dat |> group_by(species) |> summarise(spearman_corrected_vs_raw = cor(turnover_meth, turnover_meth_raw, method = "spearman"), .groups = "drop")
+knitr::kable(ra, digits = 3)
+```
+
+## Descriptive: species means (no ranking claim)
+
+```{r species-means}
+sm <- dat |> group_by(species) |> summarise(across(c(turnover_meth, turnover_expr, AFDW, lipid_ratio, log_met_sam), ~ mean(.x, na.rm = TRUE)), .groups = "drop")
+write_csv(sm, file.path(out_dir, "species_means.csv"))
+knitr::kable(sm, digits = 4)
+```
+
+```{r summary}
+verdicts <- tibble(analysis = c("primary", sens_tab$check), verdict = c(primary_verdict, sens_tab$verdict))
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+knitr::kable(verdicts)
+```
+
+## Caveats
+
+- About 10 colonies per species, pooled n in the table above; the 95% CI
+  half-width on a standardized slope at n about 27 is about 0.4 SD.
+- No per-sample coverage (D-015): the noise correction is a fixed 10x bound
+  and colony differences in sequencing depth are not removed.
+- CpG sets differ about 20-fold across species (D-008); turnover is
+  standardized within species before pooling.

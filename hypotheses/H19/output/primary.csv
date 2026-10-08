@@ -1,0 +1,2 @@
+response,predictor,covariates,n,slope,lo,hi,p,n_rho_negative,verdict
+AFDW,turnover_meth,,26,-0.015363627607221679,-0.4574626653150054,0.4267354101005621,0.9431971556128549,2,not supported

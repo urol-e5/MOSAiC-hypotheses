@@ -1,0 +1,8 @@
+analysis,verdict
+primary,not supported
+"TP1, TP3, TP4 only",not supported
+site covariate,not supported
+AFDW per protein,not supported
+uncorrected variance,not supported
+median over CpGs,not supported
+cells.cm2 covariate,not supported

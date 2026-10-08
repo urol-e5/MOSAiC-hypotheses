@@ -2,7 +2,7 @@
 id: H19
 slug: methylation-turnover-energetic-cost
 title: Colonies with higher methylome turnover have lower host biomass and storage-lipid reserves
-status: planned
+status: not supported
 tier: 4
 layers: [cpg, genes, physiology, lipidomics, metabolomics]
 species: [Apul, Peve, Ptuh]
