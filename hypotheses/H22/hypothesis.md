@@ -2,7 +2,7 @@
 id: H22
 slug: held-out-molecular-forecast
 title: Expression at one timepoint forecasts next-timepoint physiology at held-out sites better than physiology alone
-status: planned
+status: inconclusive
 tier: 4
 layers: [genes, physiology]
 species: [Apul, Peve, Ptuh]

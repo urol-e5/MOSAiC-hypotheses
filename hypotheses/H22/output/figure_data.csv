@@ -1,0 +1,329 @@
+row,y1,k,n_pc_selected,species,trait,cv,site,model,pred
+1,1.211578181202209,13,0,Apul,AFDW,site,Manava,baseline,1.0861495447297882
+1,1.211578181202209,13,0,Apul,AFDW,site,Manava,baseline + expression,1.0861649704454786
+2,0.6641778277075385,13,0,Apul,AFDW,site,Manava,baseline,0.9856518978098673
+2,0.6641778277075385,13,0,Apul,AFDW,site,Manava,baseline + expression,0.9856099511272449
+3,1.1328360830594757,13,0,Apul,AFDW,site,Manava,baseline,1.4539366447967448
+3,1.1328360830594757,13,0,Apul,AFDW,site,Manava,baseline + expression,1.4539925269898566
+4,1.1518671498015645,13,0,Apul,AFDW,site,Manava,baseline,1.0164523859736785
+4,1.1518671498015645,13,0,Apul,AFDW,site,Manava,baseline + expression,1.0165702306768596
+5,1.6196291734632895,13,0,Apul,AFDW,site,Manava,baseline,0.979329915893908
+5,1.6196291734632895,13,0,Apul,AFDW,site,Manava,baseline + expression,0.9792972592741565
+6,2.5866328512104606,13,0,Apul,AFDW,site,Manava,baseline,1.5550962795871373
+6,2.5866328512104606,13,0,Apul,AFDW,site,Manava,baseline + expression,1.5550035091299106
+7,2.090794723652589,13,0,Apul,AFDW,site,Manava,baseline,1.0422996415765096
+7,2.090794723652589,13,0,Apul,AFDW,site,Manava,baseline + expression,1.0423795041037238
+8,1.2808344192884495,13,0,Apul,AFDW,site,Manava,baseline,1.0787400751734153
+8,1.2808344192884495,13,0,Apul,AFDW,site,Manava,baseline + expression,1.0785613367328062
+9,3.396840090414332,13,0,Apul,AFDW,site,Manava,baseline,1.5192259511256512
+9,3.396840090414332,13,0,Apul,AFDW,site,Manava,baseline + expression,1.5191858916079743
+10,2.0621379829765623,13,0,Apul,AFDW,site,Manava,baseline,1.0696124873251045
+10,2.0621379829765623,13,0,Apul,AFDW,site,Manava,baseline + expression,1.0696522140123939
+11,0.2940515271791204,13,0,Apul,AFDW,site,Manava,baseline,1.0757060060562935
+11,0.2940515271791204,13,0,Apul,AFDW,site,Manava,baseline + expression,1.075531726137273
+12,1.2749253881550244,13,0,Apul,AFDW,site,Manava,baseline,1.4147490487416494
+12,1.2749253881550244,13,0,Apul,AFDW,site,Manava,baseline + expression,1.4148625165520485
+13,1.205565886486482,13,0,Apul,AFDW,site,Manava,baseline,1.0067669693803096
+13,1.205565886486482,13,0,Apul,AFDW,site,Manava,baseline + expression,1.006899046665975
+14,1.1161658595036907,13,0,Apul,AFDW,site,Manava,baseline,0.9850153384074479
+14,1.1161658595036907,13,0,Apul,AFDW,site,Manava,baseline + expression,0.9849743271398501
+15,2.333456819190185,13,0,Apul,AFDW,site,Manava,baseline,1.501791456482588
+15,2.333456819190185,13,0,Apul,AFDW,site,Manava,baseline + expression,1.5017770167078193
+16,1.2405679876621118,14,11,Apul,AFDW,site,Mahana,baseline,2.2206832112266475
+16,1.2405679876621118,14,11,Apul,AFDW,site,Mahana,baseline + expression,2.105868343098316
+17,1.1037552686552203,14,11,Apul,AFDW,site,Mahana,baseline,0.8178641356899548
+17,1.1037552686552203,14,11,Apul,AFDW,site,Mahana,baseline + expression,0.9522521838627579
+18,1.3933938258841252,14,11,Apul,AFDW,site,Mahana,baseline,2.208351906248884
+18,1.3933938258841252,14,11,Apul,AFDW,site,Mahana,baseline + expression,2.289383810090501
+19,0.8745876449004224,14,11,Apul,AFDW,site,Mahana,baseline,1.892944105517255
+19,0.8745876449004224,14,11,Apul,AFDW,site,Mahana,baseline + expression,1.5227732756343586
+20,0.9063450924095308,14,11,Apul,AFDW,site,Mahana,baseline,0.6045215660601364
+20,0.9063450924095308,14,11,Apul,AFDW,site,Mahana,baseline + expression,0.9687003042481445
+21,1.053486927145767,14,11,Apul,AFDW,site,Mahana,baseline,2.0932747030485066
+21,1.053486927145767,14,11,Apul,AFDW,site,Mahana,baseline + expression,2.324817896299226
+22,1.294882704429518,14,11,Apul,AFDW,site,Mahana,baseline,1.464228692598142
+22,1.294882704429518,14,11,Apul,AFDW,site,Mahana,baseline + expression,1.8750128792419336
+23,1.2187150599029013,14,11,Apul,AFDW,site,Mahana,baseline,0.8495260581758288
+23,1.2187150599029013,14,11,Apul,AFDW,site,Mahana,baseline + expression,1.5340926407743283
+24,1.9876105208996533,14,11,Apul,AFDW,site,Mahana,baseline,2.275365935154961
+24,1.9876105208996533,14,11,Apul,AFDW,site,Mahana,baseline + expression,2.965181445529607
+25,0.8538802260022792,14,11,Apul,AFDW,site,Mahana,baseline,1.7645049436632965
+25,0.8538802260022792,14,11,Apul,AFDW,site,Mahana,baseline + expression,1.839049073616304
+26,0.8646066781552855,14,11,Apul,AFDW,site,Mahana,baseline,0.5924504970928952
+26,0.8646066781552855,14,11,Apul,AFDW,site,Mahana,baseline + expression,0.9659391366306271
+27,1.5333688998310602,14,11,Apul,AFDW,site,Mahana,baseline,2.068943941231955
+27,1.5333688998310602,14,11,Apul,AFDW,site,Mahana,baseline + expression,2.334108755859732
+28,1.1452721868083644,14,11,Apul,AFDW,site,Mahana,baseline,1.4141778709095298
+28,1.1452721868083644,14,11,Apul,AFDW,site,Mahana,baseline + expression,1.5779909598201651
+29,0.7661554301573228,14,11,Apul,AFDW,site,Mahana,baseline,0.7623129252734206
+29,0.7661554301573228,14,11,Apul,AFDW,site,Mahana,baseline + expression,1.077857395610135
+1,0,11,0,Apul,calc,site,Manava,baseline,0.19058783535786392
+1,0,11,0,Apul,calc,site,Manava,baseline + expression,0.19056863943171018
+2,0.2980466257197296,11,0,Apul,calc,site,Manava,baseline,0.5080983438001216
+2,0.2980466257197296,11,0,Apul,calc,site,Manava,baseline + expression,0.5083023328246975
+3,0,11,0,Apul,calc,site,Manava,baseline,-0.07373357229544975
+3,0,11,0,Apul,calc,site,Manava,baseline + expression,-0.07343725007075264
+4,0,11,0,Apul,calc,site,Manava,baseline,0.18780766259077872
+4,0,11,0,Apul,calc,site,Manava,baseline + expression,0.1877985113595175
+5,0.6019141051201962,11,0,Apul,calc,site,Manava,baseline,0.5080983438001216
+5,0.6019141051201962,11,0,Apul,calc,site,Manava,baseline + expression,0.5083023328246975
+6,0.00783187451393402,11,0,Apul,calc,site,Manava,baseline,0.04759508045202848
+6,0.00783187451393402,11,0,Apul,calc,site,Manava,baseline + expression,0.047453045279301276
+7,0.4470249124246424,11,0,Apul,calc,site,Manava,baseline,0.18868028747742818
+7,0.4470249124246424,11,0,Apul,calc,site,Manava,baseline + expression,0.18866798347420768
+8,0.11592861235351104,11,0,Apul,calc,site,Manava,baseline,0.68658710632269
+8,0.11592861235351104,11,0,Apul,calc,site,Manava,baseline + expression,0.6861462198983336
+9,0,11,0,Apul,calc,site,Manava,baseline,-0.14644991971889376
+9,0,11,0,Apul,calc,site,Manava,baseline + expression,-0.14589087514391155
+10,0.3980311844762613,11,0,Apul,calc,site,Manava,baseline,0.18780766259077872
+10,0.3980311844762613,11,0,Apul,calc,site,Manava,baseline + expression,0.1877985113595175
+11,0.32558505379449665,11,0,Apul,calc,site,Manava,baseline,0.6670248187860908
+11,0.32558505379449665,11,0,Apul,calc,site,Manava,baseline + expression,0.6666546104188794
+12,0,11,0,Apul,calc,site,Manava,baseline,-0.06273798835311067
+12,0,11,0,Apul,calc,site,Manava,baseline + expression,-0.06248139289905663
+13,0.2800385785246229,11,0,Apul,calc,site,Manava,baseline,0.19015863929206858
+13,0.2800385785246229,11,0,Apul,calc,site,Manava,baseline + expression,0.1901409940405999
+14,0.20794443380205355,11,0,Apul,calc,site,Manava,baseline,0.619912558064668
+14,0.20794443380205355,11,0,Apul,calc,site,Manava,baseline + expression,0.6197125651208455
+15,0.0032224158914026,11,0,Apul,calc,site,Manava,baseline,-0.10970970760461562
+15,0.0032224158914026,11,0,Apul,calc,site,Manava,baseline + expression,-0.10928340449999951
+16,0,14,0,Apul,calc,site,Mahana,baseline,0.2245518667129841
+16,0,14,0,Apul,calc,site,Mahana,baseline + expression,0.22453570373527962
+17,0.3177199522151678,14,0,Apul,calc,site,Mahana,baseline,0.38634699566893355
+17,0.3177199522151678,14,0,Apul,calc,site,Mahana,baseline + expression,0.3864052478587642
+18,0.00448907394184677,14,0,Apul,calc,site,Mahana,baseline,-4.519404641003949e-4
+18,0.00448907394184677,14,0,Apul,calc,site,Mahana,baseline + expression,-4.5341521086572634e-4
+19,0.5100733032358052,14,0,Apul,calc,site,Mahana,baseline,0.216735935548611
+19,0.5100733032358052,14,0,Apul,calc,site,Mahana,baseline + expression,0.21671544384719454
+20,0,14,0,Apul,calc,site,Mahana,baseline,0.2249241388156492
+20,0,14,0,Apul,calc,site,Mahana,baseline + expression,0.22490818201466817
+21,0.6109215480545741,14,0,Apul,calc,site,Mahana,baseline,0.38634699566893355
+21,0.6109215480545741,14,0,Apul,calc,site,Mahana,baseline + expression,0.3864052478587642
+22,0.01367748125122289,14,0,Apul,calc,site,Mahana,baseline,-0.10008418211150678
+22,0.01367748125122289,14,0,Apul,calc,site,Mahana,baseline + expression,-0.10014083652117177
+23,0.27972303820232725,14,0,Apul,calc,site,Mahana,baseline,0.22121733243808778
+23,0.27972303820232725,14,0,Apul,calc,site,Mahana,baseline + expression,0.22119932268393647
+24,0.5817262861582619,14,0,Apul,calc,site,Mahana,baseline,0.2912948754485998
+24,0.5817262861582619,14,0,Apul,calc,site,Mahana,baseline + expression,0.29130048459974206
+25,0.00668111113189005,14,0,Apul,calc,site,Mahana,baseline,-0.09016339917754927
+25,0.00668111113189005,14,0,Apul,calc,site,Mahana,baseline + expression,-0.09021455912629535
+26,0.17918471357174354,14,0,Apul,calc,site,Mahana,baseline,0.2172921742160998
+26,0.17918471357174354,14,0,Apul,calc,site,Mahana,baseline + expression,0.2172719905782344
+27,0.7052589488147506,14,0,Apul,calc,site,Mahana,baseline,0.32545860032786744
+27,0.7052589488147506,14,0,Apul,calc,site,Mahana,baseline + expression,0.32548313049083344
+1,8.909985090083715,14,0,Peve,AFDW,site,Mahana,baseline,5.002011164470535
+1,8.909985090083715,14,0,Peve,AFDW,site,Mahana,baseline + expression,5.002037851220908
+2,8.56355212207708,14,0,Peve,AFDW,site,Mahana,baseline,8.668221381409728
+2,8.56355212207708,14,0,Peve,AFDW,site,Mahana,baseline + expression,8.668194752663853
+3,3.085705332842309,14,0,Peve,AFDW,site,Mahana,baseline,8.983077052549607
+3,3.085705332842309,14,0,Peve,AFDW,site,Mahana,baseline + expression,8.983071331626467
+4,7.197872944280912,14,0,Peve,AFDW,site,Mahana,baseline,4.563126558914042
+4,7.197872944280912,14,0,Peve,AFDW,site,Mahana,baseline + expression,4.563156306934996
+5,7.833242625542355,14,0,Peve,AFDW,site,Mahana,baseline,4.674034319965183
+5,7.833242625542355,14,0,Peve,AFDW,site,Mahana,baseline + expression,4.674063294391754
+6,7.032174714647527,14,0,Peve,AFDW,site,Mahana,baseline,5.422789934390562
+6,7.032174714647527,14,0,Peve,AFDW,site,Mahana,baseline + expression,5.422813686160636
+7,4.642443678530615,14,0,Peve,AFDW,site,Mahana,baseline,7.5369364303375574
+7,4.642443678530615,14,0,Peve,AFDW,site,Mahana,baseline + expression,7.536917692434281
+8,6.580510407457272,14,0,Peve,AFDW,site,Mahana,baseline,6.620809258243833
+8,6.580510407457272,14,0,Peve,AFDW,site,Mahana,baseline + expression,6.620820014410152
+9,9.300079167585896,14,0,Peve,AFDW,site,Mahana,baseline,5.480862096563209
+9,9.300079167585896,14,0,Peve,AFDW,site,Mahana,baseline + expression,5.480885443273275
+10,6.432758839176487,14,0,Peve,AFDW,site,Mahana,baseline,8.903233161700957
+10,6.432758839176487,14,0,Peve,AFDW,site,Mahana,baseline + expression,8.903204893720893
+11,4.850156145257984,14,0,Peve,AFDW,site,Mahana,baseline,7.699382806142443
+11,4.850156145257984,14,0,Peve,AFDW,site,Mahana,baseline + expression,7.699386039134262
+12,4.912269940325875,10,4,Peve,AFDW,site,Manava,baseline,7.668925734596701
+12,4.912269940325875,10,4,Peve,AFDW,site,Manava,baseline + expression,7.503685625161849
+13,5.975802569926352,10,4,Peve,AFDW,site,Manava,baseline,7.186959297744471
+13,5.975802569926352,10,4,Peve,AFDW,site,Manava,baseline + expression,6.887663691853229
+14,5.156320779428034,10,4,Peve,AFDW,site,Manava,baseline,4.943162684830737
+14,5.156320779428034,10,4,Peve,AFDW,site,Manava,baseline + expression,4.244928733489694
+15,6.095961613570845,10,4,Peve,AFDW,site,Manava,baseline,7.910019849269958
+15,6.095961613570845,10,4,Peve,AFDW,site,Manava,baseline + expression,7.783984598878616
+16,5.304880027089366,10,4,Peve,AFDW,site,Manava,baseline,6.970385442713685
+16,5.304880027089366,10,4,Peve,AFDW,site,Manava,baseline + expression,6.750908376981034
+17,7.666780333214607,10,4,Peve,AFDW,site,Manava,baseline,5.065917862393933
+17,7.666780333214607,10,4,Peve,AFDW,site,Manava,baseline + expression,4.348651595399921
+18,6.265474668882063,10,4,Peve,AFDW,site,Manava,baseline,7.886872804373693
+18,6.265474668882063,10,4,Peve,AFDW,site,Manava,baseline + expression,7.537899117528499
+19,8.464528267393915,10,4,Peve,AFDW,site,Manava,baseline,6.939370528360056
+19,8.464528267393915,10,4,Peve,AFDW,site,Manava,baseline + expression,6.549271489401764
+20,6.364557589802334,10,4,Peve,AFDW,site,Manava,baseline,4.487813601452347
+20,6.364557589802334,10,4,Peve,AFDW,site,Manava,baseline + expression,4.112874327584135
+21,5.926043491782333,10,4,Peve,AFDW,site,Manava,baseline,7.638138677375921
+21,5.926043491782333,10,4,Peve,AFDW,site,Manava,baseline + expression,7.723414037462727
+22,9.229910383395158,10,4,Peve,AFDW,site,Manava,baseline,7.00147446995542
+22,9.229910383395158,10,4,Peve,AFDW,site,Manava,baseline + expression,6.82581253748186
+23,12.660967199910502,10,4,Peve,AFDW,site,Manava,baseline,4.3477756513841594
+23,12.660967199910502,10,4,Peve,AFDW,site,Manava,baseline + expression,4.287553632894875
+24,9.182368688957396,10,4,Peve,AFDW,site,Manava,baseline,6.970811806099723
+24,9.182368688957396,10,4,Peve,AFDW,site,Manava,baseline + expression,6.932254229583807
+25,7.035502677696527,10,4,Peve,AFDW,site,Manava,baseline,6.4056817334459595
+25,7.035502677696527,10,4,Peve,AFDW,site,Manava,baseline + expression,6.203784503268906
+26,8.965806786993397,10,4,Peve,AFDW,site,Manava,baseline,4.7492749159938015
+26,8.965806786993397,10,4,Peve,AFDW,site,Manava,baseline + expression,3.9518636003576373
+1,1.0679682982853869,14,0,Peve,calc,site,Mahana,baseline,0.4309015708531663
+1,1.0679682982853869,14,0,Peve,calc,site,Mahana,baseline + expression,0.43084622179932064
+2,1.0201210796400886,14,0,Peve,calc,site,Mahana,baseline,0.6712688723158576
+2,1.0201210796400886,14,0,Peve,calc,site,Mahana,baseline + expression,0.6709751996933122
+3,0.00845009167259126,14,0,Peve,calc,site,Mahana,baseline,-0.016335993995562542
+3,0.00845009167259126,14,0,Peve,calc,site,Mahana,baseline + expression,-0.016370686270340173
+4,1.278575133047927,14,0,Peve,calc,site,Mahana,baseline,0.4150545213349309
+4,1.278575133047927,14,0,Peve,calc,site,Mahana,baseline + expression,0.414979474081063
+5,0.3686068864825056,14,0,Peve,calc,site,Mahana,baseline,0.4022012920979893
+5,0.3686068864825056,14,0,Peve,calc,site,Mahana,baseline + expression,0.4021102680226854
+6,1.0333619648382255,14,0,Peve,calc,site,Mahana,baseline,0.9828057019356343
+6,1.0333619648382255,14,0,Peve,calc,site,Mahana,baseline + expression,0.9828992758334637
+7,0.00448109151745218,14,0,Peve,calc,site,Mahana,baseline,-0.022234265370520343
+7,0.00448109151745218,14,0,Peve,calc,site,Mahana,baseline + expression,-0.022276289314779773
+8,0.717700507940793,14,0,Peve,calc,site,Mahana,baseline,0.4321638371129236
+8,0.717700507940793,14,0,Peve,calc,site,Mahana,baseline + expression,0.4321100570813264
+9,0.798638348056067,14,0,Peve,calc,site,Mahana,baseline,0.8272988091700744
+9,0.798638348056067,14,0,Peve,calc,site,Mahana,baseline + expression,0.8271990848848566
+10,0.00220232352131351,14,0,Peve,calc,site,Mahana,baseline,0.08232548038481416
+10,0.00220232352131351,14,0,Peve,calc,site,Mahana,baseline + expression,0.08241342629922098
+11,1.100056310505234,14,0,Peve,calc,site,Mahana,baseline,0.4321638371129236
+11,1.100056310505234,14,0,Peve,calc,site,Mahana,baseline + expression,0.4321100570813264
+12,0.955095313085949,14,0,Peve,calc,site,Mahana,baseline,0.6569749787337088
+12,0.955095313085949,14,0,Peve,calc,site,Mahana,baseline + expression,0.6566635385150847
+13,0.01926470231934622,14,0,Peve,calc,site,Mahana,baseline,0.012630318434586472
+13,0.01926470231934622,14,0,Peve,calc,site,Mahana,baseline + expression,0.012631631866454652
+14,0,12,0,Peve,calc,site,Manava,baseline,0.9063428821757974
+14,0,12,0,Peve,calc,site,Manava,baseline + expression,0.9062642193089182
+15,1.3648230252992846,12,0,Peve,calc,site,Manava,baseline,1.001676863244292
+15,1.3648230252992846,12,0,Peve,calc,site,Manava,baseline + expression,1.0038005423537857
+16,0.01351742708690955,12,0,Peve,calc,site,Manava,baseline,-0.016718527998731525
+16,0.01351742708690955,12,0,Peve,calc,site,Manava,baseline + expression,-0.017752890049376968
+17,0.5845192624815598,12,0,Peve,calc,site,Manava,baseline,0.9072168477835654
+17,0.5845192624815598,12,0,Peve,calc,site,Manava,baseline + expression,0.907173890501355
+18,0.6709780049233275,12,0,Peve,calc,site,Manava,baseline,0.9658457973291503
+18,0.6709780049233275,12,0,Peve,calc,site,Manava,baseline + expression,0.9665056097298951
+19,6.384121760414201e-4,12,0,Peve,calc,site,Manava,baseline,0.025814213444957157
+19,6.384121760414201e-4,12,0,Peve,calc,site,Manava,baseline + expression,0.026517512907890506
+20,0.7381755766898508,12,0,Peve,calc,site,Manava,baseline,0.9079116888231692
+20,0.7381755766898508,12,0,Peve,calc,site,Manava,baseline + expression,0.9078971190488313
+21,0.8364967212250204,12,0,Peve,calc,site,Manava,baseline,0.956426656034643
+21,0.8364967212250204,12,0,Peve,calc,site,Manava,baseline + expression,0.9567016524380438
+22,0.00794026310143358,12,0,Peve,calc,site,Manava,baseline,0.01566790618928704
+22,0.00794026310143358,12,0,Peve,calc,site,Manava,baseline + expression,0.015956681522698468
+23,0,12,0,Peve,calc,site,Manava,baseline,0.9072921837079471
+23,0,12,0,Peve,calc,site,Manava,baseline + expression,0.9072523042507707
+24,1.2059909697873774,12,0,Peve,calc,site,Manava,baseline,1.001676863244292
+24,1.2059909697873774,12,0,Peve,calc,site,Manava,baseline + expression,1.0038005423537857
+25,0.0232868201783802,12,0,Peve,calc,site,Manava,baseline,-0.006982113451291072
+25,0.0232868201783802,12,0,Peve,calc,site,Manava,baseline + expression,-0.00761869740757759
+26,0.8047468117541491,12,0,Peve,calc,site,Manava,baseline,0.9062017255016409
+26,0.8047468117541491,12,0,Peve,calc,site,Manava,baseline + expression,0.9061172957241009
+27,0.7090480355365804,12,0,Peve,calc,site,Manava,baseline,0.9523458353247927
+27,0.7090480355365804,12,0,Peve,calc,site,Manava,baseline + expression,0.9524541111066056
+28,0.01248544074884118,12,0,Peve,calc,site,Manava,baseline,0.02348051828065456
+28,0.01248544074884118,12,0,Peve,calc,site,Manava,baseline + expression,0.024088475375948493
+1,2.7877172075130225,14,2,Ptuh,AFDW,site,Mahana,baseline,2.206883625648359
+1,2.7877172075130225,14,2,Ptuh,AFDW,site,Mahana,baseline + expression,2.3223540938580083
+2,1.985854050226568,14,2,Ptuh,AFDW,site,Mahana,baseline,1.2227355248062586
+2,1.985854050226568,14,2,Ptuh,AFDW,site,Mahana,baseline + expression,1.0787089591107568
+3,2.152438898388213,14,2,Ptuh,AFDW,site,Mahana,baseline,2.4110085996168316
+3,2.152438898388213,14,2,Ptuh,AFDW,site,Mahana,baseline + expression,2.3571659494002013
+4,1.372397262788889,14,2,Ptuh,AFDW,site,Mahana,baseline,1.3980477880330895
+4,1.372397262788889,14,2,Ptuh,AFDW,site,Mahana,baseline + expression,1.3658012516792644
+5,1.8883482029971064,14,2,Ptuh,AFDW,site,Mahana,baseline,2.651724765111982
+5,1.8883482029971064,14,2,Ptuh,AFDW,site,Mahana,baseline + expression,2.643678076682735
+6,1.690264954450001,14,2,Ptuh,AFDW,site,Mahana,baseline,2.252026005240808
+6,1.690264954450001,14,2,Ptuh,AFDW,site,Mahana,baseline + expression,2.1086271550204216
+7,1.6935245308367253,14,2,Ptuh,AFDW,site,Mahana,baseline,1.525589936021586
+7,1.6935245308367253,14,2,Ptuh,AFDW,site,Mahana,baseline + expression,1.506688571002839
+8,1.933568611866928,14,2,Ptuh,AFDW,site,Mahana,baseline,2.563106048973423
+8,1.933568611866928,14,2,Ptuh,AFDW,site,Mahana,baseline + expression,2.4216864829344393
+9,1.8551400643000864,14,2,Ptuh,AFDW,site,Mahana,baseline,2.3308479228164405
+9,1.8551400643000864,14,2,Ptuh,AFDW,site,Mahana,baseline + expression,2.245353001407785
+10,2.259790260425773,14,2,Ptuh,AFDW,site,Mahana,baseline,1.4800907772396479
+10,2.259790260425773,14,2,Ptuh,AFDW,site,Mahana,baseline + expression,1.504211889446523
+11,2.0997583536693987,14,2,Ptuh,AFDW,site,Mahana,baseline,2.4068385907332503
+11,2.0997583536693987,14,2,Ptuh,AFDW,site,Mahana,baseline + expression,2.4035445029526086
+12,1.3801704864399338,14,2,Ptuh,AFDW,site,Mahana,baseline,2.4120755364963165
+12,1.3801704864399338,14,2,Ptuh,AFDW,site,Mahana,baseline + expression,2.27307985212537
+13,0.8884885000964906,14,2,Ptuh,AFDW,site,Mahana,baseline,1.6111640257081339
+13,0.8884885000964906,14,2,Ptuh,AFDW,site,Mahana,baseline + expression,1.4565418442453173
+14,0.734130756525919,14,2,Ptuh,AFDW,site,Mahana,baseline,2.7852648831427276
+14,0.734130756525919,14,2,Ptuh,AFDW,site,Mahana,baseline + expression,2.7648420167919974
+15,2.2946351203271864,13,0,Ptuh,AFDW,site,Manava,baseline,2.5553945470625457
+15,2.2946351203271864,13,0,Ptuh,AFDW,site,Manava,baseline + expression,2.555379134888106
+16,1.6130283885865857,13,0,Ptuh,AFDW,site,Manava,baseline,1.8790705589312267
+16,1.6130283885865857,13,0,Ptuh,AFDW,site,Manava,baseline + expression,1.8790658364228792
+17,2.8858981102703023,13,0,Ptuh,AFDW,site,Manava,baseline,1.708179613046486
+17,2.8858981102703023,13,0,Ptuh,AFDW,site,Manava,baseline + expression,1.7081785287765745
+18,1.7690303794526132,13,0,Ptuh,AFDW,site,Manava,baseline,2.589424948248808
+18,1.7690303794526132,13,0,Ptuh,AFDW,site,Manava,baseline + expression,2.5894087018058025
+19,1.2016650116390584,13,0,Ptuh,AFDW,site,Manava,baseline,1.488229945344453
+19,1.2016650116390584,13,0,Ptuh,AFDW,site,Manava,baseline + expression,1.4882348044462788
+20,3.579040905696332,13,0,Ptuh,AFDW,site,Manava,baseline,1.4022890794379512
+20,3.579040905696332,13,0,Ptuh,AFDW,site,Manava,baseline + expression,1.4022954941938495
+21,2.331463648984168,13,0,Ptuh,AFDW,site,Manava,baseline,2.455285113917066
+21,2.331463648984168,13,0,Ptuh,AFDW,site,Manava,baseline + expression,2.4552721559644493
+22,1.3110417858795422,13,0,Ptuh,AFDW,site,Manava,baseline,1.9064563178835563
+22,1.3110417858795422,13,0,Ptuh,AFDW,site,Manava,baseline + expression,1.9064509240026402
+23,2.0793227310384066,13,0,Ptuh,AFDW,site,Manava,baseline,1.4836218419338931
+23,2.0793227310384066,13,0,Ptuh,AFDW,site,Manava,baseline + expression,1.4836262627853773
+24,1.895208321094615,13,0,Ptuh,AFDW,site,Manava,baseline,2.4723809017816856
+24,1.895208321094615,13,0,Ptuh,AFDW,site,Manava,baseline + expression,2.472367524719157
+25,2.120094676961522,13,0,Ptuh,AFDW,site,Manava,baseline,1.5820560855927663
+25,2.120094676961522,13,0,Ptuh,AFDW,site,Manava,baseline + expression,1.582058644510147
+26,2.3432515227642496,13,0,Ptuh,AFDW,site,Manava,baseline,2.085235000613701
+26,2.3432515227642496,13,0,Ptuh,AFDW,site,Manava,baseline + expression,2.085224672683812
+27,2.340425204583954,13,0,Ptuh,AFDW,site,Manava,baseline,2.4395430400748133
+27,2.340425204583954,13,0,Ptuh,AFDW,site,Manava,baseline + expression,2.4395304680452803
+28,0.7806791795951193,13,0,Ptuh,AFDW,site,Manava,baseline,1.913120146454593
+28,0.7806791795951193,13,0,Ptuh,AFDW,site,Manava,baseline + expression,1.9131145892073191
+29,2.3257086405836738,13,0,Ptuh,AFDW,site,Manava,baseline,1.0892432712254718
+29,2.3257086405836738,13,0,Ptuh,AFDW,site,Manava,baseline + expression,1.0892573604215292
+1,0.10108354420182653,14,7,Ptuh,calc,site,Mahana,baseline,0.5422440889568576
+1,0.10108354420182653,14,7,Ptuh,calc,site,Mahana,baseline + expression,0.23085685779740442
+2,0.24018772211703024,14,7,Ptuh,calc,site,Mahana,baseline,0.050024515244516954
+2,0.24018772211703024,14,7,Ptuh,calc,site,Mahana,baseline + expression,-0.021934907169253053
+3,0.08947531418320112,14,7,Ptuh,calc,site,Mahana,baseline,0.5422440889568576
+3,0.08947531418320112,14,7,Ptuh,calc,site,Mahana,baseline + expression,0.2528179479459213
+4,0.2734772105528089,14,7,Ptuh,calc,site,Mahana,baseline,0.5422440889568576
+4,0.2734772105528089,14,7,Ptuh,calc,site,Mahana,baseline + expression,0.16179009501494818
+5,0.26583137183111905,14,7,Ptuh,calc,site,Mahana,baseline,0.06068854980980215
+5,0.26583137183111905,14,7,Ptuh,calc,site,Mahana,baseline + expression,0.04650450375784881
+6,0,14,7,Ptuh,calc,site,Mahana,baseline,0.014695425317926003
+6,0,14,7,Ptuh,calc,site,Mahana,baseline + expression,0.01118344930375135
+7,0,14,7,Ptuh,calc,site,Mahana,baseline,0.5423015083519823
+7,0,14,7,Ptuh,calc,site,Mahana,baseline + expression,0.2029241282517206
+8,0.06633596693711094,14,7,Ptuh,calc,site,Mahana,baseline,0.5429382472063589
+8,0.06633596693711094,14,7,Ptuh,calc,site,Mahana,baseline + expression,0.14011197935194925
+9,0.01876572117950162,14,7,Ptuh,calc,site,Mahana,baseline,0.04787507801254559
+9,0.01876572117950162,14,7,Ptuh,calc,site,Mahana,baseline + expression,-0.02641502112304032
+10,0.00863157710388722,14,7,Ptuh,calc,site,Mahana,baseline,-5.877152649734763e-4
+10,0.00863157710388722,14,7,Ptuh,calc,site,Mahana,baseline + expression,0.17033918882777435
+11,0.1558214633676366,9,6,Ptuh,calc,site,Manava,baseline,0.10521703124258196
+11,0.1558214633676366,9,6,Ptuh,calc,site,Manava,baseline + expression,0.08610576487097021
+12,0.10460007783487442,9,6,Ptuh,calc,site,Manava,baseline,0.17805291081908223
+12,0.10460007783487442,9,6,Ptuh,calc,site,Manava,baseline + expression,0.12305929672312993
+13,0.0039582469685148,9,6,Ptuh,calc,site,Manava,baseline,-0.008985428675705204
+13,0.0039582469685148,9,6,Ptuh,calc,site,Manava,baseline + expression,-0.040314404002373426
+14,0.199053157306921,9,6,Ptuh,calc,site,Manava,baseline,0.10532123910936717
+14,0.199053157306921,9,6,Ptuh,calc,site,Manava,baseline + expression,0.11621289130346449
+15,0.01621178631477101,9,6,Ptuh,calc,site,Manava,baseline,0.19330642568284662
+15,0.01621178631477101,9,6,Ptuh,calc,site,Manava,baseline + expression,0.20715332258121086
+16,6.515715196441808e-4,9,6,Ptuh,calc,site,Manava,baseline,-0.04017162555196281
+16,6.515715196441808e-4,9,6,Ptuh,calc,site,Manava,baseline + expression,-0.06531646094753148
+17,2.037083508584572,9,6,Ptuh,calc,site,Manava,baseline,0.10607618509028499
+17,2.037083508584572,9,6,Ptuh,calc,site,Manava,baseline + expression,0.1505439900248911
+18,0.16750929959303548,9,6,Ptuh,calc,site,Manava,baseline,0.8418219181046498
+18,0.16750929959303548,9,6,Ptuh,calc,site,Manava,baseline + expression,1.0424572325715846
+19,0.00313901869268255,9,6,Ptuh,calc,site,Manava,baseline,0.013210943053416135
+19,0.00313901869268255,9,6,Ptuh,calc,site,Manava,baseline + expression,0.0024501152519774885
+20,0.19338618081177472,9,6,Ptuh,calc,site,Manava,baseline,0.10521703124258196
+20,0.19338618081177472,9,6,Ptuh,calc,site,Manava,baseline + expression,0.036137086227158124
+21,0.0982597761307179,9,6,Ptuh,calc,site,Manava,baseline,0.19130693636552498
+21,0.0982597761307179,9,6,Ptuh,calc,site,Manava,baseline + expression,0.16381007114167356
+22,0.0074218423310496,9,6,Ptuh,calc,site,Manava,baseline,-0.011222488514741974
+22,0.0074218423310496,9,6,Ptuh,calc,site,Manava,baseline + expression,-0.07280535108214214
+23,0.12604503171665443,9,6,Ptuh,calc,site,Manava,baseline,0.10521703124258196
+23,0.12604503171665443,9,6,Ptuh,calc,site,Manava,baseline + expression,0.08867866524803888
+24,0,9,6,Ptuh,calc,site,Manava,baseline,0.16754683989306202
+24,0,9,6,Ptuh,calc,site,Manava,baseline + expression,0.24254097719014683
+25,0,9,6,Ptuh,calc,site,Manava,baseline,-0.045891658726416415
+25,0,9,6,Ptuh,calc,site,Manava,baseline + expression,-0.10675117623085649

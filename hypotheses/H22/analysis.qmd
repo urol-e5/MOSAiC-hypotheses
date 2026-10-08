@@ -1,0 +1,245 @@
+---
+title: "H22: does expression forecast next-timepoint physiology at a held-out site?"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H22", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+traits <- c(AFDW = "Host_AFDW.mg.cm2", calc = "calc.umol.cm2.hr")
+tps <- c("TP1", "TP2", "TP3", "TP4")
+n_perm <- 200
+max_pc <- 20
+alpha_en <- 0.5
+n_cores <- max(1, parallel::detectCores() - 1)
+set.seed(20261008)
+```
+
+## Pre-registered decision rule
+
+> - `supported` if dR2 > 0 with BH q < 0.05 for at least one trait in at
+>   least two species.
+> - `not supported` if dR2 <= 0 for both traits in at least two species.
+> - `inconclusive` otherwise.
+
+dR2 = out-of-sample R² of the molecular model (baseline + expression PCs,
+elastic net) minus that of the baseline (`y[t+1] ~ y[t] + timepoint`), with
+the outer CV holding out one site. Amendment 1 (`hypothesis.md`, before any
+analysis) adapts this to the two sites that exist (two folds of 5 colonies;
+site is confounded with nutrient), caps the PCs at training rows − 1, fixes
+the elastic-net and null details, and keeps traits on the raw scale. p is
+from 200 within-transition permutations of y[t+1] among training colonies;
+q is BH across the two traits within species.
+
+Implementation notes (not in `hypothesis.md`; none changes the rule):
+
+- Timepoint enters as dummies for the transition (TP2→TP3, TP3→TP4 vs
+  TP1→TP2). A dummy that is constant in a training fold is dropped from
+  both models in that fold.
+- Inner CV uses `cv.glmnet(..., foldid = colony, grouped = FALSE)`, since
+  each inner fold has only 2–3 rows.
+- Every fold asserts that no test colony is in the training data, and PCA,
+  centering and lambda are computed from training rows only.
+
+## Data
+
+```{r data}
+phys <- load_physiology() |> select(sample_id, all_of(unname(traits))) |>
+  group_by(sample_id) |> summarise(across(everything(), ~ mean(.x, na.rm = TRUE)), .groups = "drop")
+orth <- load_orthologs()
+
+prep_species <- function(sp) {
+  v <- prep_vst(genes_by_ortholog(sp, orthologs = orth), design)
+  info <- design |> filter(sample_id %in% colnames(v$vst)) |> select(sample_id, colony, site, nutrient, timepoint) |>
+    left_join(phys, by = "sample_id") |> mutate(t = match(timepoint, tps))
+  rows <- lapply(names(traits), function(tr) {
+    col <- traits[[tr]]
+    a <- info |> transmute(sample_id, colony, site, t, y0 = .data[[col]])
+    b <- design |> filter(species == sp) |> select(sample_id, colony, timepoint) |> left_join(phys, by = "sample_id") |>
+      transmute(colony, t = match(timepoint, tps) - 1, y1 = .data[[col]])
+    a |> inner_join(b, by = c("colony", "t")) |> filter(is.finite(y0), is.finite(y1)) |>
+      mutate(trait = tr, interval = factor(t, levels = 1:3), species = sp)
+  })
+  list(species = sp, vst = v$vst, rows = bind_rows(rows))
+}
+dat <- lapply(setNames(species_all, species_all), prep_species)
+
+n_tab <- bind_rows(lapply(dat, function(d) d$rows |> group_by(species, trait) |>
+  summarise(rows = n(), colonies = n_distinct(colony), Mahana = sum(site == "Mahana"), Manava = sum(site == "Manava"),
+            .groups = "drop") |> mutate(ortholog_genes = nrow(d$vst))))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab)
+```
+
+## Model
+
+```{r functions}
+dummies <- function(r) cbind(i2 = as.numeric(r$t == 2), i3 = as.numeric(r$t == 3))
+
+# Fit both models on `tr` rows, predict `te` rows. `X`: gene x sample matrix.
+fit_fold <- function(X, tr, te, y1_train = tr$y1) {
+  stopifnot(!any(te$colony %in% tr$colony))
+  D_tr <- dummies(tr); D_te <- dummies(te)
+  keep <- apply(D_tr, 2, function(z) length(unique(z)) > 1)
+  D_tr <- D_tr[, keep, drop = FALSE]; D_te <- D_te[, keep, drop = FALSE]
+  B_tr <- cbind(y0 = tr$y0, D_tr); B_te <- cbind(y0 = te$y0, D_te)
+  base <- lm.fit(cbind(1, B_tr), y1_train)
+  pred_base <- drop(cbind(1, B_te) %*% base$coefficients)
+  Xtr <- t(X[, tr$sample_id, drop = FALSE]); mu <- colMeans(Xtr)
+  k <- min(max_pc, nrow(Xtr) - 1)
+  pc <- prcomp(sweep(Xtr, 2, mu), center = FALSE, rank. = k)
+  S_tr <- pc$x; S_te <- sweep(t(X[, te$sample_id, drop = FALSE]), 2, mu) %*% pc$rotation
+  Z_tr <- cbind(B_tr, S_tr); Z_te <- cbind(B_te, S_te)
+  pf <- c(rep(0, ncol(B_tr)), rep(1, ncol(S_tr)))
+  foldid <- as.integer(factor(tr$colony))
+  cv <- glmnet::cv.glmnet(Z_tr, y1_train, alpha = alpha_en, penalty.factor = pf, foldid = foldid,
+                          grouped = FALSE, standardize = TRUE)
+  pred_mol <- drop(predict(cv, Z_te, s = "lambda.min"))
+  tibble(row = te$row, y1 = te$y1, pred_base = pred_base, pred_mol = pred_mol, k = k,
+         n_pc_selected = sum(as.matrix(coef(cv, s = "lambda.min"))[-(1:(ncol(B_tr) + 1)), 1] != 0))
+}
+
+r2_pooled <- function(p) {
+  sst <- sum((p$y1 - mean(p$y1))^2)
+  c(R2_base = 1 - sum((p$y1 - p$pred_base)^2) / sst, R2_mol = 1 - sum((p$y1 - p$pred_mol)^2) / sst)
+}
+
+# Outer CV over a grouping column (`site` or `colony`); optional permutation of training y1.
+run_cv <- function(X, rows, by = "site", permute = FALSE) {
+  rows <- rows |> mutate(row = row_number())
+  folds <- unique(rows[[by]])
+  preds <- bind_rows(lapply(folds, function(f) {
+    tr <- rows[rows[[by]] != f, ]; te <- rows[rows[[by]] == f, ]
+    y1 <- tr$y1
+    if (permute) for (g in unique(tr$t)) { i <- which(tr$t == g); y1[i] <- y1[i][sample.int(length(i))] }
+    fit_fold(X, tr, te, y1)
+  }))
+  list(preds = preds, r2 = r2_pooled(preds))
+}
+
+evaluate <- function(d, trait, by = "site", rows_filter = function(r) r) {
+  rows <- rows_filter(d$rows |> filter(.data$trait == !!trait))
+  obs <- run_cv(d$vst, rows, by)
+  null <- unlist(parallel::mclapply(seq_len(n_perm), function(i) {
+    set.seed(20261008 + i)
+    r <- run_cv(d$vst, rows, by, permute = TRUE)$r2
+    r[["R2_mol"]] - r[["R2_base"]]
+  }, mc.cores = n_cores))
+  dR2 <- obs$r2[["R2_mol"]] - obs$r2[["R2_base"]]
+  list(summary = tibble(species = d$species, trait = trait, cv = by, rows = nrow(rows),
+                        R2_base = obs$r2[["R2_base"]], R2_mol = obs$r2[["R2_mol"]], dR2 = dR2,
+                        null_dR2_median = median(null), null_dR2_95 = quantile(null, 0.95),
+                        p = (1 + sum(null >= dR2)) / (1 + length(null)),
+                        mean_pcs_selected = mean(obs$preds$n_pc_selected), pcs_available = max(obs$preds$k)),
+       preds = obs$preds |> mutate(species = d$species, trait = trait, cv = by), null = null)
+}
+
+decide <- function(s) {
+  s <- s |> group_by(species) |> mutate(q = p.adjust(p, "BH")) |> ungroup()
+  per <- s |> group_by(species) |>
+    summarise(any_pass = any(dR2 > 0 & q < 0.05), both_nonpos = all(dR2 <= 0), .groups = "drop")
+  verdict <- if (sum(per$any_pass) >= 2) "supported" else if (sum(per$both_nonpos) >= 2) "not supported" else "inconclusive"
+  list(per_trait = s, per_species = per, verdict = verdict)
+}
+```
+
+```{r primary}
+res <- lapply(species_all, function(sp) lapply(names(traits), function(tr) evaluate(dat[[sp]], tr, "site")))
+res <- unlist(res, recursive = FALSE)
+primary <- decide(bind_rows(lapply(res, `[[`, "summary")))
+write_csv(primary$per_trait, file.path(out_dir, "dr2_summary.csv"))
+write_csv(bind_rows(lapply(res, `[[`, "preds")), file.path(out_dir, "predictions.csv"))
+write_csv(bind_rows(lapply(res, function(r) tibble(species = r$summary$species, trait = r$summary$trait, null_dR2 = r$null))),
+          file.path(out_dir, "null_dr2.csv"))
+knitr::kable(primary$per_trait, digits = 3)
+```
+
+**Primary verdict: `r primary$verdict`.**
+
+```{r fig, fig.width = 9, fig.height = 5}
+fp <- bind_rows(lapply(res, `[[`, "preds")) |> left_join(bind_rows(lapply(dat, `[[`, "rows")) |>
+  group_by(species, trait) |> mutate(row = row_number()) |> ungroup() |> select(species, trait, row, site), by = c("species", "trait", "row")) |>
+  pivot_longer(c(pred_base, pred_mol), names_to = "model", values_to = "pred") |>
+  mutate(model = recode(model, pred_base = "baseline", pred_mol = "baseline + expression"))
+write_csv(fp, file.path(out_dir, "figure_data.csv"))
+g <- ggplot(fp, aes(pred, y1, colour = model)) +
+  geom_abline(slope = 1, intercept = 0, colour = "grey70") +
+  geom_point(alpha = 0.7, size = 1.6) +
+  facet_wrap(trait ~ species, scales = "free", nrow = 2) +
+  scale_colour_manual(values = c(baseline = "grey45", `baseline + expression` = "#1b6ca8")) +
+  labs(x = "Predicted y[t+1] (held-out site)", y = "Observed y[t+1]", colour = NULL) +
+  theme_bw() + theme(legend.position = "bottom")
+ggsave(file.path(out_dir, "observed_vs_predicted.png"), g, width = 9, height = 5.5, dpi = 150)
+g
+```
+
+## Sensitivity checks
+
+```{r sensitivity}
+sens_loco <- decide(bind_rows(lapply(species_all, function(sp) bind_rows(lapply(names(traits), function(tr)
+  evaluate(dat[[sp]], tr, "colony")$summary)))))
+sens_no34 <- decide(bind_rows(lapply(species_all, function(sp) bind_rows(lapply(names(traits), function(tr)
+  evaluate(dat[[sp]], tr, "site", rows_filter = function(r) r |> filter(t != 3))$summary)))))
+write_csv(sens_loco$per_trait, file.path(out_dir, "sens_leave_one_colony_out.csv"))
+write_csv(sens_no34$per_trait, file.path(out_dir, "sens_drop_tp3_tp4.csv"))
+knitr::kable(bind_rows(sens_loco$per_trait |> mutate(check = "leave one colony out"),
+                       sens_no34$per_trait |> mutate(check = "TP3->TP4 dropped")) |>
+               select(check, species, trait, rows, R2_base, R2_mol, dR2, p, q), digits = 3)
+```
+
+## Secondary: cross-species transfer (descriptive)
+
+Train on all rows of one species, test on another; ortholog genes and both
+y columns z-scored within species. No permutation null and no decision.
+
+```{r transfer}
+common <- Reduce(intersect, lapply(dat, function(d) rownames(d$vst)))
+zg <- lapply(dat, function(d) t(scale(t(d$vst[common, ]))))
+zrows <- lapply(dat, function(d) d$rows |> group_by(trait) |>
+  mutate(m = mean(c(y0, y1)), s = sd(c(y0, y1)), y0 = (y0 - m) / s, y1 = (y1 - m) / s) |> ungroup())
+transfer <- bind_rows(lapply(species_all, function(a) bind_rows(lapply(setdiff(species_all, a), function(b)
+  bind_rows(lapply(names(traits), function(tr) {
+    tr_rows <- zrows[[a]] |> filter(trait == tr) |> mutate(row = row_number())
+    te_rows <- zrows[[b]] |> filter(trait == tr) |> mutate(row = row_number(), colony = paste0("test_", colony))
+    X <- cbind(zg[[a]], zg[[b]])
+    p <- fit_fold(X, tr_rows, te_rows)
+    r <- r2_pooled(p)
+    tibble(train = a, test = b, trait = tr, genes = length(common), R2_base = r[["R2_base"]], R2_mol = r[["R2_mol"]],
+           dR2 = r[["R2_mol"]] - r[["R2_base"]])
+  }))))))
+write_csv(transfer, file.path(out_dir, "cross_species_transfer.csv"))
+knitr::kable(transfer, digits = 3)
+```
+
+```{r summary}
+verdicts <- tibble(analysis = c("primary (leave one site out)", "leave one colony out", "TP3->TP4 dropped"),
+                   verdict = c(primary$verdict, sens_loco$verdict, sens_no34$verdict))
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+knitr::kable(verdicts)
+```
+
+## Caveats
+
+- About 10 colonies per species: 5 per site, so each fold trains on 5
+  colonies (about 13–15 rows).
+- Site is confounded with nutrient; "novel conditions" means the other
+  site and nutrient regime, and nothing more.
+- No independent cohort exists; held-out site and held-out species are
+  proxies.
+- Raw-scale traits; AFDW includes negative values from upstream.
