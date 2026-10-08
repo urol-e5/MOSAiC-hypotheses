@@ -80,4 +80,34 @@ Multiple testing: two traits per species, BH within species.
 
 ## Amendments
 
-(Leave empty. Dated entries only, added if the decision rule has to change.)
+### Amendment 1 (2026-10-08), before any H22 analysis was run
+
+**Problem.** The Model assumed three sites. The colonies with expression
+data are at two sites, 5 colonies each per species (Mahana and Manava;
+H11 withdrawal), and site is confounded with nutrient (Manava high, Mahana
+low). A training fold therefore has about 15 rows from 5 colonies, which
+cannot support 20 principal components, and several details were not fixed.
+
+**Change.** The original text above is kept; these replace it where they
+conflict. The decision rule is unchanged.
+
+- *Outer CV*: two folds (hold out one site, train on the other). Holding
+  out a site is also holding out a nutrient regime.
+- *Features*: three-way ortholog vst (H01 filter, vst on all samples with
+  `has_genes`), centered on the training rows; PCA on the training rows
+  only, k = min(20, training rows − 1) components; test rows projected.
+- *Molecular model*: `glmnet`, alpha 0.5, with y[t] and timepoint dummies
+  unpenalized (penalty factor 0) and the PCs penalized; lambda = lambda.min
+  from leave-one-colony-out CV within the training site.
+- *Responses*: colony×timepoint means of `Host_AFDW.mg.cm2` and
+  `calc.umol.cm2.hr` on the raw scale (AFDW has negative values, so no log).
+- *Out-of-sample R²*: pooled over the two test folds,
+  1 − SSE / Σ(y − mean of all test y)²; dR2 = R²_mol − R²_base.
+- *Null*: within each transition, permute y[t+1] among the training
+  colonies (independently per transition and fold), refit both models,
+  score on the unpermuted test fold; 200 permutations;
+  p = (1 + #{null dR2 >= observed}) / 201.
+- *Sensitivities*: leave-one-colony-out outer CV (inner CV leave-one-colony-
+  out among the remaining 9), and dropping the TP3→TP4 transition.
+- *Cross-species transfer*: genes z-scored within species and y z-scored
+  within species before training on one species and testing on another.

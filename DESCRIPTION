@@ -35,4 +35,5 @@ Imports:
     limma,
     vegan,
     variancePartition,
-    lme4
+    lme4,
+    glmnet
