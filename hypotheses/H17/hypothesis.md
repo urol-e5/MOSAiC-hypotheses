@@ -82,4 +82,29 @@ decision; if per-pair significance is reported, BH across pairs.
 
 ## Amendments
 
-(Leave empty. Dated entries only, added if the decision rule has to change.)
+### Amendment 1 (2026-10-07), before any H17 analysis was run
+
+**Problem.** The upstream lncRNA count tables carry no strand: every lncRNA
+in `lncrna_<species>_features` is `+` in all three species (decision D-014).
+Two parts of the Model and sensitivity sections need strand: the
+orientation split (Model step 6) and "exclude pairs within 2 kb on the same
+strand". Two details of step 3–4 were also left open.
+
+**Change.** The original text above is kept; these replace it where they
+conflict. The decision rule is unchanged.
+
+- *Orientation split (step 6)*: dropped as not estimable. RESULT.md says so.
+- *Read-through sensitivity*: exclude **all** pairs within 2 kb, whatever
+  the gene strand. This removes a superset of the same-strand pairs, so it is
+  conservative.
+- *Null and dr*: for each cis pair (<= 10 kb, not overlapping) 100 candidate
+  partners are drawn once, without replacement, from genes on other
+  scaffolds in the same mean-vst decile as the true neighbor. Each of the
+  1000 null draws takes one candidate per pair and records the median r.
+  dr = observed median r minus the mean of the 1000 null medians; its 95%
+  interval is observed median minus the 97.5% and 2.5% null medians;
+  p = (1 + #{null median >= observed median}) / 1001.
+- *Standardized slope (step 4)*: for a single standardized predictor the
+  slope equals r, so the median standardized slope is the median r over cis
+  pairs. It is reported with a bootstrap CI over pairs, as pre-registered,
+  and is not a separate number.

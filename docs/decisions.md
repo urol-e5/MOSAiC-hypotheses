@@ -143,3 +143,17 @@ Ptuh worker holds one resampled copy of the matrix, about 1 GB.
 Open: variancePartition fits ran at about 0.24 s per feature per worker with
 47 workers, against 0.026 s in a single-process benchmark. Check whether
 threaded BLAS inside forked workers is the cause before the next large run.
+
+## D-014 (2026-10-07) lncRNA features have no strand
+
+`lncrna_<species>_features` comes from the featureCounts table header
+(`Chr`, `Start`, `End`, `Strand`, `Length`) of the upstream
+`*_lncRNA_counts.clean.filtered.txt` files, and `Strand` is `+` for every
+lncRNA in all three species (15,559 / 8,319 / 11,236). Gene coordinates from
+the GFFs are about half `-`, so this is a property of the lncRNA SAF/GTF
+used upstream, not of harmonization. Treat lncRNA strand as unknown. H17
+drops its orientation split and excludes all pairs within 2 kb in its
+read-through check (H17 Amendment 1). Worth an issue on
+`urol-e5/timeseries_molecular` asking whether stranded lncRNA coordinates
+exist.
+
