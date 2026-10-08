@@ -313,6 +313,8 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#d-009-2026-10-07-lme4-pinned-to-1.1-37" id="toc-d-009-2026-10-07-lme4-pinned-to-1.1-37" class="nav-link" data-scroll-target="#d-009-2026-10-07-lme4-pinned-to-1.1-37">D-009 (2026-10-07) lme4 pinned to 1.1-37</a></li>
   <li><a href="#d-010-2026-10-07-h04-runs-on-raven-varpart-is-chunked" id="toc-d-010-2026-10-07-h04-runs-on-raven-varpart-is-chunked" class="nav-link" data-scroll-target="#d-010-2026-10-07-h04-runs-on-raven-varpart-is-chunked">D-010 (2026-10-07) H04 runs on raven; varpart is chunked</a></li>
   <li><a href="#d-011-2026-10-07-mirna-libraries-below-1000-reads-are-dropped" id="toc-d-011-2026-10-07-mirna-libraries-below-1000-reads-are-dropped" class="nav-link" data-scroll-target="#d-011-2026-10-07-mirna-libraries-below-1000-reads-are-dropped">D-011 (2026-10-07) miRNA libraries below 1,000 reads are dropped</a></li>
+  <li><a href="#d-012-2026-10-07-r-environment-on-raven" id="toc-d-012-2026-10-07-r-environment-on-raven" class="nav-link" data-scroll-target="#d-012-2026-10-07-r-environment-on-raven">D-012 (2026-10-07) R environment on raven</a></li>
+  <li><a href="#d-013-2026-10-07-h04-permanova-bootstrap-runs-in-parallel" id="toc-d-013-2026-10-07-h04-permanova-bootstrap-runs-in-parallel" class="nav-link" data-scroll-target="#d-013-2026-10-07-h04-permanova-bootstrap-runs-in-parallel">D-013 (2026-10-07) H04 PERMANOVA bootstrap runs in parallel</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -387,6 +389,20 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="d-011-2026-10-07-mirna-libraries-below-1000-reads-are-dropped">D-011 (2026-10-07) miRNA libraries below 1,000 reads are dropped</h2>
 <p>The upstream miRNA count matrices contain near-empty libraries. Peve, eight below 1,000 total reads against a median of about 20,000: POR-236-TP2 (0), POR-74-TP4 (3), POR-262-TP3 (5), POR-262-TP4 (5), POR-69-TP2 (55), POR-83-TP3 (69), POR-262-TP2 (241), POR-216-TP4 (351); the next lowest is 1,368. Ptuh, one: POC-52-TP1 (401, median about 72,000). DESeq2 cannot size-factor an all-zero sample and the others are noise. Analyses using miRNA call <code>mirna_qc_samples()</code> (R/expression.R), which keeps samples with &gt;= 1,000 total reads. The design table’s <code>has_mirna</code> flags are unchanged, so the reproduction gate still matches MOSAiC’s published sample counts. Worth an upstream issue on urol-e5/timeseries_molecular.</p>
 <p>Peve miRNA depth is also confounded with timepoint among the libraries that pass the 1,000-read filter (29 of 37): median total reads TP1 182k, TP2 82k, TP3 52k, TP4 11k (n = 10 / 7 / 6 / 6; median poscounts size factors 3.5, 0.56, 0.57, 0.31). All eight failed libraries are TP2 to TP4. Peve miRNA timepoint effects (H07, H13) should be read as possibly technical until this is checked upstream.</p>
+</section>
+<section id="d-012-2026-10-07-r-environment-on-raven" class="level2">
+<h2 class="anchored" data-anchor-id="d-012-2026-10-07-r-environment-on-raven">D-012 (2026-10-07) R environment on raven</h2>
+<p>Raven’s system R is 4.3.3 with no project packages and no 4.3 user library. Packages were installed into <code>~/R/x86_64-pc-linux-gnu-library/4.3</code> (R adds it automatically once it exists) from Bioconductor 3.18, matching the desktop, with lme4 pinned to 1.1-37 (D-009). Two workarounds were needed, neither a system change:</p>
+<ul>
+<li><code>fs</code>: raven has no libuv headers. Install with <code>USE_BUNDLED_LIBUV=1</code>.</li>
+<li><code>Deriv</code> (needed by doBy -&gt; pbkrtest -&gt; lmerTest -&gt; variancePartition): the current CRAN release requires R &gt;= 4.5. Install the archived 4.2.0: <code>install.packages("https://cloud.r-project.org/src/contrib/Archive/Deriv/Deriv_4.2.0.tar.gz", repos = NULL, type = "source")</code>.</li>
+</ul>
+<p>A fresh fetch on raven reproduced every md5 in <code>config/upstream.lock.yml</code>; only <code>fetched_on</code> dates changed, and that diff was discarded. The reproduction gate passed before H04 ran.</p>
+</section>
+<section id="d-013-2026-10-07-h04-permanova-bootstrap-runs-in-parallel" class="level2">
+<h2 class="anchored" data-anchor-id="d-013-2026-10-07-h04-permanova-bootstrap-runs-in-parallel">D-013 (2026-10-07) H04 PERMANOVA bootstrap runs in parallel</h2>
+<p>In the first raven run the R2 bootstrap (200 resamples, one Euclidean distance over up to 1.8 M CpGs each) ran serially and took about 1 h 45 min of the 3 h 44 min total. <code>permanova_one()</code> now draws all bootstrap indices serially in the main process, in the same order <code>replicate()</code> did, and forks only the <code>adonis2</code> fits with <code>parallel::mclapply</code> (<code>H04_WORKERS</code> cores). <code>adonis2(..., permutations = 0)</code> uses no random numbers, so the draws and the RNG state afterwards are unchanged: rerunning the purled qmd for Apul reproduced the committed <code>permanova.csv</code> rows exactly (tolerance 0). Each Ptuh worker holds one resampled copy of the matrix, about 1 GB.</p>
+<p>Open: variancePartition fits ran at about 0.24 s per feature per worker with 47 workers, against 0.026 s in a single-process benchmark. Check whether threaded BLAS inside forked workers is the cause before the next large run.</p>
 
 
 </section>
