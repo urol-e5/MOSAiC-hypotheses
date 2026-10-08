@@ -1,0 +1,322 @@
+---
+title: "H18: methylation and cis-lncRNA channels on within-colony expression"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+source(file.path(root, "R", "methylation.R"))
+source(file.path(root, "R", "neighbors.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2); library(lme4) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H18", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+tps <- c("TP1", "TP2", "TP3", "TP4")
+n_perm <- 1000
+n_boot <- 2000
+n_cores <- max(1, parallel::detectCores() - 1)
+set.seed(20261007)
+```
+
+## Pre-registered decision rule
+
+Amendment 1 (`hypothesis.md`, written before any analysis) makes the rule
+operational; per species, in this order:
+
+> 1. *No signal*: unique_M and unique_L both indistinguishable from null.
+> 2. *Hierarchical*: path a (M_L → L) colony-bootstrap CI excludes 0, the
+>    indirect effect a×b CI excludes 0, and a×b / c >= 0.25 where c is the
+>    total effect of M_L on E (same sign as a×b).
+> 3. *Independent*: both unique fractions > 0 and shared < 25% of the
+>    combined-model R².
+> 4. *Redundant*: shared >= the larger unique fraction and the combined R²
+>    exceeds the 95th percentile of the combined R² under each of the two
+>    nulls.
+> 5. Otherwise *unclassified*.
+>
+> `supported` if >= 2 species are independent. `not supported` if >= 2 are
+> redundant, or >= 2 are hierarchical. `inconclusive` if >= 2 have no
+> signal, or otherwise.
+
+"> 0" means above the permutation null, one-sided p < 0.05. E: gene vst;
+M: gene-body methylation; L: vst of the nearest non-overlapping lncRNA within
+10 kb; M_L: methylation over that lncRNA's locus. Every variable is centered
+on its gene×colony mean and standardized within gene.
+
+Implementation notes (not in `hypothesis.md`; none changes the rule):
+
+- **Mixed model vs OLS.** Every variable is centered on its own
+  gene×colony mean over the same samples, so the outcome has zero mean in
+  every gene and colony and the `(1|colony) + (1|gene)` intercepts are
+  structurally zero. The pre-registered `lmer` fits and their Nakagawa
+  marginal R² are computed on the observed data and compared with OLS below.
+  If they agree to within 1e-4 for every R² and commonality fraction, the
+  permutation and bootstrap refits use the closed-form OLS solution (from
+  the correlation matrix of E, M, L, M_L). If not, the rule is applied to
+  the `lmer` values and RESULT.md says so. (H16 needed `lmer` throughout
+  because its lagged outcome was not centered on the same samples; that
+  does not apply here.)
+- Pairs: for each gene with a GBM value, the nearest lncRNA (smallest gap,
+  gap > 0) within 10 kb, using `neighbor_pairs()` as in H17. Ties are
+  broken by lncRNA id.
+- Permutation pairings exclude the identity; a colony contributes the
+  timepoints it shares with its partner.
+- Bootstrap: colonies resampled with replacement; 95% percentile intervals.
+
+## Data
+
+```{r data}
+prep_species <- function(sp, min_cpg = 5) {
+  cpg <- as_count_matrix(load_cpg(sp))
+  ids <- design |> filter(species == sp, has_cpg %in% TRUE, has_lncrna %in% TRUE, has_genes %in% TRUE,
+                          sample_id %in% colnames(cpg)) |> pull(sample_id)
+  g <- prep_vst(load_genes(sp) |> select(feature_id, any_of(ids)), design)
+  l <- prep_vst(load_lncrna(sp) |> select(feature_id, any_of(ids)), design)
+  ids <- Reduce(intersect, list(ids, colnames(g$vst), colnames(l$vst)))
+  info <- design |> filter(sample_id %in% ids) |> arrange(colony, timepoint)
+  ids <- info$sample_id
+  gcoord <- load_gene_coords(sp); lcoord <- lncrna_coords(sp)
+  gb <- gene_body_methylation(cpg[, ids, drop = FALSE], gcoord, min_cpg = min_cpg)
+  lb <- gene_body_methylation(cpg[, ids, drop = FALSE], lcoord, min_cpg = min_cpg)
+  genes_gbm <- intersect(rownames(gb$gbm), rownames(g$vst))
+  pr <- neighbor_pairs(gcoord |> filter(feature_id %in% genes_gbm), lcoord |> filter(feature_id %in% rownames(l$vst))) |>
+    filter(!overlap, gap <= 10000) |> arrange(a, gap, b) |> distinct(a, .keep_all = TRUE) |>
+    transmute(gene = a, lncrna = b, gap, has_ml = lncrna %in% rownames(lb$gbm), n_cpg = gb$n_cpg[gene])
+  cols <- unique(info$colony)
+  arr <- function(m, rows) setNames(lapply(cols, function(c) {
+    out <- matrix(NA_real_, length(rows), 4, dimnames = list(NULL, tps))
+    s <- info |> filter(colony == c)
+    ok <- rows %in% rownames(m)
+    out[ok, s$timepoint] <- m[rows[ok], s$sample_id, drop = FALSE]
+    out
+  }), cols)
+  # included vs excluded GBM genes (pre-registered description)
+  incl <- tibble(gene = genes_gbm, included = genes_gbm %in% pr$gene,
+                 gbm = rowMeans(gb$gbm[genes_gbm, , drop = FALSE]), expr = rowMeans(g$vst[genes_gbm, ids, drop = FALSE])) |>
+    group_by(included) |> summarise(genes = n(), mean_gbm = mean(gbm), median_gbm = median(gbm),
+                                    mean_vst = mean(expr), median_vst = median(expr), .groups = "drop") |>
+    mutate(species = sp, .before = 1)
+  list(species = sp, cols = cols, pairs = pr,
+       E = arr(g$vst, pr$gene), L = arr(l$vst, pr$lncrna), M = arr(gb$gbm, pr$gene), ML = arr(lb$gbm, pr$lncrna),
+       incl = incl,
+       n = tibble(species = sp, samples = length(ids), colonies = length(cols), genes_with_gbm = length(genes_gbm),
+                  pairs = nrow(pr), pairs_with_lncrna_methylation = sum(pr$has_ml)))
+}
+
+dat <- lapply(setNames(species_all, species_all), prep_species)
+n_tab <- bind_rows(lapply(dat, `[[`, "n"))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab, format.args = list(big.mark = ","))
+```
+
+GBM genes with and without a cis-lncRNA partner (pre-registered check of the
+selected subset):
+
+```{r included}
+incl_tab <- bind_rows(lapply(dat, `[[`, "incl"))
+write_csv(incl_tab, file.path(out_dir, "included_vs_excluded_genes.csv"))
+knitr::kable(incl_tab, digits = 3, format.args = list(big.mark = ","))
+```
+
+## Model
+
+```{r functions}
+# Long vectors for a pairing: unit i takes M and ML from colony mc[i], L from
+# lc[i], E from ec[i], on the timepoints all three have. Center per pair x
+# unit, then standardize per pair across units. `rows` subsets pairs.
+make_long <- function(d, mc, lc, ec, rows = seq_len(nrow(d$pairs))) {
+  center <- function(m) m - rowMeans(m, na.rm = TRUE)
+  parts <- lapply(seq_along(mc), function(i) {
+    E <- d$E[[ec[i]]][rows, , drop = FALSE]; L <- d$L[[lc[i]]][rows, , drop = FALSE]
+    M <- d$M[[mc[i]]][rows, , drop = FALSE]; ML <- d$ML[[mc[i]]][rows, , drop = FALSE]
+    ok <- !is.na(E[1, ]) & !is.na(L[1, ]) & !is.na(M[1, ])
+    if (sum(ok) < 2) return(NULL)
+    list(E = center(E[, ok, drop = FALSE]), L = center(L[, ok, drop = FALSE]),
+         M = center(M[, ok, drop = FALSE]), ML = center(ML[, ok, drop = FALSE]), unit = i)
+  })
+  parts <- Filter(Negate(is.null), parts)
+  bind <- function(v) do.call(cbind, lapply(parts, `[[`, v))
+  E <- bind("E"); L <- bind("L"); M <- bind("M"); ML <- bind("ML")
+  std <- function(m) { s <- apply(m, 1, sd, na.rm = TRUE); s[!is.finite(s) | s == 0] <- NA; m / s }
+  E <- std(E); L <- std(L); M <- std(M); ML <- std(ML)
+  unit <- rep(sapply(parts, `[[`, "unit"), times = sapply(parts, function(p) ncol(p$E)))
+  tibble(pair = rep(rows, times = ncol(E)), unit = rep(unit, each = nrow(E)),
+         E = as.vector(E), L = as.vector(L), M = as.vector(M), ML = as.vector(ML))
+}
+
+r2_from <- function(rEM, rEL, rML) (rEM^2 + rEL^2 - 2 * rEM * rEL * rML) / (1 - rML^2)
+
+# Commonality and path statistics from long data (closed-form OLS).
+stats_of <- function(x) {
+  x1 <- x |> filter(is.finite(E), is.finite(L), is.finite(M))
+  cm <- cor(x1[, c("E", "M", "L")])
+  R2_ML <- r2_from(cm["E", "M"], cm["E", "L"], cm["M", "L"]); R2_M <- cm["E", "M"]^2; R2_L <- cm["E", "L"]^2
+  x2 <- x |> filter(is.finite(E), is.finite(L), is.finite(ML))
+  cp <- cor(x2[, c("E", "L", "ML")])
+  a <- cp["L", "ML"]; b <- (cp["E", "L"] - cp["E", "ML"] * a) / (1 - a^2); c <- cp["E", "ML"]
+  c(R2_combined = R2_ML, R2_M = R2_M, R2_L = R2_L,
+    unique_M = R2_ML - R2_L, unique_L = R2_ML - R2_M, shared = R2_M + R2_L - R2_ML,
+    path_a = a, path_b = b, indirect = a * b, total_c = c, prop_mediated = a * b / c,
+    rows = nrow(x1), rows_path = nrow(x2))
+}
+
+# Pre-registered lmer fits on the observed data (for the OLS equivalence check).
+lmer_check <- function(x, d) {
+  x <- x |> filter(is.finite(E), is.finite(L), is.finite(M)) |>
+    mutate(colony = d$cols[unit], gene = factor(pair))
+  r2m <- function(f) {
+    fit <- lmer(f, data = x, control = lmerControl(calc.derivs = FALSE))
+    vf <- var(as.vector(model.matrix(fit) %*% fixef(fit)))
+    vc <- as.data.frame(VarCorr(fit))$vcov
+    c(R2 = vf / (vf + sum(vc)), singular = isSingular(fit))
+  }
+  a <- r2m(E ~ M + L + (1 | colony) + (1 | gene)); m <- r2m(E ~ M + (1 | colony) + (1 | gene)); l <- r2m(E ~ L + (1 | colony) + (1 | gene))
+  tibble(R2_combined_lmer = a[["R2"]], R2_M_lmer = m[["R2"]], R2_L_lmer = l[["R2"]],
+         unique_M_lmer = a[["R2"]] - l[["R2"]], unique_L_lmer = a[["R2"]] - m[["R2"]], shared_lmer = m[["R2"]] + l[["R2"]] - a[["R2"]],
+         any_singular = any(c(a[["singular"]], m[["singular"]], l[["singular"]]) == 1))
+}
+
+random_derangement <- function(k) { repeat { p <- sample.int(k); if (any(p != seq_len(k))) return(p) } }
+
+analyse <- function(d, rows = seq_len(nrow(d$pairs)), lmer_fit = TRUE) {
+  k <- length(d$cols); id <- seq_len(k)
+  obs_long <- make_long(d, id, id, id, rows)
+  obs <- stats_of(obs_long)
+  perm_M_idx <- replicate(n_perm, random_derangement(k), simplify = FALSE)
+  perm_L_idx <- replicate(n_perm, random_derangement(k), simplify = FALSE)
+  boot_idx <- replicate(n_boot, sample.int(k, replace = TRUE), simplify = FALSE)
+  run <- function(idx, f) do.call(rbind, parallel::mclapply(idx, f, mc.cores = n_cores))
+  nullM <- run(perm_M_idx, function(p) stats_of(make_long(d, p, id, id, rows)))     # methylation from another colony
+  nullL <- run(perm_L_idx, function(p) stats_of(make_long(d, p, id, p, rows)))      # lncRNA from another colony
+  boot <- run(boot_idx, function(i) stats_of(make_long(d, i, i, i, rows)))
+  q <- function(m, v, pr) unname(quantile(m[, v], pr, na.rm = TRUE))
+  pval <- function(nl, v) (1 + sum(nl[, v] >= obs[[v]], na.rm = TRUE)) / (1 + sum(!is.na(nl[, v])))
+  s <- tibble(species = d$species, pairs = length(rows), rows = obs[["rows"]], rows_path = obs[["rows_path"]],
+              R2_combined = obs[["R2_combined"]], R2_M = obs[["R2_M"]], R2_L = obs[["R2_L"]],
+              unique_M = obs[["unique_M"]], unique_M_lo = q(boot, "unique_M", 0.025), unique_M_hi = q(boot, "unique_M", 0.975),
+              unique_M_null95 = q(nullM, "unique_M", 0.95), p_unique_M = pval(nullM, "unique_M"),
+              unique_L = obs[["unique_L"]], unique_L_lo = q(boot, "unique_L", 0.025), unique_L_hi = q(boot, "unique_L", 0.975),
+              unique_L_null95 = q(nullL, "unique_L", 0.95), p_unique_L = pval(nullL, "unique_L"),
+              shared = obs[["shared"]], shared_lo = q(boot, "shared", 0.025), shared_hi = q(boot, "shared", 0.975),
+              R2_combined_null95_M = q(nullM, "R2_combined", 0.95), R2_combined_null95_L = q(nullL, "R2_combined", 0.95),
+              path_a = obs[["path_a"]], path_a_lo = q(boot, "path_a", 0.025), path_a_hi = q(boot, "path_a", 0.975),
+              indirect = obs[["indirect"]], indirect_lo = q(boot, "indirect", 0.025), indirect_hi = q(boot, "indirect", 0.975),
+              total_c = obs[["total_c"]], total_c_lo = q(boot, "total_c", 0.025), total_c_hi = q(boot, "total_c", 0.975),
+              prop_mediated = obs[["prop_mediated"]])
+  if (lmer_fit) s <- bind_cols(s, lmer_check(obs_long, d))
+  list(summary = s, null = bind_rows(as_tibble(nullM) |> mutate(null = "methylation permuted"),
+                                     as_tibble(nullL) |> mutate(null = "lncRNA permuted")) |> mutate(species = d$species))
+}
+
+classify <- function(s) {
+  s |> mutate(
+    M_pos = p_unique_M < 0.05, L_pos = p_unique_L < 0.05,
+    no_signal = !M_pos & !L_pos,
+    hierarchical = (path_a_lo > 0 | path_a_hi < 0) & (indirect_lo > 0 | indirect_hi < 0) &
+                   sign(indirect) == sign(total_c) & prop_mediated >= 0.25,
+    independent = M_pos & L_pos & shared < 0.25 * R2_combined,
+    redundant = shared >= pmax(unique_M, unique_L) & R2_combined > R2_combined_null95_M & R2_combined > R2_combined_null95_L,
+    pattern = case_when(no_signal ~ "no signal", hierarchical ~ "hierarchical", independent ~ "independent",
+                        redundant ~ "redundant", TRUE ~ "unclassified"))
+}
+
+decide <- function(s) {
+  s <- classify(s)
+  n <- function(p) sum(s$pattern == p)
+  verdict <- if (n("independent") >= 2) "supported"
+    else if (n("redundant") >= 2 || n("hierarchical") >= 2) "not supported"
+    else "inconclusive"
+  list(per_species = s, verdict = verdict)
+}
+```
+
+```{r fit}
+res <- lapply(dat, analyse)
+primary <- decide(bind_rows(lapply(res, `[[`, "summary")))
+write_csv(primary$per_species, file.path(out_dir, "commonality_summary.csv"))
+write_csv(bind_rows(lapply(res, `[[`, "null")), file.path(out_dir, "null_draws.csv"))
+knitr::kable(primary$per_species |> select(species, pairs, rows, R2_combined, unique_M, p_unique_M, unique_L, p_unique_L,
+                                           shared, pattern), digits = 5)
+```
+
+**Primary verdict: `r primary$verdict`.**
+
+Hierarchical path (lncRNA-locus methylation → lncRNA → gene):
+
+```{r path}
+knitr::kable(primary$per_species |> select(species, rows_path, path_a, path_a_lo, path_a_hi, indirect, indirect_lo, indirect_hi,
+                                           total_c, total_c_lo, total_c_hi, prop_mediated, hierarchical), digits = 4)
+```
+
+OLS vs the pre-registered `lmer` fits on the observed data:
+
+```{r lmer-check}
+chk <- primary$per_species |> transmute(species,
+  d_R2_combined = R2_combined - R2_combined_lmer, d_unique_M = unique_M - unique_M_lmer,
+  d_unique_L = unique_L - unique_L_lmer, d_shared = shared - shared_lmer, any_singular)
+chk <- chk |> mutate(max_abs = pmax(abs(d_R2_combined), abs(d_unique_M), abs(d_unique_L), abs(d_shared)),
+                     within_tolerance = max_abs < 1e-4)
+write_csv(chk, file.path(out_dir, "ols_vs_lmer.csv"))
+knitr::kable(chk, digits = 7)
+```
+
+```{r fig, fig.width = 9, fig.height = 3.8}
+fig_dat <- primary$per_species |>
+  transmute(species, `unique methylation` = unique_M, `unique lncRNA` = unique_L, shared,
+            M_lo = unique_M_lo, M_hi = unique_M_hi, L_lo = unique_L_lo, L_hi = unique_L_hi, S_lo = shared_lo, S_hi = shared_hi) |>
+  pivot_longer(c(`unique methylation`, `unique lncRNA`, shared), names_to = "component", values_to = "R2") |>
+  mutate(lo = case_when(component == "unique methylation" ~ M_lo, component == "unique lncRNA" ~ L_lo, TRUE ~ S_lo),
+         hi = case_when(component == "unique methylation" ~ M_hi, component == "unique lncRNA" ~ L_hi, TRUE ~ S_hi)) |>
+  select(species, component, R2, lo, hi)
+write_csv(fig_dat, file.path(out_dir, "commonality_figure_data.csv"))
+g <- ggplot(fig_dat, aes(component, R2)) +
+  geom_hline(yintercept = 0, colour = "grey70") +
+  geom_pointrange(aes(ymin = lo, ymax = hi), colour = "#1b6ca8") +
+  facet_wrap(~ species) +
+  labs(x = NULL, y = "Within-colony expression variance (R2)") +
+  theme_bw() + theme(axis.text.x = element_text(angle = 20, hjust = 1))
+ggsave(file.path(out_dir, "commonality.png"), g, width = 9, height = 3.8, dpi = 150)
+g
+```
+
+Points are commonality fractions; bars are 95% colony-bootstrap intervals.
+
+## Sensitivity check: genes with >= 20 CpGs
+
+```{r sens}
+res20 <- lapply(dat, function(d) analyse(d, which(d$pairs$n_cpg >= 20), lmer_fit = FALSE))
+sens20 <- decide(bind_rows(lapply(res20, `[[`, "summary")))
+write_csv(sens20$per_species, file.path(out_dir, "sens_mincpg20_summary.csv"))
+knitr::kable(sens20$per_species |> select(species, pairs, R2_combined, unique_M, p_unique_M, unique_L, p_unique_L, shared, pattern), digits = 5)
+```
+
+```{r summary}
+verdicts <- tibble(analysis = c("primary (>= 5 CpGs)", ">= 20 CpGs"), verdict = c(primary$verdict, sens20$verdict))
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+knitr::kable(verdicts)
+```
+
+## Caveats
+
+- Samples with all three layers: `r paste(n_tab$species, n_tab$samples, sep = " ", collapse = ", ")`;
+  about 10 colonies per species.
+- Within-colony variation over at most four timepoints per colony.
+- lncRNA strand is unknown (D-014), and H17 found most cis coupling to be
+  generic local co-expression, so unique_L is "nearby lncRNA", not
+  "regulatory lncRNA".
+- miRNA, a third channel, is out of scope (no target predictions in the
+  manifest).
+- CpG density differs about 20-fold across species (D-008).

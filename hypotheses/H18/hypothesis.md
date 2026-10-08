@@ -2,7 +2,7 @@
 id: H18
 slug: methylation-lncrna-channel-integration
 title: Gene-body methylation and cis-lncRNA expression explain largely independent parts of within-colony expression change
-status: planned
+status: not supported
 tier: 4
 layers: [cpg, lncrna, genes, annotation]
 species: [Apul, Peve, Ptuh]

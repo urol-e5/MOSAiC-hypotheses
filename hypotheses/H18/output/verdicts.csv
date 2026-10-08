@@ -1,0 +1,3 @@
+analysis,verdict
+primary (>= 5 CpGs),not supported
+>= 20 CpGs,inconclusive
