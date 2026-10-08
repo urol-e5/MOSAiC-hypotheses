@@ -70,7 +70,18 @@ discovered after the fact.
 
 ## 6. Publishing findings
 
-A supported or clearly informative result gets a short report in
-`RobertsLab/current-findings` via that repo's `new-report.sh`. This repo stays
-the working record; the finding links back to the hypothesis directory and the
-MOSAiC commit in `config/upstream.yml`.
+A result gets a short report in `RobertsLab/current-findings` (via that
+repo's `new-report.sh`) if any of these holds:
+
+- (a) the verdict is `supported`;
+- (b) a `not supported` or `inconclusive` verdict was adequately powered
+  (a pre-registered power or simulation check) or bounds an effect size;
+- (c) several hypotheses together answer one question. Then write one
+  synthesis report covering all of them instead of one report each.
+
+Reports state each verdict as pre-registered before any reinterpretation, and
+keep the caveats from `RESULT.md`. This repo stays the working record; each
+report links back to the hypothesis directories and the MOSAiC commit in
+`config/upstream.yml`. Writing the report is part of finishing a hypothesis:
+when `RESULT.md` is committed, check (a)–(c) and either add the report or say
+in `RESULT.md` which existing report covers it.

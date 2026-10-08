@@ -76,6 +76,8 @@ filtering (D-008). Implementation note: an OLS shortcut for the refits was
 tried in a smoke test and dropped because it differed from `lmer` by up to
 0.006; all reported fits are `lmer`, as pre-registered.
 
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-gene-body-methylation-stable-not-seasonal/> (gene-body methylation synthesis, with H04–H06, H15, H16, H18).
+
 **Outputs:** in `output/`
 - `n_per_species.csv`, `n_per_transition.csv`: colonies, samples, genes and transitions used
 - `crosslag_summary.csv`: coefficients, null means, permutation p (raw and Holm), bootstrap CIs, Wald CIs, decision columns

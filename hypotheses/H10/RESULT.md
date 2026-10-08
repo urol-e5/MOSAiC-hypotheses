@@ -58,6 +58,8 @@ within-profile shifts in ITS2 sequence abundance, and relative abundances are
 compositional. The colony bootstrap ignores site. One secondary model gave a
 near-singular convergence warning; the secondary result is descriptive.
 
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-symbiont-communities-colony-fixed/> (symbiont communities).
+
 **Outputs:** in `output/`
 - `n_per_species.csv`, `samples_per_timepoint.csv`: samples, colonies, profile dominance
 - `permanova.csv`: R2 with bootstrap CIs and permutation p

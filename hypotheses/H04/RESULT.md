@@ -69,6 +69,8 @@ low-contiguity reference (N50 0.17 Mb). A follow-up hypothesis with a common
 coverage-and-methylation filter across species, pre-registered before
 looking, would be the clean test.
 
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-gene-body-methylation-stable-not-seasonal/> (gene-body methylation synthesis, with H04–H06, H15, H16, H18).
+
 **Outputs:** in `output/`
 - `n_per_species.csv`, `design_per_colony.csv`: samples and design actually used
 - `permanova.csv`: R2 with bootstrap intervals and p-values, per layer and term

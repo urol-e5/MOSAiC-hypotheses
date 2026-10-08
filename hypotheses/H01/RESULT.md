@@ -52,6 +52,8 @@ conserved genes and is not an artifact of reference-genome quality. Peve's
 near-zero timepoint share may partly reflect its two missing late-year
 samples and its lower-contiguity reference (N50 0.17 Mb).
 
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-seasonal-transcriptome-plasticity/> (seasonal transcriptome plasticity synthesis, with H01–H03).
+
 **Outputs:** in `output/`
 - `n_per_species.csv`, `design_per_colony.csv`: samples and design actually used
 - `varpart_per_gene.csv`: per-gene variance fractions, primary model (5.7 MB)

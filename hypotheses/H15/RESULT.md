@@ -84,6 +84,8 @@ Each colony's change rests on one sample per timepoint per layer. Gene sets
 differ about 10-fold across species because of unequal upstream CpG
 filtering (D-008). TP3→TP4 also spans the *Acropora* spawning window.
 
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-gene-body-methylation-stable-not-seasonal/> (gene-body methylation synthesis, with H04–H06, H15, H16, H18).
+
 **Outputs:** in `output/`
 - `n_per_species.csv`: colonies, samples and genes used
 - `temperature_30d.csv`: 30-day site temperature means and logger days per window

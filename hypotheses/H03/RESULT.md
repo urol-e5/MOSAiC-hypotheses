@@ -62,6 +62,8 @@ permutation and Fisher p-values are optimistic. Read with H02: the large
 *Acropora* seasonal response looks species-specific rather than a shared
 cnidarian program, and partly runs opposite to *Pocillopora*.
 
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-seasonal-transcriptome-plasticity/> (seasonal transcriptome plasticity synthesis, with H01–H03).
+
 **Outputs:** in `output/`
 - `n_per_species.csv`: samples and groups used
 - `tp3_vs_tp1_per_group.csv`: MLE and shrunken LFC, Wald p and padj per group and species

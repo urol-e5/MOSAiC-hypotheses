@@ -48,6 +48,8 @@ four timepoint means is noisy and on the vst (log) scale is tied to mean
 level, which the spline term addresses. Bootstrap intervals resample genes,
 not colonies.
 
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-gene-body-methylation-stable-not-seasonal/> (gene-body methylation synthesis, with H04–H06, H15, H16, H18).
+
 **Outputs:** in `output/`
 - `n_per_species.csv`: samples, CpGs and genes at each step
 - `per_gene.csv`: n CpGs, GBM, mean expression and CV per gene and species

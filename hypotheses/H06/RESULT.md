@@ -71,6 +71,8 @@ unequal upstream CpG filtering (decision D-008). TP1 and TP3 differ in
 temperature, light, nutrients and reproductive timing, so no driver can be
 assigned.
 
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-gene-body-methylation-stable-not-seasonal/> (gene-body methylation synthesis, with H04–H06, H15, H16, H18).
+
 **Outputs:** in `output/`
 - `n_per_species.csv`: paired colonies, samples and genes used
 - `coupling_summary.csv`: T, permutation p, DM-gene T, colony-averaged rho, mixed-model slope

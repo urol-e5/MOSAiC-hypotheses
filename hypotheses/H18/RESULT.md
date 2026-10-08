@@ -81,6 +81,8 @@ above the null. lncRNA strand is unknown (D-014). miRNA, a third channel, is
 out of scope. CpG density differs about 20-fold across species (D-008),
 which is why Ptuh has 10 times more pairs.
 
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-gene-body-methylation-stable-not-seasonal/> (gene-body methylation synthesis, with H04–H06, H15, H16, H18).
+
 **Outputs:** in `output/`
 - `n_per_species.csv`, `included_vs_excluded_genes.csv`: samples, pairs, and the selected-subset check
 - `commonality_summary.csv`: R², commonality fractions, nulls, path coefficients, CIs, `lmer` values, classification

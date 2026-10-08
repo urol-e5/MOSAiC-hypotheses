@@ -65,6 +65,8 @@ across timepoints, which this analysis cannot separate from season. The
 defensible reading is "Acropora is far more seasonally plastic than
 Pocillopora or Porites", not a three-way ranking.
 
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-seasonal-transcriptome-plasticity/> (seasonal transcriptome plasticity synthesis, with H01–H03).
+
 **Outputs:** in `output/`
 - `n_per_species.csv`, `design_per_timepoint.csv`, `library_sizes.csv`: samples, groups, and depth used
 - `de_per_group.csv`: LRT statistics, all six pairwise LFCs, and max |LFC| per group and species (6.2 MB)

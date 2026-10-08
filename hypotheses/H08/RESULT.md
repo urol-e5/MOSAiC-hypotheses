@@ -62,6 +62,8 @@ correlated with a gene module contributes many edges. Species is confounded
 with reference quality (Peve N50 0.17 Mb; Ptuh mapped to *P. meandrina*),
 which affects lncRNA annotation.
 
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-lncrna-cis-coexpression/> (lncRNA co-expression, with H08 and H17).
+
 **Outputs:** in `output/`
 - `n_per_species.csv`: samples, features and pairs
 - `edge_counts_vs_null.csv`: observed and null summaries for every species x analysis x null x threshold
