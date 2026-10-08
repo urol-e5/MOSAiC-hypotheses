@@ -50,5 +50,6 @@ list(
   tar_quarto(H17, "hypotheses/H17/analysis.qmd", extra_files = "R/expression.R"),
   tar_quarto(H07, "hypotheses/H07/analysis.qmd", extra_files = "R/expression.R"),
   tar_quarto(H08, "hypotheses/H08/analysis.qmd", extra_files = "R/expression.R"),   # raven
-  tar_quarto(H09, "hypotheses/H09/analysis.qmd", extra_files = "R/expression.R")    # raven
+  tar_quarto(H09, "hypotheses/H09/analysis.qmd", extra_files = "R/expression.R"),   # raven
+  tar_quarto(H10, "hypotheses/H10/analysis.qmd")
 )

@@ -2,7 +2,7 @@
 id: H10
 slug: its2-colony-fixed
 title: Symbiodiniaceae ITS2 community composition is fixed by colony and does not shift seasonally
-status: planned
+status: supported
 tier: 3
 layers: [its2, physiology]
 species: [Apul, Peve, Ptuh]

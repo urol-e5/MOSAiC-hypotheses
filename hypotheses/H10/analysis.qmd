@@ -1,0 +1,233 @@
+---
+title: "H10: are ITS2 symbiont communities colony-fixed?"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2); library(vegan) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H10", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+n_perm <- 999
+n_boot <- 500
+set.seed(20261006)
+```
+
+## Pre-registered decision rule
+
+> `supported` if R2(colony) > 0.5 and R2(timepoint) < 0.1 in all species, and
+> within-colony distance is lower than between-colony with p < 0.01.
+> `not supported` if R2(timepoint) >= R2(colony) in any species. Otherwise
+> `inconclusive`. Secondary test reported but does not change the status.
+
+Model: per species, `adonis2(bray ~ colony + timepoint, strata = colony)`,
+999 permutations, on ITS2 profile relative abundances, all samples. Paired
+Wilcoxon of within- vs between-colony distances. Secondary:
+`lmer(trait ~ dominant_genus + timepoint + (1|colony))`.
+
+Operational choices not spelled out in `hypothesis.md` (none changes the rule):
+
+- **Samples.** All ITS2 samples, which cover many more colonies than the
+  molecular layers (see the n table); colony, species and timepoint come from
+  `config/design.csv`. Colonies sampled once contribute to PERMANOVA but not
+  to the paired distance test.
+- **PERMANOVA.** Terms are sequential (colony, then timepoint). R2 does not
+  depend on permutations; the colony p-value uses unrestricted permutations,
+  the timepoint p-value permutations blocked within colony. R2 gets a 95% CI
+  from `r n_boot` bootstrap resamples of colonies (all samples of a drawn
+  colony kept, duplicates relabelled as distinct colonies).
+- **Paired distance test.** For each colony with >= 2 samples: within = mean
+  Bray-Curtis between its own samples at different timepoints; between = mean
+  distance from its samples to other colonies' samples at the same timepoint.
+  One-sided Wilcoxon signed-rank (within < between) across colonies, per
+  species; the rule is applied per species. Hodges-Lehmann shift with 95% CI.
+- **Dominant genus** is the first letter of the sample's most abundant
+  profile (A *Symbiodinium*, C *Cladocopium*, D *Durusdinium*, G
+  *Gerakladium*). The secondary model is fit only where at least two genera
+  each dominate >= 5 samples; traits `cells.cm2` and `calc.umol.cm2.hr`.
+
+## Data
+
+```{r data}
+its2 <- load_its2()
+prof_cols <- names(its2)[vapply(its2, is.numeric, logical(1))]
+dat <- design |> filter(has_its2 %in% TRUE) |> select(sample_id, species, colony, timepoint) |>
+  inner_join(its2 |> select(sample_id, all_of(prof_cols)), by = "sample_id")
+
+by_sp <- lapply(setNames(species_all, species_all), function(sp) {
+  d <- dat |> filter(species == sp)
+  m <- as.matrix(d[, prof_cols]); rownames(m) <- d$sample_id
+  m <- m[, colSums(m) > 0, drop = FALSE]
+  dom <- colnames(m)[max.col(m, ties.method = "first")]
+  list(info = d |> select(sample_id, species, colony, timepoint) |>
+         mutate(dominant_profile = dom, dominant_genus = substr(dom, 1, 1)), m = m)
+})
+
+n_tab <- bind_rows(lapply(species_all, function(sp) {
+  i <- by_sp[[sp]]$info
+  top <- sort(table(i$dominant_profile), decreasing = TRUE)
+  tibble(species = sp, samples = nrow(i), colonies = n_distinct(i$colony),
+         colonies_ge2_samples = sum(table(i$colony) >= 2),
+         profiles_present = ncol(by_sp[[sp]]$m), dominant_profiles = length(top),
+         top_profile = names(top)[1], top_profile_share = as.numeric(top[1]) / nrow(i),
+         genera = paste(sort(unique(i$dominant_genus)), collapse = ","))
+}))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab, digits = 3)
+```
+
+Samples per timepoint:
+
+```{r design-table}
+tp_tab <- bind_rows(lapply(by_sp, `[[`, "info")) |> count(species, timepoint) |>
+  pivot_wider(names_from = timepoint, values_from = n, values_fill = 0)
+write_csv(tp_tab, file.path(out_dir, "samples_per_timepoint.csv"))
+knitr::kable(tp_tab)
+```
+
+## Model
+
+### PERMANOVA
+
+```{r permanova}
+r2_terms <- function(m, info) {
+  a <- adonis2(vegdist(m, "bray") ~ colony + timepoint, data = info, by = "terms", permutations = 0)
+  a$R2[1:2]
+}
+
+permanova_sp <- function(sp) {
+  m <- by_sp[[sp]]$m
+  info <- by_sp[[sp]]$info |> mutate(colony = factor(colony), timepoint = factor(timepoint)) |> as.data.frame()
+  d <- vegdist(m, "bray")
+  a_free <- adonis2(d ~ colony + timepoint, data = info, by = "terms", permutations = n_perm)
+  a_block <- adonis2(d ~ colony + timepoint, data = info, by = "terms",
+                     permutations = permute::how(blocks = info$colony, nperm = n_perm))
+  cols <- unique(as.character(info$colony))
+  boot <- replicate(n_boot, {
+    draw <- sample(cols, replace = TRUE)
+    idx <- unlist(lapply(seq_along(draw), function(k) which(info$colony == draw[k])))
+    lab <- unlist(lapply(seq_along(draw), function(k) rep(paste0(draw[k], "_", k), sum(info$colony == draw[k]))))
+    bi <- info[idx, ]; bi$colony <- factor(lab)
+    r2_terms(m[idx, , drop = FALSE], bi)
+  })
+  tibble(species = sp, term = c("colony", "timepoint"), R2 = a_free$R2[1:2],
+         R2_lo = apply(boot, 1, quantile, 0.025), R2_hi = apply(boot, 1, quantile, 0.975),
+         p = c(a_free$`Pr(>F)`[1], a_block$`Pr(>F)`[2]), p_permutation = c("unrestricted", "within colony"))
+}
+perm <- bind_rows(lapply(species_all, permanova_sp))
+write_csv(perm, file.path(out_dir, "permanova.csv"))
+knitr::kable(perm, digits = 3)
+```
+
+### Within- vs between-colony distances
+
+```{r paired}
+paired_sp <- function(sp) {
+  info <- by_sp[[sp]]$info
+  D <- as.matrix(vegdist(by_sp[[sp]]$m, "bray"))
+  per_col <- bind_rows(lapply(split(seq_len(nrow(info)), info$colony), function(i) {
+    if (length(i) < 2) return(NULL)
+    w <- D[i, i][upper.tri(D[i, i])]
+    b <- unlist(lapply(i, function(s) {
+      j <- which(info$timepoint == info$timepoint[s] & info$colony != info$colony[s])
+      D[s, j]
+    }))
+    if (!length(b)) return(NULL)
+    tibble(colony = info$colony[i[1]], n_samples = length(i), within = mean(w), between = mean(b))
+  }))
+  w <- wilcox.test(per_col$within, per_col$between, paired = TRUE, alternative = "less", conf.int = TRUE, exact = FALSE)
+  w2 <- wilcox.test(per_col$within, per_col$between, paired = TRUE, conf.int = TRUE, exact = FALSE)
+  list(per_colony = per_col |> mutate(species = sp, .before = 1),
+       summary = tibble(species = sp, colonies = nrow(per_col),
+                        median_within = median(per_col$within), median_between = median(per_col$between),
+                        hl_shift = unname(w2$estimate), hl_lo = w2$conf.int[1], hl_hi = w2$conf.int[2],
+                        p_one_sided = w$p.value))
+}
+pd <- lapply(species_all, paired_sp)
+paired <- bind_rows(lapply(pd, `[[`, "summary"))
+write_csv(paired, file.path(out_dir, "within_vs_between.csv"))
+write_csv(bind_rows(lapply(pd, `[[`, "per_colony")), file.path(out_dir, "within_vs_between_per_colony.csv"))
+knitr::kable(paired, digits = 4)
+```
+
+```{r fig-paired, fig.width = 9, fig.height = 3.6}
+pc <- bind_rows(lapply(pd, `[[`, "per_colony")) |> pivot_longer(c(within, between), names_to = "comparison", values_to = "bray")
+g <- ggplot(pc, aes(factor(comparison, c("within", "between")), bray, group = colony)) +
+  geom_line(alpha = 0.3) + geom_point(alpha = 0.6, size = 1) + facet_wrap(~ species) +
+  labs(x = NULL, y = "Mean Bray-Curtis dissimilarity") + theme_bw()
+ggsave(file.path(out_dir, "within_vs_between.png"), g, width = 9, height = 3.6, dpi = 150)
+g
+```
+
+## Result against the decision rule
+
+```{r decide}
+dec <- perm |> select(species, term, R2) |> pivot_wider(names_from = term, values_from = R2, names_prefix = "R2_") |>
+  left_join(paired |> select(species, p_one_sided), by = "species") |>
+  mutate(passes = R2_colony > 0.5 & R2_timepoint < 0.1 & p_one_sided < 0.01,
+         reverses = R2_timepoint >= R2_colony)
+verdict <- if (all(dec$passes)) "supported" else if (any(dec$reverses)) "not supported" else "inconclusive"
+write_csv(dec, file.path(out_dir, "decision_per_species.csv"))
+knitr::kable(dec, digits = 4)
+```
+
+**Verdict: `r verdict`.**
+
+## Secondary: dominant genus and physiology
+
+Reported only; does not change the status.
+
+```{r secondary}
+phys <- load_physiology() |> select(sample_id, cells.cm2, calc.umol.cm2.hr)
+sec <- bind_rows(lapply(species_all, function(sp) {
+  info <- by_sp[[sp]]$info |> left_join(phys, by = "sample_id")
+  gen_n <- table(info$dominant_genus)
+  if (sum(gen_n >= 5) < 2) return(tibble(species = sp, trait = NA_character_, note = paste("genera:", paste(names(gen_n), gen_n, sep = "=", collapse = ", "), "- not fitted")))
+  keep <- names(gen_n)[gen_n >= 5]
+  bind_rows(lapply(c("cells.cm2", "calc.umol.cm2.hr"), function(tr) {
+    df <- info |> filter(dominant_genus %in% keep, !is.na(.data[[tr]])) |>
+      mutate(y = .data[[tr]], dominant_genus = factor(dominant_genus), timepoint = factor(timepoint), colony = factor(colony))
+    fit <- lmerTest::lmer(y ~ dominant_genus + timepoint + (1 | colony), data = df)
+    co <- summary(fit)$coefficients
+    rn <- grep("^dominant_genus", rownames(co), value = TRUE)
+    ci <- confint(fit, parm = rn, method = "Wald")
+    tibble(species = sp, trait = tr, n = nrow(df), contrast = sub("^dominant_genus", "", rn),
+           reference = levels(df$dominant_genus)[1], estimate = co[rn, "Estimate"],
+           lo = ci[, 1], hi = ci[, 2], p = co[rn, "Pr(>|t|)"],
+           note = paste("genera:", paste(names(gen_n), gen_n, sep = "=", collapse = ", ")))
+  }))
+}))
+write_csv(sec, file.path(out_dir, "secondary_genus_physiology.csv"))
+knitr::kable(sec, digits = 4)
+```
+
+## Sensitivity checks
+
+The pre-registered check is the profile count per species and how dominated
+each species is by one profile (n table above): a species where nearly every
+sample carries the same profile makes colony and timepoint R2 both small and
+the test close to trivial.
+
+## Caveats
+
+- Colony counts here (`r paste(n_tab$species, n_tab$colonies, sep = " ", collapse = ", ")`)
+  exceed the ~10 molecular colonies per species, but many colonies are not
+  sampled at all four timepoints (see `samples_per_timepoint.csv`).
+- SymPortal profiles summarize ITS2 type profiles; within-profile shifts in
+  sequence abundance are invisible here.
+- Relative abundances: a change in one profile forces changes in others.
+- The colony bootstrap for R2 treats colonies as exchangeable within species,
+  ignoring site.

@@ -1,0 +1,5 @@
+species,trait,n,contrast,reference,estimate,lo,hi,p,note
+Apul,cells.cm2,113,D,A,51756.48158577326,-63384.5752559299,166897.53842747642,0.3803063349763768,"genera: A=18, D=102"
+Apul,calc.umol.cm2.hr,112,D,A,-0.05171015657130727,-0.11533382893405594,0.011913515791441398,0.11411880970719777,"genera: A=18, D=102"
+Peve,NA,NA,NA,NA,NA,NA,NA,NA,genera: C=162 - not fitted
+Ptuh,NA,NA,NA,NA,NA,NA,NA,NA,genera: C=159 - not fitted

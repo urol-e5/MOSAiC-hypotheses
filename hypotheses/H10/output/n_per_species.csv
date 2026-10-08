@@ -1,0 +1,4 @@
+species,samples,colonies,colonies_ge2_samples,profiles_present,dominant_profiles,top_profile,top_profile_share,genera
+Apul,120,50,38,7,3,D1-D1u-D1jb,0.85,"A,D"
+Peve,162,45,45,23,18,C15-C15kl-C15he-C15vz,0.5308641975308642,C
+Ptuh,159,45,42,15,7,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,0.32075471698113206,C
