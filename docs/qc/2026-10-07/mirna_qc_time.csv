@@ -1,0 +1,13 @@
+species,timepoint,n,retained,failed,pass_median_reads
+Apul,TP1,10,10,0,129853.5
+Apul,TP2,10,10,0,252152
+Apul,TP3,10,10,0,87866.5
+Apul,TP4,10,10,0,88554.5
+Peve,TP1,10,10,0,182038
+Peve,TP2,10,7,3,82249
+Peve,TP3,8,6,2,51840.5
+Peve,TP4,9,6,3,11108
+Ptuh,TP1,10,9,1,64477
+Ptuh,TP2,10,10,0,189232
+Ptuh,TP3,10,10,0,49502.5
+Ptuh,TP4,9,9,0,47286

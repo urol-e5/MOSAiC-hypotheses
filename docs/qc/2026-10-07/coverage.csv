@@ -1,0 +1,13 @@
+species,timepoint,rows,has_genes,has_mirna,has_lncrna,has_cpg,has_metabolomics,has_lipidomics,has_physiology,has_its2
+Apul,TP1,43,10,10,10,9,10,10,42,42
+Apul,TP2,24,10,10,10,10,0,0,24,23
+Apul,TP3,21,10,10,10,10,10,10,21,21
+Apul,TP4,34,10,10,10,10,9,9,29,34
+Peve,TP1,45,10,10,10,10,10,10,45,44
+Peve,TP2,44,10,10,10,9,10,10,44,42
+Peve,TP3,40,9,8,9,9,9,9,40,40
+Peve,TP4,38,9,9,9,9,9,9,38,36
+Ptuh,TP1,43,10,10,10,9,10,10,43,40
+Ptuh,TP2,45,10,10,10,9,0,0,44,42
+Ptuh,TP3,39,10,10,10,7,10,10,38,39
+Ptuh,TP4,40,9,9,9,7,9,9,40,38

@@ -13,6 +13,9 @@ harmonizes them into one sample vocabulary, and runs hypotheses against that.
 
 Status board and QC report: <https://urol-e5.github.io/MOSAiC-hypotheses/>
 
+[Full data QC review (2026-10-07)](docs/qc/2026-10-07/QC-review.md),
+including species/timepoint abnormalities, supporting tables, and figures.
+
 ## How it works
 
 ```

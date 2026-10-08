@@ -1,0 +1,3 @@
+sample_id,trait,value,species,colony,timepoint,has_genes
+POC-48-TP2,Host_AFDW.mg.cm2,-4.6974549418195215,Ptuh,POC-48,TP2,FALSE
+POC-45-TP2,Sym_AFDW.mg.cm2,-0.05624040738575167,Ptuh,POC-45,TP2,FALSE

@@ -157,3 +157,14 @@ read-through check (H17 Amendment 1). Asked upstream whether stranded
 lncRNA coordinates exist:
 <https://github.com/urol-e5/timeseries_molecular/issues/139>.
 
+## D-015 (2026-10-08) CpG matrices carry no coverage
+
+`cpg_<species>` comes from `merged-WGBS-CpG-counts_filtered.csv`, which holds
+percent methylation for CpGs with >= 10x in every sample, and no read counts.
+Anything that needs per-sample coverage (binomial noise models, depth
+filters above 10x, beta-binomial tests) cannot be done from the manifest as
+it stands. H19 uses the 10x floor as a fixed noise bound (H19 Amendment 1).
+If coverage becomes necessary, the per-sample Bismark coverage files would
+have to be added to `config/upstream.yml`; they are large and should be
+read on raven.
+

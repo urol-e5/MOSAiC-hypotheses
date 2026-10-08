@@ -1,0 +1,174 @@
+feature_id,sample_id,species,timepoint
+Tyrosine,ACR-139-TP1,Apul,TP1
+Indole-3-Acetic Acid,ACR-139-TP1,Apul,TP1
+Indole-3-Acetic Acid,ACR-139-TP4,Apul,TP4
+Ribose-5-P,ACR-139-TP4,Apul,TP4
+G6P,ACR-139-TP4,Apul,TP4
+Sedoheptulose 7-Phosphate,ACR-139-TP4,Apul,TP4
+Indole-3-Acetic Acid,ACR-145-TP1,Apul,TP1
+G1P/F1P/F6P,ACR-145-TP1,Apul,TP1
+isoValeric Acid /3-Oxobutanoic Acid/4-Oxobutanoic Acid,ACR-145-TP3,Apul,TP3
+2-Aminoadipate,ACR-145-TP4,Apul,TP4
+Indole-3-Acetic Acid,ACR-145-TP4,Apul,TP4
+Glucose,ACR-145-TP4,Apul,TP4
+2-Aminobutyrate,ACR-150-TP1,Apul,TP1
+Indole,ACR-150-TP1,Apul,TP1
+Methionine,ACR-150-TP1,Apul,TP1
+Tyrosine,ACR-150-TP1,Apul,TP1
+N-Ac-Arginine,ACR-150-TP1,Apul,TP1
+Indole-3-Acetic Acid,ACR-150-TP1,Apul,TP1
+Ribose-5-P,ACR-150-TP1,Apul,TP1
+G1P/F1P/F6P,ACR-150-TP4,Apul,TP4
+iso-Leucine /allo-isoLeucine,ACR-173-TP1,Apul,TP1
+Adipic Acid / 3-Methylglutaric Acid,ACR-173-TP1,Apul,TP1
+Sedoheptulose 7-Phosphate,ACR-173-TP4,Apul,TP4
+Alpha-Ketoglutaric Acid,ACR-186-TP1,Apul,TP1
+Indole-3-Acetic Acid,ACR-186-TP1,Apul,TP1
+Sedoheptulose 7-Phosphate,ACR-186-TP1,Apul,TP1
+Hypotaurine,ACR-225-TP3,Apul,TP3
+Tyrosine,ACR-225-TP3,Apul,TP3
+Ribose-5-P,ACR-225-TP3,Apul,TP3
+G6P,ACR-225-TP3,Apul,TP3
+G1P/F1P/F6P,ACR-225-TP3,Apul,TP3
+Sedoheptulose 7-Phosphate,ACR-225-TP3,Apul,TP3
+Valine,ACR-225-TP4,Apul,TP4
+N-AcetylGlycine,ACR-225-TP4,Apul,TP4
+o-Phosphoethanolamine,ACR-225-TP4,Apul,TP4
+Sorbitol,ACR-225-TP4,Apul,TP4
+Ribulose 5-Phosphate,ACR-225-TP4,Apul,TP4
+Dimethylglycine,ACR-229-TP1,Apul,TP1
+Proline,ACR-229-TP1,Apul,TP1
+Valine,ACR-229-TP1,Apul,TP1
+Indole,ACR-229-TP1,Apul,TP1
+Aspartic Acid,ACR-229-TP1,Apul,TP1
+Trigonelline,ACR-229-TP1,Apul,TP1
+Oleamide,ACR-229-TP1,Apul,TP1
+Retinol,ACR-229-TP1,Apul,TP1
+cAMP,ACR-229-TP1,Apul,TP1
+GMP,ACR-229-TP1,Apul,TP1
+Cholecalciferol,ACR-229-TP1,Apul,TP1
+gamma-Aminobutyrate,ACR-229-TP1,Apul,TP1
+N-AcetylGlycine,ACR-229-TP1,Apul,TP1
+Erythronic/Threonic Acid,ACR-229-TP1,Apul,TP1
+Alpha-Ketoglutaric Acid,ACR-229-TP1,Apul,TP1
+Arabitol/Xylitol,ACR-229-TP1,Apul,TP1
+2-Aminoadipate,ACR-229-TP1,Apul,TP1
+Sorbitol,ACR-229-TP1,Apul,TP1
+N-Ac-Glutamate,ACR-229-TP1,Apul,TP1
+Glucoronate,ACR-229-TP1,Apul,TP1
+Xanthurenic Acid,ACR-229-TP1,Apul,TP1
+Ribulose 5-Phosphate,ACR-229-TP1,Apul,TP1
+Palmitic Acid,ACR-229-TP1,Apul,TP1
+Xanthosine,ACR-229-TP1,Apul,TP1
+G1P/F1P/F6P,ACR-229-TP4,Apul,TP4
+Indole-3-Acetic Acid,ACR-237-TP1,Apul,TP1
+Valine,ACR-237-TP4,Apul,TP4
+gamma-Aminobutyrate,ACR-237-TP4,Apul,TP4
+Alpha-Ketoglutaric Acid,ACR-237-TP4,Apul,TP4
+Ribulose 5-Phosphate,ACR-237-TP4,Apul,TP4
+Indole-3-Acetic Acid,ACR-244-TP1,Apul,TP1
+Tyrosine,ACR-244-TP3,Apul,TP3
+Valine,ACR-244-TP4,Apul,TP4
+Caffeine,ACR-244-TP4,Apul,TP4
+N-AcetylGlycine,ACR-244-TP4,Apul,TP4
+Ribulose 5-Phosphate,ACR-244-TP4,Apul,TP4
+Indole-3-Acetic Acid,ACR-265-TP1,Apul,TP1
+2-Aminobutyrate,ACR-265-TP3,Apul,TP3
+Tyrosine,ACR-265-TP3,Apul,TP3
+Adipic Acid / 3-Methylglutaric Acid,ACR-265-TP3,Apul,TP3
+2-Aminoadipate,ACR-265-TP3,Apul,TP3
+G1P/F1P/F6P,POC-201-TP1,Ptuh,TP1
+4-Hydroxybenzoic Acid,POC-219-TP1,Ptuh,TP1
+Riboflavin,POC-219-TP3,Ptuh,TP3
+Riboflavin,POC-219-TP4,Ptuh,TP4
+Erythronic/Threonic Acid,POC-222-TP4,Ptuh,TP4
+Octanoyl-L-Carnitine (8:0 Carnitine),POC-255-TP4,Ptuh,TP4
+Riboflavin,POC-259-TP3,Ptuh,TP3
+N-Ac-Glutamate,POC-40-TP1,Ptuh,TP1
+Caffeine,POC-40-TP4,Ptuh,TP4
+Valine,POC-53-TP1,Ptuh,TP1
+gamma-Aminobutyrate,POC-53-TP1,Ptuh,TP1
+Erythronic/Threonic Acid,POC-53-TP1,Ptuh,TP1
+Alpha-Ketoglutaric Acid,POC-53-TP1,Ptuh,TP1
+Ribulose 5-Phosphate,POC-53-TP1,Ptuh,TP1
+Caffeine,POC-57-TP4,Ptuh,TP4
+N-AcetylGlycine,POC-57-TP4,Ptuh,TP4
+Alpha-Ketoglutaric Acid,POR-216-TP1,Peve,TP1
+N-Ac-Glutamate,POR-216-TP1,Peve,TP1
+Sarcosine,POR-236-TP1,Peve,TP1
+2-Aminobutyrate,POR-236-TP1,Peve,TP1
+Indole,POR-236-TP1,Peve,TP1
+Taurine,POR-236-TP1,Peve,TP1
+N-Ac-Arginine,POR-236-TP1,Peve,TP1
+1-Methylguanosine,POR-236-TP1,Peve,TP1
+GMP,POR-236-TP1,Peve,TP1
+N-Ac-Glutamate,POR-236-TP1,Peve,TP1
+Sedoheptulose 7-Phosphate,POR-236-TP1,Peve,TP1
+1-Methylguanosine,POR-236-TP2,Peve,TP2
+PGE,POR-236-TP2,Peve,TP2
+Indole,POR-245-TP1,Peve,TP1
+Dimethylglycine,POR-245-TP3,Peve,TP3
+PGE,POR-245-TP3,Peve,TP3
+Taurine,POR-245-TP4,Peve,TP4
+Adipic Acid / 3-Methylglutaric Acid,POR-245-TP4,Peve,TP4
+GMP,POR-260-TP1,Peve,TP1
+cGMP,POR-260-TP1,Peve,TP1
+N-Ac-Glutamate,POR-262-TP1,Peve,TP1
+GMP,POR-262-TP3,Peve,TP3
+Caffeine,POR-262-TP4,Peve,TP4
+N-Ac-Arginine,POR-262-TP4,Peve,TP4
+Retinol,POR-262-TP4,Peve,TP4
+GMP,POR-262-TP4,Peve,TP4
+Valine,POR-69-TP1,Peve,TP1
+Indole,POR-69-TP1,Peve,TP1
+Retinol,POR-69-TP1,Peve,TP1
+GMP,POR-69-TP1,Peve,TP1
+gamma-Aminobutyrate,POR-69-TP1,Peve,TP1
+Alpha-Ketoglutaric Acid,POR-69-TP1,Peve,TP1
+Ribulose 5-Phosphate,POR-69-TP1,Peve,TP1
+PGE,POR-69-TP1,Peve,TP1
+Sarcosine,POR-69-TP2,Peve,TP2
+N-Ac-Glutamate,POR-69-TP2,Peve,TP2
+GMP,POR-69-TP3,Peve,TP3
+PGE,POR-69-TP3,Peve,TP3
+5-Methylcytidine,POR-72-TP1,Peve,TP1
+Adipic Acid / 3-Methylglutaric Acid,POR-72-TP1,Peve,TP1
+Allantoin,POR-72-TP1,Peve,TP1
+2-Aminobutyrate,POR-72-TP3,Peve,TP3
+Phenylalanine,POR-72-TP3,Peve,TP3
+5-Methylcytidine,POR-72-TP3,Peve,TP3
+1-Methylguanosine,POR-72-TP3,Peve,TP3
+Indole,POR-72-TP4,Peve,TP4
+Caffeine,POR-72-TP4,Peve,TP4
+Allantoin,POR-72-TP4,Peve,TP4
+2-Aminobutyrate,POR-73-TP1,Peve,TP1
+N-Ac-Arginine,POR-73-TP1,Peve,TP1
+Phenylalanine,POR-73-TP2,Peve,TP2
+5-Methylcytidine,POR-73-TP2,Peve,TP2
+Indole,POR-73-TP3,Peve,TP3
+1-Methylguanosine,POR-73-TP3,Peve,TP3
+PGE,POR-73-TP3,Peve,TP3
+Erythronic/Threonic Acid,POR-73-TP4,Peve,TP4
+2-Aminobutyrate,POR-74-TP1,Peve,TP1
+Phenylalanine,POR-74-TP1,Peve,TP1
+N-AcetylGlycine,POR-74-TP1,Peve,TP1
+Phenylalanine,POR-74-TP2,Peve,TP2
+5-Methylcytidine,POR-74-TP2,Peve,TP2
+N-AcetylGlycine,POR-74-TP2,Peve,TP2
+PGE,POR-74-TP2,Peve,TP2
+Sarcosine,POR-83-TP1,Peve,TP1
+N-Ac-Arginine,POR-83-TP1,Peve,TP1
+PGE,POR-83-TP1,Peve,TP1
+1/3-Methylhistidine,POR-83-TP2,Peve,TP2
+N-Ac-Arginine,POR-83-TP2,Peve,TP2
+5-Methylcytidine,POR-83-TP2,Peve,TP2
+6-Methyladenosine,POR-83-TP2,Peve,TP2
+1-Methylguanosine,POR-83-TP2,Peve,TP2
+GMP,POR-83-TP2,Peve,TP2
+Riboflavin,POR-83-TP2,Peve,TP2
+N-AcetylGlycine,POR-83-TP2,Peve,TP2
+Allantoin,POR-83-TP2,Peve,TP2
+Ribulose 5-Phosphate,POR-83-TP2,Peve,TP2
+PGE,POR-83-TP2,Peve,TP2
+Caffeine,POR-83-TP4,Peve,TP4
+Carnosine,POR-83-TP4,Peve,TP4

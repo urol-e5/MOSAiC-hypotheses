@@ -1,0 +1,15 @@
+layer,species,features,samples,duplicated_features,missing_feature_ids,missing_cells,infinite_cells,negative_cells,noninteger_cells,constant_features,minimum,maximum
+genes,Apul,44371,40,0,0,0,0,0,0,8287,0,532459
+genes,Peve,40389,38,0,0,0,0,0,0,4139,0,2046684
+genes,Ptuh,31840,39,0,0,0,0,0,0,2775,0,368352
+mirna,Apul,51,40,0,0,0,0,0,0,0,0,359136
+mirna,Peve,48,37,0,0,0,0,0,0,0,0,640368
+mirna,Ptuh,40,39,0,0,0,0,0,0,0,0,234459
+lncrna,Apul,15559,40,0,0,0,0,0,320799,0,0,538183
+lncrna,Peve,8319,38,0,0,0,0,0,117910,0,0,5145248.38
+lncrna,Ptuh,11236,39,0,0,0,0,0,249741,0,0,706590.33
+cpg,Apul,96772,39,0,0,0,0,0,NA,2327,0,100
+cpg,Peve,242100,37,0,0,0,0,0,NA,3143,0,100
+cpg,Ptuh,1991606,32,0,0,0,0,0,NA,194603,0,100
+metabolomics,all,141,96,0,0,173,0,0,NA,0,12.3538114648909,13648536.945002
+lipidomics,all,371,96,0,0,0,0,0,NA,0,0,743.196118400062
