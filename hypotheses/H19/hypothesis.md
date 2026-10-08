@@ -84,4 +84,53 @@ species-ranking claim (CLAUDE.md §3: confounded with genome quality).
 
 ## Amendments
 
-(Leave empty. Dated entries only, added if the decision rule has to change.)
+### Amendment 1 (2026-10-08), before any H19 analysis was run
+
+**Problem.** The CpG layer holds percent methylation only, already filtered
+to >= 10x in every sample; per-sample read counts are not in the manifest
+(D-015). Model step 1 needs n_reads per CpG per sample. The ">= 20x"
+sensitivity check needs coverage too. H14 has not run, so "storage:membrane
+ratio (H14 definition)" is not yet defined, and the lipidome has only TG,
+DG, CE, FA, LPC and Cer (no PC or PE).
+
+**Change.** The original text above is kept; these replace it where they
+conflict. The decision rule is unchanged.
+
+- *Excess turnover*: per CpG, variance of the methylation proportion across
+  a colony's timepoints minus mean p(1−p)/10, the binomial variance at the
+  10x coverage floor (the largest sampling variance any retained CpG can
+  have). Colony score = median over CpGs. This removes the same amount of
+  noise for every colony; it does **not** correct for colony differences in
+  depth, which remain a confound (stated in RESULT.md).
+- *>= 20x check*: not estimable; replaced by the uncorrected variance
+  (median over CpGs of the raw variance), to show how much the floor
+  correction changes the ranking of colonies.
+- *Storage:membrane ratio*: storage = TG + DG + CE, membrane = LPC + Cer,
+  summed intensities per sample, log ratio, colony mean over available
+  timepoints. FA (free fatty acids) is in neither. The ratio is invariant to
+  per-sample normalization. H14 should adopt or explicitly amend this.
+- *"Host_AFDW per protein"*: Host_AFDW.mg.cm2 / prot_mg.cm2.
+- *Per-species estimate* in the decision rule = per-species Spearman rho of
+  AFDW on methylation turnover (point estimate).
+
+### Amendment 2 (2026-10-08), after computing colony turnover, before any association was seen
+
+**Problem.** The first run of Amendment 1's statistic showed it is
+degenerate. Most coral CpGs are unmethylated (species-mean methylation below
+10% for 71% of Apul, 81% of Peve and 95% of Ptuh CpGs), so the median CpG has
+zero variance across timepoints. Every Ptuh colony scored exactly 0, and
+Apul and Peve scores were small, quantized negatives (the same value repeated
+across colonies). That run also wrote outcome tables before stopping on an
+error; they were deleted unread. No association between turnover and any
+outcome was looked at.
+
+**Change.** Replaces Amendment 1's colony score; everything else stands.
+
+- *CpG set*: per species, a fixed set of CpGs whose species-mean
+  methylation is between 10% and 90% (Apul 28,355; Peve 47,014; Ptuh
+  96,410), the same set for every colony of that species.
+- *Colony score*: **mean** over that set of (variance across the colony's
+  timepoints minus mean p(1−p)/10).
+- *Sensitivity*: the median over the same set, and the uncorrected-variance
+  version over the same set.
+
