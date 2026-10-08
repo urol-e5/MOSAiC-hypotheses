@@ -1,0 +1,262 @@
+---
+title: "H21: frontloading–plasticity trade-off in stress orthologs"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H21", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+n_boot <- 2000
+n_null <- 1000
+set.seed(20261008)
+```
+
+## Pre-registered decision rule
+
+> - `supported` if median Oldham r for the stress set is < 0 with CI
+>   excluding 0, and lower than background (permutation p < 0.05), in at
+>   least two species.
+> - `not supported` if the stress-set median r is >= 0 in at least two
+>   species.
+> - `inconclusive` otherwise.
+
+Oldham r per gene: Pearson correlation across colonies of level
+((warm + cool)/2) with response (warm − cool); warm = mean of TP1 and TP2
+where available, cool = TP3. Amendment 1 (`hypothesis.md`, before any
+analysis) fixes the stress set (H11's successor rule plus antioxidants and
+proteasome subunits; 37 groups), the bootstrap, the decile-matched
+background null and the Blomqvist correction.
+
+Implementation notes (not in `hypothesis.md`; none changes the rule):
+
+- vst on three-way orthologs per species (`genes_by_ortholog`, H01 filter,
+  all samples with `has_genes`). Stress genes absent after the filter are
+  dropped and counted.
+- Genes with zero variance in level or response across colonies get no r
+  and are excluded from medians.
+- In a bootstrap resample, any gene whose r is undefined is skipped for
+  that resample.
+
+## Stress set
+
+```{r stress-set}
+orth <- load_orthologs()
+rec <- trimws(sub(" [(].*$", "", orth$protein_name))
+stress <- tibble(group_id = orth$group_id, protein_name = orth$protein_name, recommended = rec,
+                 heat_shock = grepl("heat shock|heat-shock|chaperon", orth$protein_name, ignore.case = TRUE),
+                 antioxidant = grepl("superoxide dismutase|^catalase|peroxiredoxin|glutathione peroxidase", rec, ignore.case = TRUE),
+                 proteasome = grepl("^proteasome subunit|^26S proteasome", rec, ignore.case = TRUE)) |>
+  filter(heat_shock | antioxidant | proteasome) |>
+  mutate(category = case_when(heat_shock ~ "heat shock / chaperone", antioxidant ~ "antioxidant", TRUE ~ "proteasome"))
+write_csv(stress |> select(group_id, category, recommended, protein_name), file.path(out_dir, "stress_set.csv"))
+knitr::kable(stress |> count(category))
+```
+
+## Data
+
+```{r data}
+phys <- load_physiology() |> select(sample_id, cells.cm2) |> group_by(sample_id) |>
+  summarise(cells = mean(cells.cm2, na.rm = TRUE), .groups = "drop")
+
+prep_species <- function(sp) {
+  v <- prep_vst(genes_by_ortholog(sp, orthologs = orth), design)$vst
+  info <- design |> filter(sample_id %in% colnames(v)) |> select(sample_id, colony, timepoint)
+  cols <- info |> group_by(colony) |> filter(any(timepoint == "TP3"), any(timepoint %in% c("TP1", "TP2"))) |>
+    pull(colony) |> unique() |> sort()
+  avg <- function(tp) sapply(cols, function(c) {
+    s <- info$sample_id[info$colony == c & info$timepoint %in% tp]
+    if (length(s)) rowMeans(v[, s, drop = FALSE]) else rep(NA_real_, nrow(v))
+  })
+  warm <- avg(c("TP1", "TP2")); cool <- avg("TP3"); warm1 <- avg("TP1"); tp4 <- avg("TP4")
+  dimnames(warm) <- dimnames(cool) <- dimnames(warm1) <- dimnames(tp4) <- list(rownames(v), cols)
+  cells <- sapply(cols, function(c) mean(phys$cells[phys$sample_id %in% info$sample_id[info$colony == c]], na.rm = TRUE))
+  list(species = sp, warm = warm, cool = cool, warm1 = warm1, tp4 = tp4, cells = cells,
+       mean_expr = rowMeans(v), decile = setNames(dplyr::ntile(rowMeans(v), 10), rownames(v)),
+       is_stress = rownames(v) %in% stress$group_id, heat_shock = rownames(v) %in% stress$group_id[stress$heat_shock])
+}
+dat <- lapply(setNames(species_all, species_all), prep_species)
+n_tab <- bind_rows(lapply(dat, function(d) tibble(species = d$species, colonies = ncol(d$warm),
+  ortholog_genes = nrow(d$warm), stress_genes = sum(d$is_stress), heat_shock_genes = sum(d$heat_shock),
+  colonies_with_TP4 = sum(colSums(is.finite(d$tp4)) > 0))))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab)
+```
+
+## Model
+
+```{r functions}
+# Row-wise Pearson r between two gene x colony matrices.
+row_cor <- function(a, b) {
+  a <- a - rowMeans(a); b <- b - rowMeans(b)
+  num <- rowSums(a * b); den <- sqrt(rowSums(a^2) * rowSums(b^2))
+  ifelse(den > 0, num / den, NA_real_)
+}
+oldham <- function(w, c) row_cor((w + c) / 2, w - c)
+
+# Partial r of level and response given a colony covariate z.
+oldham_partial <- function(w, c, z) {
+  X <- cbind(1, z)
+  res <- function(m) t(qr.resid(qr(X), t(m)))
+  row_cor(res((w + c) / 2), res(w - c))
+}
+
+analyse <- function(d, set = d$is_stress, warm = d$warm, rfun = function(w, c) oldham(w, c)) {
+  ok_cols <- colSums(is.finite(warm)) > 0 & colSums(is.finite(d$cool)) > 0
+  w <- warm[, ok_cols, drop = FALSE]; c <- d$cool[, ok_cols, drop = FALSE]
+  r <- rfun(w, c)
+  obs <- median(r[set], na.rm = TRUE)
+  k <- ncol(w)
+  boot <- replicate(n_boot, { i <- sample.int(k, replace = TRUE); median(rfun(w[set, i, drop = FALSE], c[set, i, drop = FALSE]), na.rm = TRUE) })
+  # decile-matched background null
+  dec_s <- d$decile[set]; bg <- which(!d$is_stress)
+  pools <- split(bg, d$decile[bg])
+  need <- table(factor(dec_s, levels = 1:10))
+  null <- replicate(n_null, median(r[unlist(lapply(names(need)[need > 0], function(q) sample(pools[[q]], need[[q]])))], na.rm = TRUE))
+  tibble(species = d$species, colonies = k, genes = sum(set & is.finite(r)),
+         median_r = obs, lo = quantile(boot, 0.025, na.rm = TRUE), hi = quantile(boot, 0.975, na.rm = TRUE),
+         background_median = mean(null), diff = obs - mean(null),
+         p_lower = (1 + sum(null <= obs)) / (1 + n_null))
+}
+
+decide <- function(s) {
+  s <- s |> mutate(passes = median_r < 0 & hi < 0 & p_lower < 0.05, p_lower_holm = p.adjust(p_lower, "holm"))
+  verdict <- if (sum(s$passes) >= 2) "supported" else if (sum(s$median_r >= 0) >= 2) "not supported" else "inconclusive"
+  list(per_species = s, verdict = verdict)
+}
+```
+
+```{r primary}
+primary <- decide(bind_rows(lapply(dat, analyse)))
+write_csv(primary$per_species, file.path(out_dir, "oldham_summary.csv"))
+knitr::kable(primary$per_species, digits = 4)
+```
+
+**Primary verdict: `r primary$verdict`.**
+
+```{r per-gene}
+per_gene <- bind_rows(lapply(dat, function(d) tibble(species = d$species, group_id = rownames(d$warm),
+  oldham_r = oldham(d$warm, d$cool), stress = d$is_stress, heat_shock = d$heat_shock, mean_vst = d$mean_expr))) |>
+  left_join(stress |> select(group_id, category, recommended), by = "group_id")
+write_csv(per_gene |> filter(stress), file.path(out_dir, "stress_genes_oldham_r.csv"))
+```
+
+```{r fig, fig.width = 9, fig.height = 3.6}
+fd <- per_gene |> filter(is.finite(oldham_r)) |> mutate(set = ifelse(stress, "stress set", "background"))
+write_csv(fd |> group_by(species, set) |> summarise(n = n(), median_r = median(oldham_r), q25 = quantile(oldham_r, 0.25),
+                                                     q75 = quantile(oldham_r, 0.75), .groups = "drop"),
+          file.path(out_dir, "figure_data.csv"))
+g <- ggplot(fd, aes(set, oldham_r)) +
+  geom_hline(yintercept = 0, colour = "grey70") +
+  geom_violin(data = filter(fd, !stress), fill = "grey85", colour = NA) +
+  geom_boxplot(data = filter(fd, !stress), width = 0.15, outlier.shape = NA) +
+  geom_jitter(data = filter(fd, stress), aes(colour = category), width = 0.12, size = 1.6) +
+  facet_wrap(~ species) +
+  labs(x = NULL, y = "Oldham r (level vs warm-season response)", colour = NULL) +
+  theme_bw() + theme(legend.position = "bottom")
+ggsave(file.path(out_dir, "oldham_r_stress_vs_background.png"), g, width = 9, height = 4, dpi = 150)
+g
+```
+
+## Pitman–Morgan and Blomqvist (pre-registered reporting)
+
+```{r pm-blomqvist}
+pm_bl <- bind_rows(lapply(dat, function(d) {
+  r <- oldham(d$warm, d$cool); k <- ncol(d$warm)
+  tstat <- r * sqrt((k - 2) / (1 - r^2)); p <- 2 * pt(-abs(tstat), k - 2)
+  w <- d$warm; c <- d$cool; t4 <- d$tp4
+  okc <- colSums(is.finite(t4)) > 0
+  R <- pmin(pmax(row_cor(c[, okc, drop = FALSE], t4[, okc, drop = FALSE]), 0.05), 1)
+  cc <- c - rowMeans(c); dd <- (w - c) - rowMeans(w - c)
+  b <- rowSums(cc * dd) / rowSums(cc^2)
+  kk <- 1 - R; beta <- ifelse(kk < 1, (b + kk) / (1 - kk), NA_real_)
+  tibble(species = d$species, set = c("stress", "background"),
+         frac_pitman_morgan_p05 = c(mean(p[d$is_stress] < 0.05, na.rm = TRUE), mean(p[!d$is_stress] < 0.05, na.rm = TRUE)),
+         median_blomqvist_beta = c(median(beta[d$is_stress], na.rm = TRUE), median(beta[!d$is_stress], na.rm = TRUE)),
+         median_raw_slope = c(median(b[d$is_stress], na.rm = TRUE), median(b[!d$is_stress], na.rm = TRUE)))
+}))
+write_csv(pm_bl, file.path(out_dir, "pitman_morgan_blomqvist.csv"))
+knitr::kable(pm_bl, digits = 3)
+```
+
+Pitman–Morgan is the test of r = 0 itself (Oldham r is a monotone function of
+var(warm) − var(cool)). The Blomqvist slope of response on cool baseline is
+corrected for baseline unreliability using the TP3–TP4 correlation across
+colonies; negative values mean high-baseline colonies respond less.
+
+## Sensitivity checks
+
+```{r sensitivity}
+sens <- list(
+  `heat shock / chaperone only` = decide(bind_rows(lapply(dat, function(d) analyse(d, set = d$heat_shock)))),
+  `TP1 vs TP3 only` = decide(bind_rows(lapply(dat, function(d) analyse(d, warm = d$warm1)))),
+  `cells.cm2 partial r` = decide(bind_rows(lapply(dat, function(d) {
+    ok <- is.finite(d$cells)
+    d2 <- d; d2$warm <- d$warm[, ok, drop = FALSE]; d2$cool <- d$cool[, ok, drop = FALSE]
+    analyse(d2, rfun = function(w, c) oldham_partial(w, c, d$cells[ok][match(colnames(w), names(d$cells)[ok])]))
+  }))))
+sens_tab <- bind_rows(lapply(names(sens), function(k) sens[[k]]$per_species |> mutate(check = k, verdict = sens[[k]]$verdict, .before = 1)))
+write_csv(sens_tab, file.path(out_dir, "sensitivity.csv"))
+knitr::kable(sens_tab |> select(check, species, colonies, genes, median_r, lo, hi, background_median, p_lower, passes, verdict), digits = 4)
+```
+
+In the partial-r check, bootstrap resamples use each drawn colony's own
+`cells.cm2` value.
+
+## Secondary: cross-species constitutive rank
+
+Percentile rank of each stress ortholog within its species' mean-expression
+distribution; paired Wilcoxon over orthologs present in all three species,
+Peve vs Apul and Ptuh vs Apul (prediction: higher in Peve and Ptuh), Holm.
+
+```{r cross-species}
+rank_tab <- bind_rows(lapply(dat, function(d) tibble(species = d$species, group_id = names(d$mean_expr),
+                                                     pct_rank = dplyr::percent_rank(d$mean_expr)))) |>
+  filter(group_id %in% stress$group_id) |>
+  pivot_wider(names_from = species, values_from = pct_rank) |> filter(if_all(all_of(species_all), is.finite))
+cs <- function(tab, label) {
+  t1 <- wilcox.test(tab$Peve, tab$Apul, paired = TRUE, alternative = "greater")
+  t2 <- wilcox.test(tab$Ptuh, tab$Apul, paired = TRUE, alternative = "greater")
+  tibble(set = label, genes = nrow(tab), comparison = c("Peve vs Apul", "Ptuh vs Apul"),
+         median_diff = c(median(tab$Peve - tab$Apul), median(tab$Ptuh - tab$Apul)),
+         p = c(t1$p.value, t2$p.value)) |> mutate(p_holm = p.adjust(p, "holm"))
+}
+hi_id <- orth$group_id[orth$avg_identity >= 60]
+cs_tab <- bind_rows(cs(rank_tab, "all stress orthologs"), cs(filter(rank_tab, group_id %in% hi_id), "avg_identity >= 60"))
+write_csv(rank_tab, file.path(out_dir, "cross_species_ranks.csv"))
+write_csv(cs_tab, file.path(out_dir, "cross_species_tests.csv"))
+knitr::kable(cs_tab, digits = 4)
+```
+
+```{r summary}
+verdicts <- tibble(analysis = c("primary (37-group stress set)", names(sens)),
+                   verdict = c(primary$verdict, sapply(sens, `[[`, "verdict")))
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+knitr::kable(verdicts)
+```
+
+## Caveats
+
+- About 10 colonies per species; one r per gene from about 10 points.
+- Oldham r tests a variance difference between seasons; it is the
+  pre-registered frontloading statistic but cannot separate frontloading
+  from any process that makes colonies converge in the warm season.
+- The stress set is a name-matching rule with known false positives
+  (`stress_set.csv`).
+- Cross-species ranks depend on mapping quality (Ptuh on *P. meandrina*;
+  Peve N50 0.17 Mb).

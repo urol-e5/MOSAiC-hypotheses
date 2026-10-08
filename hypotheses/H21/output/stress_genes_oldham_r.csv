@@ -1,0 +1,110 @@
+species,group_id,oldham_r,stress,heat_shock,mean_vst,category,recommended
+Apul,OG_00870,-0.26653895587091025,TRUE,FALSE,7.698043526461556,antioxidant,Glutathione peroxidase 7
+Apul,OG_01080,-0.34966612840479444,TRUE,TRUE,10.605577245522856,heat shock / chaperone,"ATP-dependent clpX-like chaperone, mitochondrial"
+Apul,OG_01247,-0.5616757871893943,TRUE,TRUE,8.63554391019143,heat shock / chaperone,Tubulin-specific chaperone A
+Apul,OG_01396,-0.7212869586743401,TRUE,TRUE,13.294433948220796,heat shock / chaperone,Heat shock cognate 71 kDa protein
+Apul,OG_01583,0.33045746963185363,TRUE,TRUE,11.736113538308064,heat shock / chaperone,Heat shock protein 105 kDa
+Apul,OG_01958,-0.5460554428965858,TRUE,FALSE,10.535982506399577,proteasome,26S proteasome non-ATPase regulatory subunit 8
+Apul,OG_01987,-0.0957300312817965,TRUE,TRUE,7.927737678104473,heat shock / chaperone,Tubulin-folding cofactor B
+Apul,OG_01995,-0.7686500140966517,TRUE,TRUE,15.401831394587035,heat shock / chaperone,Heat shock protein HSP 90-beta
+Apul,OG_02582,0.09533950563340632,TRUE,FALSE,10.347517382602565,proteasome,Proteasome subunit beta type-2
+Apul,OG_03002,-0.3777014796595505,TRUE,FALSE,9.553863929356613,antioxidant,Peroxiredoxin-4
+Apul,OG_03086,-0.13641313554103696,TRUE,TRUE,11.24811874080827,heat shock / chaperone,DnaJ homolog subfamily B member 4
+Apul,OG_03523,0.47119064398577376,TRUE,TRUE,6.937634290656986,heat shock / chaperone,Iron-sulfur cluster co-chaperone protein HscB
+Apul,OG_03889,-0.23669146760892792,TRUE,TRUE,9.449273770649418,heat shock / chaperone,Transcription elongation factor SPT6
+Apul,OG_04232,0.5278609197184244,TRUE,TRUE,9.155229834713829,heat shock / chaperone,"Heat shock protein 75 kDa, mitochondrial"
+Apul,OG_04246,-0.19257756076629184,TRUE,FALSE,10.586814344131422,proteasome,26S proteasome non-ATPase regulatory subunit 7
+Apul,OG_04251,-0.21692742962099545,TRUE,TRUE,9.497119107507624,heat shock / chaperone,Heat shock cognate 71 kDa protein
+Apul,OG_04655,-0.5515872931028153,TRUE,TRUE,9.773768334000493,heat shock / chaperone,T-complex protein 1 subunit epsilon
+Apul,OG_04744,-0.26440566042138036,TRUE,FALSE,10.250275043214444,antioxidant,"Superoxide dismutase [Mn], mitochondrial"
+Apul,OG_04881,-0.5765902497382631,TRUE,FALSE,10.266113428523564,proteasome,26S proteasome non-ATPase regulatory subunit 4
+Apul,OG_05048,-0.10500178629708336,TRUE,TRUE,10.839881552928762,heat shock / chaperone,DnaJ protein ERDJ3B
+Apul,OG_05133,-0.8261927207979691,TRUE,TRUE,11.313814775038145,heat shock / chaperone,"Stress-70 protein, mitochondrial"
+Apul,OG_05657,-0.5208019634710092,TRUE,FALSE,9.892045388309127,proteasome,Proteasome subunit beta type-6
+Apul,OG_05670,-0.7067833945658555,TRUE,FALSE,11.209693521068218,proteasome,26S proteasome regulatory subunit 7
+Apul,OG_06113,-0.20599766513858658,TRUE,FALSE,7.688661292734501,proteasome,26S proteasome non-ATPase regulatory subunit 9
+Apul,OG_06811,-0.3465101418746124,TRUE,TRUE,7.219951220376755,heat shock / chaperone,"Atypical kinase COQ8A, mitochondrial"
+Apul,OG_07171,0.2939293069083628,TRUE,FALSE,9.925323864735606,proteasome,26S proteasome non-ATPase regulatory subunit 14
+Apul,OG_08019,-0.7933169658871697,TRUE,TRUE,6.383609198117528,heat shock / chaperone,Proteasome assembly chaperone 4
+Apul,OG_08098,-0.43536977341950445,TRUE,TRUE,13.165342643376567,heat shock / chaperone,Heat shock factor protein 1
+Apul,OG_08319,-0.5977964304856248,TRUE,TRUE,8.501582803175461,heat shock / chaperone,Chaperone Ric-8
+Apul,OG_08695,-0.7942655430306582,TRUE,FALSE,10.195646841164455,proteasome,26S proteasome non-ATPase regulatory subunit 12
+Apul,OG_09286,-0.6560265142096238,TRUE,TRUE,13.170697859926204,heat shock / chaperone,Endoplasmic reticulum chaperone BiP
+Apul,OG_09656,-0.5269037002763626,TRUE,FALSE,11.76462714646586,proteasome,26S proteasome regulatory subunit 10B
+Apul,OG_09833,-0.6642917129980938,TRUE,FALSE,10.624067573050324,proteasome,Proteasome subunit alpha type-1
+Apul,OG_09959,-0.7175154664236452,TRUE,TRUE,8.252450003528509,heat shock / chaperone,Molecular chaperone MKKS
+Apul,OG_10009,-0.36575091558516276,TRUE,FALSE,13.585208312547968,antioxidant,Peroxiredoxin-6
+Apul,OG_10127,-0.6185828309390593,TRUE,FALSE,11.807013475662771,proteasome,Proteasome subunit beta type-1
+Peve,OG_04881,-0.38696991481463466,TRUE,FALSE,8.673225730068657,proteasome,26S proteasome non-ATPase regulatory subunit 4
+Peve,OG_04744,0.34803489902415263,TRUE,FALSE,8.364545838184013,antioxidant,"Superoxide dismutase [Mn], mitochondrial"
+Peve,OG_05048,-0.7398405084869581,TRUE,TRUE,8.167591126086448,heat shock / chaperone,DnaJ protein ERDJ3B
+Peve,OG_04655,0.11512820678940214,TRUE,TRUE,8.630940395031272,heat shock / chaperone,T-complex protein 1 subunit epsilon
+Peve,OG_01583,-0.23300507821213456,TRUE,TRUE,9.59841838372212,heat shock / chaperone,Heat shock protein 105 kDa
+Peve,OG_01396,-0.778302532990013,TRUE,TRUE,13.3976983036949,heat shock / chaperone,Heat shock cognate 71 kDa protein
+Peve,OG_01080,-0.16859944229782317,TRUE,TRUE,8.530140804788118,heat shock / chaperone,"ATP-dependent clpX-like chaperone, mitochondrial"
+Peve,OG_03086,-0.514508407011258,TRUE,TRUE,11.47205931348705,heat shock / chaperone,DnaJ homolog subfamily B member 4
+Peve,OG_10009,0.17989042906436403,TRUE,FALSE,10.352591765268086,antioxidant,Peroxiredoxin-6
+Peve,OG_03523,0.06062300265934068,TRUE,TRUE,5.954705469103719,heat shock / chaperone,Iron-sulfur cluster co-chaperone protein HscB
+Peve,OG_08319,0.19769989701673935,TRUE,TRUE,7.118625844206934,heat shock / chaperone,Chaperone Ric-8
+Peve,OG_03889,0.013145773391235028,TRUE,TRUE,7.3796179339036385,heat shock / chaperone,Transcription elongation factor SPT6
+Peve,OG_10127,-0.23265180980490238,TRUE,FALSE,8.649691876420716,proteasome,Proteasome subunit beta type-1
+Peve,OG_09656,-0.6839485123056637,TRUE,FALSE,8.892860728109046,proteasome,26S proteasome regulatory subunit 10B
+Peve,OG_05657,-0.858573144227199,TRUE,FALSE,8.842992386465752,proteasome,Proteasome subunit beta type-6
+Peve,OG_00870,0.5634079877185216,TRUE,FALSE,4.425359848005374,antioxidant,Glutathione peroxidase 7
+Peve,OG_08098,-0.7248444914280693,TRUE,TRUE,12.724064349126511,heat shock / chaperone,Heat shock factor protein 1
+Peve,OG_09286,-0.8923790366618604,TRUE,TRUE,11.892422075700068,heat shock / chaperone,Endoplasmic reticulum chaperone BiP
+Peve,OG_05133,-0.74588539757302,TRUE,TRUE,8.31605486708739,heat shock / chaperone,"Stress-70 protein, mitochondrial"
+Peve,OG_01987,-0.47328833099240813,TRUE,TRUE,5.941377796301536,heat shock / chaperone,Tubulin-folding cofactor B
+Peve,OG_01247,0.3290366446073231,TRUE,TRUE,5.6380334539537555,heat shock / chaperone,Tubulin-specific chaperone A
+Peve,OG_05670,0.15401818859751207,TRUE,FALSE,7.285630655390234,proteasome,26S proteasome regulatory subunit 7
+Peve,OG_06811,-0.6816373986623921,TRUE,TRUE,6.681309628900866,heat shock / chaperone,"Atypical kinase COQ8A, mitochondrial"
+Peve,OG_08019,-0.33579688177992095,TRUE,TRUE,4.627229881734444,heat shock / chaperone,Proteasome assembly chaperone 4
+Peve,OG_04246,0.06719854777037763,TRUE,FALSE,7.74879135086329,proteasome,26S proteasome non-ATPase regulatory subunit 7
+Peve,OG_01958,-0.11146612324587139,TRUE,FALSE,7.617170593731412,proteasome,26S proteasome non-ATPase regulatory subunit 8
+Peve,OG_02582,-0.01746365070437152,TRUE,FALSE,8.01210937642872,proteasome,Proteasome subunit beta type-2
+Peve,OG_09959,-0.8180828878904082,TRUE,TRUE,5.103128280471909,heat shock / chaperone,Molecular chaperone MKKS
+Peve,OG_01995,-0.876974442167723,TRUE,TRUE,14.526707771320039,heat shock / chaperone,Heat shock protein HSP 90-beta
+Peve,OG_06113,-0.05782538221850754,TRUE,FALSE,5.628442918352096,proteasome,26S proteasome non-ATPase regulatory subunit 9
+Peve,OG_04232,-0.3321339662901505,TRUE,TRUE,6.322796319984195,heat shock / chaperone,"Heat shock protein 75 kDa, mitochondrial"
+Peve,OG_03002,-0.33547890650913237,TRUE,FALSE,7.8468798764189716,antioxidant,Peroxiredoxin-4
+Peve,OG_08695,-0.4010055657965554,TRUE,FALSE,8.092615296569248,proteasome,26S proteasome non-ATPase regulatory subunit 12
+Peve,OG_09833,-0.5227195216426006,TRUE,FALSE,8.298973812999249,proteasome,Proteasome subunit alpha type-1
+Peve,OG_04251,-0.2992684355589718,TRUE,TRUE,10.701119219984166,heat shock / chaperone,Heat shock cognate 71 kDa protein
+Peve,OG_07171,-0.17780052608676836,TRUE,FALSE,7.826414944828984,proteasome,26S proteasome non-ATPase regulatory subunit 14
+Ptuh,OG_02582,-0.5477699489072533,TRUE,FALSE,9.569013880936266,proteasome,Proteasome subunit beta type-2
+Ptuh,OG_03889,0.08801635720457487,TRUE,TRUE,10.529000089224912,heat shock / chaperone,Transcription elongation factor SPT6
+Ptuh,OG_03523,-0.07281202956062903,TRUE,TRUE,6.715218972215432,heat shock / chaperone,Iron-sulfur cluster co-chaperone protein HscB
+Ptuh,OG_04232,-0.4533366419597079,TRUE,TRUE,8.191133072144083,heat shock / chaperone,"Heat shock protein 75 kDa, mitochondrial"
+Ptuh,OG_01583,-0.07503134807189649,TRUE,TRUE,12.81361737324194,heat shock / chaperone,Heat shock protein 105 kDa
+Ptuh,OG_01080,-0.5821581810112614,TRUE,TRUE,11.07833700132305,heat shock / chaperone,"ATP-dependent clpX-like chaperone, mitochondrial"
+Ptuh,OG_01396,0.5567045551859212,TRUE,TRUE,15.694523115400589,heat shock / chaperone,Heat shock cognate 71 kDa protein
+Ptuh,OG_09959,-0.3602776664539988,TRUE,TRUE,7.294875462970306,heat shock / chaperone,Molecular chaperone MKKS
+Ptuh,OG_09833,-0.5064430277832815,TRUE,FALSE,9.7172698685229,proteasome,Proteasome subunit alpha type-1
+Ptuh,OG_10127,-0.6068417159740336,TRUE,FALSE,9.200062717094607,proteasome,Proteasome subunit beta type-1
+Ptuh,OG_09656,-0.15990150254510851,TRUE,FALSE,10.635958237381677,proteasome,26S proteasome regulatory subunit 10B
+Ptuh,OG_03086,-0.1798800970652751,TRUE,TRUE,11.957102719093578,heat shock / chaperone,DnaJ homolog subfamily B member 4
+Ptuh,OG_03002,-0.22312981546796032,TRUE,FALSE,8.573241527168538,antioxidant,Peroxiredoxin-4
+Ptuh,OG_08019,-0.4307610334126658,TRUE,TRUE,5.899894210088118,heat shock / chaperone,Proteasome assembly chaperone 4
+Ptuh,OG_06811,-0.40957201734667686,TRUE,TRUE,7.58933786035315,heat shock / chaperone,"Atypical kinase COQ8A, mitochondrial"
+Ptuh,OG_05670,-0.08095468442526924,TRUE,FALSE,10.442069613785973,proteasome,26S proteasome regulatory subunit 7
+Ptuh,OG_05657,-0.26786451186487964,TRUE,FALSE,10.198712461689507,proteasome,Proteasome subunit beta type-6
+Ptuh,OG_01247,-0.29726427099388436,TRUE,TRUE,7.928059284561421,heat shock / chaperone,Tubulin-specific chaperone A
+Ptuh,OG_09286,-0.2391243675677442,TRUE,TRUE,12.759308985264232,heat shock / chaperone,Endoplasmic reticulum chaperone BiP
+Ptuh,OG_10009,-0.04203998799360881,TRUE,FALSE,11.463235050364956,antioxidant,Peroxiredoxin-6
+Ptuh,OG_04251,0.015478878075526495,TRUE,TRUE,10.48986433949796,heat shock / chaperone,Heat shock cognate 71 kDa protein
+Ptuh,OG_04881,-0.5753431057021345,TRUE,FALSE,10.048201091123557,proteasome,26S proteasome non-ATPase regulatory subunit 4
+Ptuh,OG_08695,-0.5859508589751662,TRUE,FALSE,9.18543166305321,proteasome,26S proteasome non-ATPase regulatory subunit 12
+Ptuh,OG_04744,-0.4791612426551281,TRUE,FALSE,9.791731966817848,antioxidant,"Superoxide dismutase [Mn], mitochondrial"
+Ptuh,OG_00044,0.019747905998848847,TRUE,TRUE,4.580637626134341,heat shock / chaperone,Heat shock factor 2-binding protein
+Ptuh,OG_01995,-0.12392220401755033,TRUE,TRUE,15.517535720480586,heat shock / chaperone,Heat shock protein HSP 90-beta
+Ptuh,OG_04246,-0.07056406318500714,TRUE,FALSE,9.834652355482117,proteasome,26S proteasome non-ATPase regulatory subunit 7
+Ptuh,OG_05048,-0.5229647760970219,TRUE,TRUE,9.400605423943643,heat shock / chaperone,DnaJ protein ERDJ3B
+Ptuh,OG_05133,-0.8264908462471368,TRUE,TRUE,11.431451993926002,heat shock / chaperone,"Stress-70 protein, mitochondrial"
+Ptuh,OG_00870,-0.547229201269848,TRUE,FALSE,5.769213728987114,antioxidant,Glutathione peroxidase 7
+Ptuh,OG_08098,0.2508937345528969,TRUE,TRUE,14.486506522810254,heat shock / chaperone,Heat shock factor protein 1
+Ptuh,OG_08319,-0.10596578145997002,TRUE,TRUE,7.479730085194239,heat shock / chaperone,Chaperone Ric-8
+Ptuh,OG_06113,0.2146685159325144,TRUE,FALSE,7.338102684662231,proteasome,26S proteasome non-ATPase regulatory subunit 9
+Ptuh,OG_01987,-0.24672957952634494,TRUE,TRUE,7.223037837420409,heat shock / chaperone,Tubulin-folding cofactor B
+Ptuh,OG_01958,-0.17027246124591003,TRUE,FALSE,8.471907738591357,proteasome,26S proteasome non-ATPase regulatory subunit 8
+Ptuh,OG_04655,0.20846337692439157,TRUE,TRUE,9.481073106172813,heat shock / chaperone,T-complex protein 1 subunit epsilon
+Ptuh,OG_07171,-0.43960846539779624,TRUE,FALSE,9.438909781179987,proteasome,26S proteasome non-ATPase regulatory subunit 14

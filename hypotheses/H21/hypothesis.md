@@ -2,7 +2,7 @@
 id: H21
 slug: frontloading-plasticity-tradeoff
 title: Colonies with higher constitutive stress-gene expression show smaller seasonal responses in those genes
-status: planned
+status: inconclusive
 tier: 3
 layers: [genes]
 species: [Apul, Peve, Ptuh]

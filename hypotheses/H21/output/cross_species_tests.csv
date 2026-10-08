@@ -1,0 +1,5 @@
+set,genes,comparison,median_diff,p,p_holm
+all stress orthologs,36,Peve vs Apul,-0.11748505617883452,0.999992695171386,1
+all stress orthologs,36,Ptuh vs Apul,-0.03666591551424675,0.9979384805483278,1
+avg_identity >= 60,35,Peve vs Apul,-0.12814123985918643,0.9999960781715345,1
+avg_identity >= 60,35,Ptuh vs Apul,-0.03724665310905673,0.9985835847619455,1

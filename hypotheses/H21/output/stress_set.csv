@@ -1,0 +1,38 @@
+group_id,category,recommended,protein_name
+OG_00044,heat shock / chaperone,Heat shock factor 2-binding protein,Heat shock factor 2-binding protein
+OG_00870,antioxidant,Glutathione peroxidase 7,Glutathione peroxidase 7 (GPx-7) (GSHPx-7) (EC 1.11.1.9) (CL683)
+OG_01080,heat shock / chaperone,"ATP-dependent clpX-like chaperone, mitochondrial","ATP-dependent clpX-like chaperone, mitochondrial (EC 3.6.4.10) (ATP-dependent Clp protease ATP-binding subunit clpX-like, mitochondrial) (Caseinolytic mitochondrial matrix peptidase chaperone subunit)"
+OG_01247,heat shock / chaperone,Tubulin-specific chaperone A,Tubulin-specific chaperone A (TCP1-chaperonin cofactor A) (Tubulin-folding cofactor A) (CFA)
+OG_01396,heat shock / chaperone,Heat shock cognate 71 kDa protein,Heat shock cognate 71 kDa protein (EC 3.6.4.10) (Heat shock 70 kDa protein 8)
+OG_01583,heat shock / chaperone,Heat shock protein 105 kDa,Heat shock protein 105 kDa (Antigen NY-CO-25) (Heat shock 110 kDa protein) (Heat shock protein family H member 1)
+OG_01958,proteasome,26S proteasome non-ATPase regulatory subunit 8,26S proteasome non-ATPase regulatory subunit 8 (26S proteasome regulatory subunit RPN12) (26S proteasome regulatory subunit S14) (p31)
+OG_01987,heat shock / chaperone,Tubulin-folding cofactor B,Tubulin-folding cofactor B (Cytoskeleton-associated protein 1) (Cytoskeleton-associated protein CKAPI) (Tubulin-specific chaperone B)
+OG_01995,heat shock / chaperone,Heat shock protein HSP 90-beta,Heat shock protein HSP 90-beta
+OG_02582,proteasome,Proteasome subunit beta type-2,Proteasome subunit beta type-2 (Macropain subunit C7-I) (Multicatalytic endopeptidase complex subunit C7-I) (Proteasome component C7-I) (Proteasome subunit beta-4) (beta-4)
+OG_03002,antioxidant,Peroxiredoxin-4,Peroxiredoxin-4 (EC 1.11.1.24) (Antioxidant enzyme AOE372) (Peroxiredoxin IV) (Prx-IV) (Thioredoxin peroxidase AO372) (Thioredoxin-dependent peroxide reductase A0372) (Thioredoxin-dependent peroxiredoxin 4)
+OG_03086,heat shock / chaperone,DnaJ homolog subfamily B member 4,DnaJ homolog subfamily B member 4 (Heat shock 40 kDa protein 1 homolog) (HSP40 homolog) (Heat shock protein 40 homolog) (Human liver DnaJ-like protein)
+OG_03523,heat shock / chaperone,Iron-sulfur cluster co-chaperone protein HscB,"Iron-sulfur cluster co-chaperone protein HscB (DnaJ homolog subfamily C member 20) [Cleaved into: Iron-sulfur cluster co-chaperone protein HscB, cytoplasmic (C-HSC20); Iron-sulfur cluster co-chaperone protein HscB, mitochondrial]"
+OG_03889,heat shock / chaperone,Transcription elongation factor SPT6,Transcription elongation factor SPT6 (hSPT6) (Histone chaperone suppressor of Ty6) (Tat-cotransactivator 2 protein) (Tat-CT2 protein)
+OG_04232,heat shock / chaperone,"Heat shock protein 75 kDa, mitochondrial","Heat shock protein 75 kDa, mitochondrial (HSP 75) (Heat shock protein family C member 5) (TNFR-associated protein 1) (Tumor necrosis factor type 1 receptor-associated protein) (TRAP-1)"
+OG_04246,proteasome,26S proteasome non-ATPase regulatory subunit 7,26S proteasome non-ATPase regulatory subunit 7 (26S proteasome regulatory subunit RPN8) (26S proteasome regulatory subunit S12) (Mov34 protein homolog) (Proteasome subunit p40)
+OG_04251,heat shock / chaperone,Heat shock cognate 71 kDa protein,Heat shock cognate 71 kDa protein (EC 3.6.4.10) (Heat shock 70 kDa protein 8)
+OG_04655,heat shock / chaperone,T-complex protein 1 subunit epsilon,T-complex protein 1 subunit epsilon (TCP-1-epsilon) (EC 3.6.1.-) (CCT-epsilon) (Chaperonin containing T-complex polypeptide 1 subunit 5)
+OG_04744,antioxidant,"Superoxide dismutase [Mn], mitochondrial","Superoxide dismutase [Mn], mitochondrial (EC 1.15.1.1)"
+OG_04881,proteasome,26S proteasome non-ATPase regulatory subunit 4,26S proteasome non-ATPase regulatory subunit 4 (26S proteasome regulatory subunit RPN10) (26S proteasome regulatory subunit S5A) (Antisecretory factor 1) (AF) (ASF) (Multiubiquitin chain-binding protein)
+OG_05048,heat shock / chaperone,DnaJ protein ERDJ3B,DnaJ protein ERDJ3B (Chaperone protein dnaJ B6) (OsDjB6) (Endoplasmic reticulum dnaJ domain-containing protein 3B) (OsERdj3B)
+OG_05133,heat shock / chaperone,"Stress-70 protein, mitochondrial","Stress-70 protein, mitochondrial (EC 3.6.4.10) (75 kDa glucose-regulated protein) (GRP-75) (Heat shock 70 kDa protein 9)"
+OG_05657,proteasome,Proteasome subunit beta type-6,Proteasome subunit beta type-6 (EC 3.4.25.1)
+OG_05670,proteasome,26S proteasome regulatory subunit 7,26S proteasome regulatory subunit 7 (26S proteasome AAA-ATPase subunit RPT1) (Proteasome 26S subunit ATPase 2)
+OG_06113,proteasome,26S proteasome non-ATPase regulatory subunit 9,26S proteasome non-ATPase regulatory subunit 9 (26S proteasome regulatory subunit p27)
+OG_06811,heat shock / chaperone,"Atypical kinase COQ8A, mitochondrial","Atypical kinase COQ8A, mitochondrial (EC 2.7.-.-) (Chaperone activity of bc1 complex-like) (Chaperone-ABC1-like) (Coenzyme Q protein 8A) (aarF domain-containing protein kinase 3)"
+OG_07171,proteasome,26S proteasome non-ATPase regulatory subunit 14,26S proteasome non-ATPase regulatory subunit 14 (EC 3.4.19.-) (26S proteasome regulatory subunit RPN11) (26S proteasome-associated PAD1 homolog 1)
+OG_08019,heat shock / chaperone,Proteasome assembly chaperone 4,Proteasome assembly chaperone 4 (PAC-4) (hPAC4) (Proteasome chaperone homolog 4) (Pba4)
+OG_08098,heat shock / chaperone,Heat shock factor protein 1,Heat shock factor protein 1 (HSF 1) (Heat shock transcription factor 1) (HSTF 1)
+OG_08319,heat shock / chaperone,Chaperone Ric-8,Chaperone Ric-8 (Synembryn)
+OG_08695,proteasome,26S proteasome non-ATPase regulatory subunit 12,26S proteasome non-ATPase regulatory subunit 12 (26S proteasome regulatory subunit RPN5) (26S proteasome regulatory subunit p55)
+OG_09286,heat shock / chaperone,Endoplasmic reticulum chaperone BiP,Endoplasmic reticulum chaperone BiP (EC 3.6.4.10) (78 kDa glucose-regulated protein) (GRP-78) (Binding-immunoglobulin protein) (BiP) (Heat shock protein 70 family protein 5) (HSP70 family protein 5) (Heat shock protein family A member 5) (Immunoglobulin heavy chain-binding protein)
+OG_09656,proteasome,26S proteasome regulatory subunit 10B,26S proteasome regulatory subunit 10B (26S proteasome AAA-ATPase subunit RPT4) (Proteasome 26S subunit ATPase 6) (Proteasome subunit p42)
+OG_09833,proteasome,Proteasome subunit alpha type-1,Proteasome subunit alpha type-1 (Macropain subunit C2) (Multicatalytic endopeptidase complex subunit C2) (Proteasome component C2) (Proteasome nu chain) (Proteasome subunit alpha-6) (alpha-6)
+OG_09959,heat shock / chaperone,Molecular chaperone MKKS,Molecular chaperone MKKS (McKusick-Kaufman/Bardet-Biedl syndromes putative chaperonin) (Protein Bbs6 homolog)
+OG_10009,antioxidant,Peroxiredoxin-6,Peroxiredoxin-6 (EC 1.11.1.27) (1-Cys peroxiredoxin) (1-Cys PRX) (Acidic calcium-independent phospholipase A2) (aiPLA2) (EC 3.1.1.4) (Glutathione-dependent peroxiredoxin) (Lysophosphatidylcholine acyltransferase 5) (LPC acyltransferase 5) (LPCAT-5) (Lyso-PC acyltransferase 5) (EC 2.3.1.23) (Non-selenium glutathione peroxidase) (NSGPx)
+OG_10127,proteasome,Proteasome subunit beta type-1,Proteasome subunit beta type-1 (Macropain subunit C5) (Multicatalytic endopeptidase complex subunit C5) (Proteasome component C5) (Proteasome gamma chain) (Proteasome subunit beta-6) (beta-6)
