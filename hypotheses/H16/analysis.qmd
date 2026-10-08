@@ -1,0 +1,377 @@
+---
+title: "H16: does expression change precede methylation change?"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+source(file.path(root, "R", "methylation.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2); library(lme4) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H16", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+tps <- c("TP1", "TP2", "TP3", "TP4")
+n_perm <- 1000
+n_boot <- 2000
+n_sim <- 200
+dm_frac <- 0.10
+n_cores <- max(1, parallel::detectCores() - 1)
+lmer_ctl <- lmerControl(calc.derivs = FALSE)
+set.seed(20261007)
+```
+
+## Pre-registered decision rule
+
+> - `supported` if, in at least two species, beta_EM > 0 with permutation
+>   p < 0.05 (Holm) and beta_EM − beta_ME has a CI excluding 0 on the
+>   positive side.
+> - `not supported` if beta_ME − beta_EM has a CI excluding 0 on the positive
+>   side in any species (methylation leads), or if neither beta differs from
+>   its null in all three species.
+> - `inconclusive` otherwise.
+
+beta_ME: coefficient of M[t] in `E[t+1] ~ E[t] + M[t] + interval`.
+beta_EM: coefficient of E[t] in `M[t+1] ~ M[t] + E[t] + interval`.
+Both layers are centered on each gene×colony mean and then standardized
+within gene. Primary gene set: H06 DM genes (top 10% by |colony-averaged
+TP3−TP1 dGBM|, recomputed here exactly as in H06).
+
+Implementation notes (not in `hypothesis.md`; none changes the rule):
+
+- **All fits are the pre-registered `lmer` model**, including every
+  permutation and bootstrap refit (`calc.derivs = FALSE`, fixed effects
+  only; Wald CIs reported for the observed fit). An OLS shortcut was tried
+  in a smoke test and dropped: the gene random intercept is not zero after
+  centering (outcomes cover TP2–TP4 only), and OLS differed from `lmer` by
+  up to 0.006.
+- Permutation and bootstrap indices are drawn in the main process before
+  the refits are spread over cores, so results do not depend on core count.
+- The all-genes sensitivity check (Ptuh: 332,000 rows, about 13 s per fit)
+  uses 200 permutations and 200 bootstrap resamples instead of 1000/2000;
+  `hypothesis.md` sets no replicate count for sensitivity checks.
+- **Permutation null.** For a pairing pi, colony c contributes its own
+  methylation series and colony pi(c)'s expression series, on the timepoints
+  both have; centering and standardizing are redone after pairing. The
+  identity pairing is excluded from the null draws.
+- **p-values.** "beta_EM > 0 with permutation p < 0.05" uses the one-sided
+  upper-tail p, (1 + #{null >= obs}) / (B + 1); Holm across beta_EM and
+  beta_ME within species. "Neither beta differs from its null" uses
+  two-sided p (2 × the smaller tail, capped at 1), Holm within species.
+- **Bootstrap.** Colonies are resampled with replacement; a colony drawn
+  twice enters twice. 95% percentile intervals.
+- **Interval** is a factor with the three transitions (TP1→TP2, TP2→TP3,
+  TP3→TP4).
+
+## Data
+
+```{r data}
+build_panel <- function(sp) {
+  cpg <- as_count_matrix(load_cpg(sp))
+  both <- design |> filter(species == sp, has_cpg %in% TRUE, has_genes %in% TRUE, sample_id %in% colnames(cpg))
+  ex <- prep_vst(load_genes(sp) |> select(feature_id, all_of(both$sample_id)), design)
+  both <- both |> filter(sample_id %in% colnames(ex$vst))
+  gb <- gene_body_methylation(cpg[, both$sample_id, drop = FALSE], load_gene_coords(sp), min_cpg = 5)
+  genes <- intersect(rownames(gb$gbm), rownames(ex$vst))
+  cols <- sort(unique(both$colony))
+  # colony -> gene x TP matrices with NA for missing timepoints
+  arr <- function(m) setNames(lapply(cols, function(c) {
+    out <- matrix(NA_real_, length(genes), 4, dimnames = list(genes, tps))
+    s <- both |> filter(colony == c)
+    out[, s$timepoint] <- m[genes, s$sample_id, drop = FALSE]
+    out
+  }), cols)
+  M <- arr(gb$gbm); E <- arr(ex$vst)
+  # H06 DM genes: colonies with TP1 and TP3, top 10% by |mean dGBM|
+  p13 <- cols[sapply(cols, function(c) all(!is.na(M[[c]][1, c("TP1", "TP3")])))]
+  mdG <- rowMeans(sapply(p13, function(c) M[[c]][, "TP3"] - M[[c]][, "TP1"]))
+  dm <- names(sort(abs(mdG), decreasing = TRUE))[seq_len(ceiling(dm_frac * length(mdG)))]
+  have <- sapply(cols, function(c) !is.na(M[[c]][1, ]))
+  trans <- tibble(species = sp, transition = c("TP1-TP2", "TP2-TP3", "TP3-TP4"),
+                  colonies = c(sum(have[1, ] & have[2, ]), sum(have[2, ] & have[3, ]), sum(have[3, ] & have[4, ])))
+  list(species = sp, cols = cols, M = M, E = E, genes = genes, dm = dm, n_cpg = gb$n_cpg[genes],
+       samples = both,
+       n = tibble(species = sp, colonies = length(cols), samples_both_layers = nrow(both),
+                  genes_gbm_expressed = length(genes), dm_genes = length(dm), colonies_TP1_TP3_for_dm = length(p13)),
+       trans = trans)
+}
+
+pan <- lapply(setNames(species_all, species_all), build_panel)
+n_tab <- bind_rows(lapply(pan, `[[`, "n"))
+tr_tab <- bind_rows(lapply(pan, `[[`, "trans"))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+write_csv(tr_tab, file.path(out_dir, "n_per_transition.csv"))
+knitr::kable(n_tab, format.args = list(big.mark = ","))
+knitr::kable(tr_tab |> pivot_wider(names_from = transition, values_from = colonies))
+```
+
+## Model
+
+```{r functions}
+# Long transition data for a set of genes, with methylation from colonies
+# `mcols` and expression from colonies `ecols` (same length; position i is
+# one panel unit). Centering per gene x unit on shared timepoints, then
+# standardizing per gene across all units.
+make_long <- function(p, genes, mcols, ecols, transitions = 1:3) {
+  k <- length(mcols)
+  Ms <- Es <- vector("list", k)
+  for (i in seq_len(k)) {
+    m <- p$M[[mcols[i]]][genes, , drop = FALSE]; e <- p$E[[ecols[i]]][genes, , drop = FALSE]
+    ok <- !is.na(m[1, ]) & !is.na(e[1, ])
+    m[, !ok] <- NA; e[, !ok] <- NA
+    Ms[[i]] <- m - rowMeans(m, na.rm = TRUE); Es[[i]] <- e - rowMeans(e, na.rm = TRUE)
+  }
+  allM <- do.call(cbind, Ms); allE <- do.call(cbind, Es)
+  sdM <- apply(allM, 1, sd, na.rm = TRUE); sdE <- apply(allE, 1, sd, na.rm = TRUE)
+  keep <- sdM > 0 & sdE > 0 & is.finite(sdM) & is.finite(sdE)
+  rows <- lapply(seq_len(k), function(i) {
+    m <- Ms[[i]][keep, , drop = FALSE] / sdM[keep]; e <- Es[[i]][keep, , drop = FALSE] / sdE[keep]
+    bind_rows(lapply(transitions, function(t) tibble(
+      unit = i, colony = mcols[i], gene = rownames(m), interval = paste0("T", t),
+      M0 = m[, t], M1 = m[, t + 1], E0 = e[, t], E1 = e[, t + 1])))
+  })
+  bind_rows(rows) |> filter(!is.na(M0), !is.na(M1), !is.na(E0), !is.na(E1))
+}
+
+# Fixed effects of the two pre-registered models.
+fit_fe <- function(L) {
+  if (nrow(L) == 0 || n_distinct(L$unit) < 2) return(c(beta_ME = NA_real_, beta_EM = NA_real_))
+  f <- if (n_distinct(L$interval) > 1) "+ interval" else ""
+  r <- tryCatch(c(
+    beta_ME = unname(fixef(lmer(as.formula(paste("E1 ~ E0 + M0", f, "+ (1|colony) + (1|gene)")), data = L, control = lmer_ctl))["M0"]),
+    beta_EM = unname(fixef(lmer(as.formula(paste("M1 ~ M0 + E0", f, "+ (1|colony) + (1|gene)")), data = L, control = lmer_ctl))["E0"])),
+    error = function(e) c(beta_ME = NA_real_, beta_EM = NA_real_))
+  r
+}
+
+par_fits <- function(idx, f) do.call(rbind, parallel::mclapply(idx, f, mc.cores = n_cores))
+
+fit_lmer <- function(L) {
+  f <- if (n_distinct(L$interval) > 1) "+ interval" else ""
+  fe <- lmer(as.formula(paste("E1 ~ E0 + M0", f, "+ (1|colony) + (1|gene)")), data = L, control = lmer_ctl)
+  fm <- lmer(as.formula(paste("M1 ~ M0 + E0", f, "+ (1|colony) + (1|gene)")), data = L, control = lmer_ctl)
+  ci_e <- confint(fe, parm = "M0", method = "Wald"); ci_m <- confint(fm, parm = "E0", method = "Wald")
+  tibble(beta_ME_lmer = unname(fixef(fe)["M0"]), beta_ME_wald_lo = ci_e[1], beta_ME_wald_hi = ci_e[2],
+         beta_EM_lmer = unname(fixef(fm)["E0"]), beta_EM_wald_lo = ci_m[1], beta_EM_wald_hi = ci_m[2],
+         singular_E = isSingular(fe), singular_M = isSingular(fm))
+}
+
+random_derangement <- function(k) { repeat { p <- sample.int(k); if (any(p != seq_len(k))) return(p) } }
+
+analyse <- function(p, genes = p$dm, transitions = 1:3, B_perm = n_perm, B_boot = n_boot) {
+  cols <- p$cols
+  L <- make_long(p, genes, cols, cols, transitions)
+  obs <- fit_fe(L)
+  perm_idx <- replicate(B_perm, random_derangement(length(cols)), simplify = FALSE)
+  boot_idx <- replicate(B_boot, sample.int(length(cols), replace = TRUE), simplify = FALSE)
+  perm <- par_fits(perm_idx, function(pi) fit_fe(make_long(p, genes, cols, cols[pi], transitions)))
+  boot <- par_fits(boot_idx, function(i) fit_fe(make_long(p, genes, cols[i], cols[i], transitions)))
+  up <- function(v) (1 + sum(perm[, v] >= obs[[v]], na.rm = TRUE)) / (1 + sum(!is.na(perm[, v])))
+  lo <- function(v) (1 + sum(perm[, v] <= obs[[v]], na.rm = TRUE)) / (1 + sum(!is.na(perm[, v])))
+  diff_boot <- boot[, "beta_EM"] - boot[, "beta_ME"]
+  s <- tibble(species = p$species, genes = n_distinct(L$gene), rows = nrow(L), colonies = n_distinct(L$colony),
+              beta_EM = obs[["beta_EM"]], beta_ME = obs[["beta_ME"]],
+              beta_EM_null_mean = mean(perm[, "beta_EM"], na.rm = TRUE), beta_ME_null_mean = mean(perm[, "beta_ME"], na.rm = TRUE),
+              p_EM_upper = up("beta_EM"), p_ME_upper = up("beta_ME"),
+              p_EM_two = min(1, 2 * min(up("beta_EM"), lo("beta_EM"))), p_ME_two = min(1, 2 * min(up("beta_ME"), lo("beta_ME"))),
+              diff = obs[["beta_EM"]] - obs[["beta_ME"]],
+              diff_lo = quantile(diff_boot, 0.025, na.rm = TRUE), diff_hi = quantile(diff_boot, 0.975, na.rm = TRUE),
+              beta_EM_lo = quantile(boot[, "beta_EM"], 0.025, na.rm = TRUE), beta_EM_hi = quantile(boot[, "beta_EM"], 0.975, na.rm = TRUE),
+              beta_ME_lo = quantile(boot[, "beta_ME"], 0.025, na.rm = TRUE), beta_ME_hi = quantile(boot[, "beta_ME"], 0.975, na.rm = TRUE),
+              diff_minus_null = obs[["beta_EM"]] - obs[["beta_ME"]] - mean(perm[, "beta_EM"] - perm[, "beta_ME"], na.rm = TRUE),
+              n_perm = sum(!is.na(perm[, "beta_EM"])), n_boot = sum(!is.na(diff_boot)))
+  if (B_perm == n_perm) s <- bind_cols(s, fit_lmer(L))
+  list(summary = s, perm = as_tibble(perm) |> mutate(species = p$species))
+}
+
+decide <- function(s) {
+  s <- s |> group_by(species) |>
+    mutate(p_EM_upper_holm = p.adjust(c(p_EM_upper, p_ME_upper), "holm")[1],
+           p_EM_two_holm = p.adjust(c(p_EM_two, p_ME_two), "holm")[1],
+           p_ME_two_holm = p.adjust(c(p_EM_two, p_ME_two), "holm")[2]) |> ungroup() |>
+    mutate(passes = beta_EM > 0 & p_EM_upper_holm < 0.05 & diff_lo > 0,
+           me_leads = diff_hi < 0,
+           any_differs = p_EM_two_holm < 0.05 | p_ME_two_holm < 0.05)
+  verdict <- if (sum(s$passes) >= 2) "supported"
+    else if (any(s$me_leads) || !any(s$any_differs)) "not supported"
+    else "inconclusive"
+  list(per_species = s, verdict = verdict)
+}
+```
+
+```{r fit}
+res <- lapply(pan, analyse)
+primary <- decide(bind_rows(lapply(res, `[[`, "summary")))
+write_csv(primary$per_species, file.path(out_dir, "crosslag_summary.csv"))
+write_csv(bind_rows(lapply(res, `[[`, "perm")), file.path(out_dir, "crosslag_null.csv"))
+knitr::kable(primary$per_species |> select(species, genes, rows, beta_EM, beta_EM_null_mean, p_EM_upper_holm,
+                                           beta_ME, beta_ME_null_mean, diff, diff_lo, diff_hi, passes, me_leads, any_differs), digits = 4)
+```
+
+**Primary verdict: `r primary$verdict`.**
+
+Wald 95% CIs and singular-fit flags from the observed fits:
+
+```{r wald}
+knitr::kable(primary$per_species |> select(species, beta_EM_lmer, beta_EM_wald_lo, beta_EM_wald_hi,
+                                           beta_ME_lmer, beta_ME_wald_lo, beta_ME_wald_hi, singular_E, singular_M), digits = 4)
+```
+
+The Wald intervals treat gene×transition rows as independent given the
+random intercepts and are much narrower than the colony bootstrap; the rule
+uses the bootstrap and the permutation null.
+
+```{r fig-null, fig.width = 9, fig.height = 5}
+null_long <- bind_rows(lapply(res, `[[`, "perm")) |> pivot_longer(c(beta_ME, beta_EM), names_to = "direction", values_to = "beta")
+obs_long <- primary$per_species |> select(species, beta_ME, beta_EM) |> pivot_longer(-species, names_to = "direction", values_to = "beta")
+lab <- c(beta_EM = "expression[t] -> methylation[t+1]", beta_ME = "methylation[t] -> expression[t+1]")
+g <- ggplot(null_long, aes(beta)) +
+  geom_histogram(bins = 40, fill = "grey75") +
+  geom_vline(data = obs_long, aes(xintercept = beta), colour = "#d1495b", linewidth = 0.8) +
+  facet_grid(direction ~ species, scales = "free", labeller = labeller(direction = lab)) +
+  labs(x = "Cross-lagged coefficient (SD per SD)", y = "Colony-permutation null count") +
+  theme_bw()
+ggsave(file.path(out_dir, "crosslag_vs_null.png"), g, width = 9, height = 5, dpi = 150)
+g
+```
+
+Red lines are the observed coefficients; grey is the null from pairing each
+colony's methylation with another colony's expression. Null draws are in
+`crosslag_null.csv`.
+
+## Secondary: expression seasonal score and physiology
+
+Colony-level, both directions, with each series centered on its colony mean
+and standardized: `phys[t+1] ~ phys[t] + PC1[t] + interval` (expression
+leads) and `PC1[t+1] ~ PC1[t] + phys[t] + interval` (physiology leads).
+PC1 of vst on three-way orthologs, all samples with `has_genes`. OLS
+(colony intercepts are removed by centering). Descriptive; BH across the two
+traits within species and direction.
+
+```{r phenotype}
+orth <- load_orthologs()
+phys <- load_physiology() |> select(sample_id, Host_AFDW.mg.cm2, calc.umol.cm2.hr) |>
+  group_by(sample_id) |> summarise(across(everything(), ~ mean(.x, na.rm = TRUE)), .groups = "drop")
+pheno_one <- function(sp) {
+  v <- prep_vst(genes_by_ortholog(sp, orthologs = orth), design)
+  pc <- prcomp(t(v$vst), rank. = 1)$x[, 1]
+  dat <- tibble(sample_id = names(pc), PC1 = pc) |> left_join(design |> select(sample_id, colony, timepoint), by = "sample_id") |>
+    left_join(phys, by = "sample_id")
+  # orient PC1 so that it is higher at TP1 than TP3
+  if (mean(dat$PC1[dat$timepoint == "TP1"]) < mean(dat$PC1[dat$timepoint == "TP3"])) dat$PC1 <- -dat$PC1
+  bind_rows(lapply(c("Host_AFDW.mg.cm2", "calc.umol.cm2.hr"), function(tr) {
+    d <- dat |> transmute(colony, tp = match(timepoint, tps), x = PC1, y = log(.data[[tr]])) |>
+      filter(is.finite(y)) |> group_by(colony) |> filter(n() >= 2) |>
+      mutate(x = x - mean(x), y = y - mean(y)) |> ungroup() |> mutate(x = x / sd(x), y = y / sd(y))
+    L <- d |> inner_join(d |> mutate(tp = tp - 1), by = c("colony", "tp"), suffix = c("0", "1")) |>
+      mutate(interval = factor(tp))
+    f1 <- lm(y1 ~ y0 + x0 + interval, data = L); f2 <- lm(x1 ~ x0 + y0 + interval, data = L)
+    tibble(species = sp, trait = tr, transitions = nrow(L), colonies = n_distinct(L$colony),
+           direction = c("expression -> physiology", "physiology -> expression"),
+           beta = c(coef(f1)["x0"], coef(f2)["y0"]),
+           lo = c(confint(f1)["x0", 1], confint(f2)["y0", 1]), hi = c(confint(f1)["x0", 2], confint(f2)["y0", 2]),
+           p = c(summary(f1)$coefficients["x0", 4], summary(f2)$coefficients["y0", 4]))
+  }))
+}
+pheno <- bind_rows(lapply(species_all, pheno_one)) |> group_by(species, direction) |> mutate(p_bh = p.adjust(p, "BH")) |> ungroup()
+write_csv(pheno, file.path(out_dir, "secondary_phenotype.csv"))
+knitr::kable(pheno, digits = 3)
+```
+
+## Sensitivity checks
+
+```{r sensitivity}
+sens_run <- function(label, gene_fun = function(p) p$dm, transitions = 1:3, B_perm = n_perm, B_boot = n_boot) {
+  s <- bind_rows(lapply(pan, function(p) analyse(p, gene_fun(p), transitions, B_perm, B_boot)$summary))
+  dec <- decide(s)
+  write_csv(dec$per_species, file.path(out_dir, paste0("sens_", label, "_summary.csv")))
+  list(label = label, dec = dec)
+}
+orth_ids <- list(Apul = orth$apul_gene, Peve = orth$peve_gene, Ptuh = orth$ptuh_gene)
+sens <- list(
+  sens_run("two_month_only", transitions = c(1, 3)),
+  sens_run("mincpg20", function(p) intersect(p$dm, names(p$n_cpg)[p$n_cpg >= 20])),
+  sens_run("orthologs", function(p) intersect(p$dm, orth_ids[[p$species]])),
+  sens_run("all_genes", function(p) p$genes, B_perm = 200, B_boot = 200))
+sens_tab <- bind_rows(lapply(sens, function(x) x$dec$per_species |>
+  transmute(check = x$label, species, genes, rows, beta_EM, p_EM_upper_holm, beta_ME, diff, diff_lo, diff_hi, passes, me_leads)))
+knitr::kable(sens_tab, digits = 4)
+```
+
+The two-month check uses TP1→TP2 and TP3→TP4 only, so `interval` keeps two
+levels.
+
+### Simulation: noise asymmetry with no true lag (pre-registered)
+
+Methylation is measured with more noise than expression, which can make the
+less noisy layer look like the leader. Here the true process has a shared
+seasonal signal and no lag: for each gene, the colony-averaged expression
+profile over TP1–TP4 (standardized) is the latent signal s, and
+E = sqrt(r_E)·s + noise, M = sqrt(r_M)·s + noise, with r_E and r_M the
+fractions of within-gene×colony variance explained by the gene×timepoint mean
+in each layer, estimated from the data. Panel structure, missing timepoints
+and DM genes are those observed. `r n_sim` simulations per species; the
+statistic is beta_EM − beta_ME from the same `lmer` models.
+
+```{r simulation}
+signal_fraction <- function(p, genes, layer) {
+  X <- lapply(p[[layer]], function(m) { m <- m[genes, , drop = FALSE]; m - rowMeans(m, na.rm = TRUE) })
+  mu <- Reduce(`+`, lapply(X, function(m) { m[is.na(m)] <- 0; m })) / Reduce(`+`, lapply(X, function(m) !is.na(m)))
+  tot <- sum(sapply(X, function(m) sum(m^2, na.rm = TRUE)))
+  res <- sum(sapply(X, function(m) sum((m - mu)^2, na.rm = TRUE)))
+  max(0, 1 - res / tot)
+}
+simulate_one <- function(p) {
+  g <- p$dm
+  rE <- signal_fraction(p, g, "E"); rM <- signal_fraction(p, g, "M")
+  Ebar <- Reduce(`+`, lapply(p$E, function(m) { m <- m[g, , drop = FALSE]; m <- m - rowMeans(m, na.rm = TRUE); m[is.na(m)] <- 0; m })) /
+          Reduce(`+`, lapply(p$E, function(m) !is.na(m[g, , drop = FALSE])))
+  s <- t(scale(t(Ebar))); s[!is.finite(s)] <- 0
+  noise <- replicate(n_sim, list(E = lapply(p$E, function(m) matrix(rnorm(length(s)), nrow(s))),
+                                 M = lapply(p$M, function(m) matrix(rnorm(length(s)), nrow(s)))), simplify = FALSE)
+  sims <- unlist(parallel::mclapply(noise, function(z) {
+    q <- p
+    q$E <- Map(function(m, n) { o <- sqrt(rE) * s + sqrt(1 - rE) * n; o[is.na(m[g, , drop = FALSE])] <- NA; o }, p$E, z$E)
+    q$M <- Map(function(m, n) { o <- sqrt(rM) * s + sqrt(1 - rM) * n; o[is.na(m[g, , drop = FALSE])] <- NA; o }, p$M, z$M)
+    b <- fit_fe(make_long(q, g, q$cols, q$cols))
+    b[["beta_EM"]] - b[["beta_ME"]]
+  }, mc.cores = n_cores))
+  tibble(species = p$species, r_E = rE, r_M = rM, sim_diff_mean = mean(sims), sim_diff_lo = quantile(sims, 0.025),
+         sim_diff_hi = quantile(sims, 0.975), obs_diff = primary$per_species$diff[primary$per_species$species == p$species])
+}
+sim_tab <- bind_rows(lapply(pan, simulate_one))
+write_csv(sim_tab, file.path(out_dir, "simulation_no_lag.csv"))
+knitr::kable(sim_tab, digits = 4)
+```
+
+`sim_diff_*` is the beta_EM − beta_ME produced by noise asymmetry alone; an
+observed difference inside that range is not evidence of a lag.
+
+```{r summary}
+verdicts <- tibble(analysis = c("primary (DM genes, all transitions)", sapply(sens, `[[`, "label")),
+                   verdict = c(primary$verdict, sapply(sens, function(x) x$dec$verdict)))
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+knitr::kable(verdicts)
+```
+
+## Caveats
+
+- Colonies with both layers: `r paste(n_tab$species, n_tab$colonies, sep = " ", collapse = ", ")`;
+  per transition see the table above. About 10 colonies per species.
+- Temporal precedence in observational data is not causation.
+- Intervals are unequal (2, 6, 2 months).
+- Within-unit centering over 3–4 timepoints induces Nickell bias; the
+  colony-permutation null carries the same bias.
+- CpG density differs about 20-fold across species (D-008).

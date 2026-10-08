@@ -1,0 +1,10 @@
+species,transition,colonies
+Apul,TP1-TP2,9
+Apul,TP2-TP3,10
+Apul,TP3-TP4,10
+Peve,TP1-TP2,9
+Peve,TP2-TP3,8
+Peve,TP3-TP4,9
+Ptuh,TP1-TP2,8
+Ptuh,TP2-TP3,6
+Ptuh,TP3-TP4,6

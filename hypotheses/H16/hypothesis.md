@@ -2,7 +2,7 @@
 id: H16
 slug: methylation-expression-lag-direction
 title: Expression change precedes gene-body methylation change, not the reverse
-status: planned
+status: not supported
 tier: 2
 layers: [cpg, genes, annotation, physiology]
 species: [Apul, Peve, Ptuh]
