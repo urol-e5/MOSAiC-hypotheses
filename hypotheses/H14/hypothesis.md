@@ -2,7 +2,7 @@
 id: H14
 slug: seasonal-energetics
 title: Seasonal shifts in storage lipids and central metabolites track host biomass and calcification
-status: planned
+status: inconclusive
 tier: 4
 layers: [lipidomics, metabolomics, physiology]
 species: [Apul, Peve, Ptuh]

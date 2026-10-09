@@ -1,0 +1,191 @@
+---
+title: "H14: storage lipids, metabolites and host energetics"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2); library(lme4) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H14", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+traits <- c(AFDW = "Host_AFDW.mg.cm2", calc = "calc.umol.cm2.hr")
+n_boot <- 2000
+n_perm <- 1000
+max_comp <- 3
+n_cores <- max(1, parallel::detectCores() - 1)
+set.seed(20261008)
+```
+
+## Pre-registered decision rule
+
+> `supported` if the storage:membrane slope on AFDW is positive with CI
+> excluding zero in at least two species, and PLS Q2 exceeds the permutation
+> 95th percentile in those species. `not supported` if the slope is
+> non-positive in all species. Otherwise `inconclusive`.
+
+Amendment 1 (`hypothesis.md`, before any analysis) defines the ratio as
+log((TG + DG + CE) / (LPC + Cer)) (H19's definition), replaces the moot
+normalization check with the storage fraction of total lipid, and fixes the
+PLS procedure: leave-one-colony-out Q2, best of 1–3 components, and
+1000 permutations of AFDW across samples using the same procedure.
+
+Implementation note (not in `hypothesis.md`; does not change the rule): the
+`supported` clause needs both conditions in the same species, at least two
+of them.
+
+## Data
+
+```{r data}
+lip <- load_lipidomics(); lm_ <- as_count_matrix(lip)
+lclass <- sub("[ (].*", "", rownames(lm_))
+lipid_map <- tibble(feature_id = rownames(lm_), class = lclass,
+                    group = case_when(lclass %in% c("TG", "DG", "CE") ~ "storage",
+                                      lclass %in% c("LPC", "Cer") ~ "membrane", TRUE ~ "neither"))
+write_csv(lipid_map, file.path(out_dir, "lipid_class_map.csv"))
+lipid <- tibble(sample_id = colnames(lm_),
+                storage = colSums(lm_[lipid_map$group == "storage", , drop = FALSE], na.rm = TRUE),
+                membrane = colSums(lm_[lipid_map$group == "membrane", , drop = FALSE], na.rm = TRUE),
+                total = colSums(lm_, na.rm = TRUE)) |>
+  mutate(ratio = log(storage / membrane), storage_frac = qlogis(storage / total))
+
+phys <- load_physiology() |> select(sample_id, all_of(unname(traits)))
+mm <- as_count_matrix(load_metabolomics())
+
+samples <- design |> filter(has_lipidomics %in% TRUE, has_metabolomics %in% TRUE, has_physiology %in% TRUE) |>
+  select(sample_id, species, colony, timepoint) |>
+  inner_join(lipid, by = "sample_id") |> inner_join(phys, by = "sample_id") |>
+  filter(sample_id %in% colnames(mm))
+n_tab <- samples |> group_by(species) |>
+  summarise(samples = n(), colonies = n_distinct(colony),
+            TP1 = sum(timepoint == "TP1"), TP2 = sum(timepoint == "TP2"), TP3 = sum(timepoint == "TP3"), TP4 = sum(timepoint == "TP4"),
+            afdw_missing = sum(!is.finite(Host_AFDW.mg.cm2)), calc_missing = sum(!is.finite(calc.umol.cm2.hr)), .groups = "drop")
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab)
+knitr::kable(lipid_map |> count(class, group))
+```
+
+## Lipid ratio vs physiology
+
+```{r slopes}
+slope_one <- function(sp, tr, resp = "ratio") {
+  d <- samples |> filter(species == sp) |> transmute(colony, y = .data[[resp]], x = .data[[traits[[tr]]]]) |>
+    filter(is.finite(y), is.finite(x)) |> mutate(xs = as.numeric(scale(x)))
+  fit <- lmer(y ~ xs + (1 | colony), data = d)
+  ci <- confint(fit, parm = "xs", method = "Wald")
+  dm <- d |> group_by(colony) |> mutate(yd = y - mean(y), xd = x - mean(x)) |> ungroup()
+  wr <- function(dd) suppressWarnings(cor(dd$xd, dd$yd))
+  cols <- unique(d$colony)
+  boot <- replicate(n_boot, { s <- sample(cols, replace = TRUE); wr(bind_rows(lapply(s, function(c) dm[dm$colony == c, ]))) })
+  tibble(species = sp, trait = tr, response = resp, n = nrow(d), colonies = n_distinct(d$colony),
+         slope = unname(fixef(fit)["xs"]), lo = ci[1], hi = ci[2], singular = isSingular(fit),
+         within_r = wr(dm), within_r_lo = quantile(boot, 0.025, na.rm = TRUE), within_r_hi = quantile(boot, 0.975, na.rm = TRUE))
+}
+slopes <- bind_rows(lapply(species_all, function(sp) bind_rows(lapply(names(traits), function(tr) slope_one(sp, tr)))))
+write_csv(slopes, file.path(out_dir, "ratio_slopes.csv"))
+knitr::kable(slopes, digits = 3)
+```
+
+## Metabolites: PLS on AFDW
+
+```{r pls}
+prep_metab <- function(sp) {
+  d <- samples |> filter(species == sp, is.finite(Host_AFDW.mg.cm2))
+  X <- t(mm[, d$sample_id, drop = FALSE])
+  keep <- colMeans(is.na(X)) <= 0.2
+  X <- X[, keep, drop = FALSE]
+  for (j in seq_len(ncol(X))) { m <- X[, j]; m[is.na(m)] <- min(m, na.rm = TRUE) / 2; X[, j] <- m }
+  X <- scale(log2(X)); X <- X[, colSums(is.finite(X)) == nrow(X), drop = FALSE]
+  list(X = X, y = as.numeric(scale(d$Host_AFDW.mg.cm2)), colony = d$colony, n_metab_dropped = sum(!keep))
+}
+q2_best <- function(X, y, colony) {
+  folds <- split(seq_along(y), colony)
+  press <- numeric(max_comp)
+  for (f in folds) {
+    tr <- setdiff(seq_along(y), f)
+    fit <- pls::plsr(y[tr] ~ X[tr, , drop = FALSE], ncomp = max_comp, scale = FALSE, center = TRUE, validation = "none")
+    pr <- predict(fit, newdata = X[f, , drop = FALSE], ncomp = 1:max_comp)
+    press <- press + colSums((matrix(pr, nrow = length(f)) - y[f])^2)
+  }
+  q2 <- 1 - press / sum((y - mean(y))^2)
+  c(q2 = max(q2), ncomp = which.max(q2))
+}
+pls_res <- bind_rows(lapply(species_all, function(sp) {
+  p <- prep_metab(sp)
+  obs <- q2_best(p$X, p$y, p$colony)
+  null <- unlist(parallel::mclapply(seq_len(n_perm), function(i) { set.seed(20261008 + i); q2_best(p$X, sample(p$y), p$colony)[["q2"]] }, mc.cores = n_cores))
+  tibble(species = sp, samples = length(p$y), metabolites = ncol(p$X), metabolites_dropped = p$n_metab_dropped,
+         Q2 = obs[["q2"]], ncomp = obs[["ncomp"]], null_median = median(null), null_95 = quantile(null, 0.95),
+         p = (1 + sum(null >= obs[["q2"]])) / (1 + n_perm))
+}))
+write_csv(pls_res, file.path(out_dir, "pls_q2.csv"))
+knitr::kable(pls_res, digits = 3)
+```
+
+## Decision
+
+```{r decide}
+dec <- slopes |> filter(trait == "AFDW") |> select(species, slope, lo, hi) |>
+  left_join(pls_res |> select(species, Q2, null_95), by = "species") |>
+  mutate(slope_pass = slope > 0 & lo > 0, q2_pass = Q2 > null_95, both = slope_pass & q2_pass)
+verdict <- if (sum(dec$both) >= 2) "supported" else if (all(dec$slope <= 0)) "not supported" else "inconclusive"
+write_csv(dec |> mutate(verdict = verdict), file.path(out_dir, "decision.csv"))
+knitr::kable(dec, digits = 3)
+```
+
+**Verdict: `r verdict`.**
+
+```{r fig, fig.width = 9, fig.height = 3.6}
+fd <- samples |> filter(is.finite(Host_AFDW.mg.cm2)) |> select(species, colony, timepoint, ratio, Host_AFDW.mg.cm2)
+write_csv(fd, file.path(out_dir, "figure_data.csv"))
+g <- ggplot(fd, aes(Host_AFDW.mg.cm2, ratio)) +
+  geom_line(aes(group = colony), colour = "grey80") +
+  geom_point(aes(colour = timepoint), size = 1.8) +
+  facet_wrap(~ species, scales = "free_x") +
+  labs(x = "Host AFDW (mg/cm2)", y = "log storage:membrane lipid ratio", colour = NULL) +
+  theme_bw()
+ggsave(file.path(out_dir, "ratio_vs_afdw.png"), g, width = 9, height = 3.6, dpi = 150)
+g
+```
+
+Grey lines join samples from the same colony.
+
+## Sensitivity: storage fraction of total lipid (Amendment 1)
+
+```{r sens}
+sens <- bind_rows(lapply(species_all, function(sp) bind_rows(lapply(names(traits), function(tr) slope_one(sp, tr, "storage_frac")))))
+write_csv(sens, file.path(out_dir, "sens_storage_fraction.csv"))
+sens_dec <- sens |> filter(trait == "AFDW") |> left_join(pls_res |> select(species, Q2, null_95), by = "species") |>
+  mutate(both = slope > 0 & lo > 0 & Q2 > null_95)
+sens_verdict <- if (sum(sens_dec$both) >= 2) "supported" else if (all(sens_dec$slope <= 0)) "not supported" else "inconclusive"
+knitr::kable(sens |> select(species, trait, n, slope, lo, hi, within_r, within_r_lo, within_r_hi), digits = 3)
+```
+
+Verdict with the storage fraction: `r sens_verdict`.
+
+```{r summary}
+verdicts <- tibble(analysis = c("primary (log storage:membrane)", "storage fraction of total lipid"), verdict = c(verdict, sens_verdict))
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+knitr::kable(verdicts)
+```
+
+## Caveats
+
+- About 10 colonies per species, 2–4 lipidomic samples each; no TP2 lipids
+  for Apul and Ptuh.
+- Lipid classes are assigned from names; no wax esters, PC or PE in the
+  lipidome.
+- AFDW is on the raw scale and includes negative values upstream.
+- PLS Q2 uses AFDW only, as pre-registered.

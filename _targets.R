@@ -94,6 +94,8 @@ list(
              extra_files = "R/expression.R"),   # raven
   tar_quarto(H12, "hypotheses/H12/analysis.qmd",
              execute_params = { harmonized; reproduction_gate; list() }),
+  tar_quarto(H14, "hypotheses/H14/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() }),
   tar_quarto(H10, "hypotheses/H10/analysis.qmd",
              execute_params = { harmonized; reproduction_gate; list() })
 )
