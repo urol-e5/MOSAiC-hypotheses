@@ -1,4 +1,4 @@
-# Genomic neighbor pairs, shared by H17 and H18.
+# Genomic neighbor pairs and pair correlations, shared by H17, H18 and H25.
 
 # All pairs of `xa` x `xb` intervals on the same scaffold within `max_dist`
 # bp, with gap distance between nearest ends (<= 0 means overlap). `xa`, `xb`
@@ -21,4 +21,24 @@ neighbor_pairs <- function(xa, xb, same = FALSE, max_dist = 100000,
 # lncRNA feature table -> the coordinate shape of load_gene_coords().
 lncrna_coords <- function(species) {
   load_lncrna_features(species) |> dplyr::transmute(feature_id, chrom = Chr, start = Start, end = End)
+}
+
+# Residuals of each row of `m` (features x samples) on fixed-effect `terms`
+# (columns of `info`, one row per sample).
+residualize <- function(m, info, terms) {
+  X <- model.matrix(as.formula(paste("~", paste(terms, collapse = " + "))), data = info)
+  t(qr.resid(qr(X), t(m)))
+}
+
+# Rows centred and scaled to unit norm, so Pearson r is a dot product.
+zrows <- function(m) { m <- m - rowMeans(m); m / sqrt(rowSums(m^2)) }
+
+# Pearson r for row pairs (ia of A, ib of B), A and B already z-normed by row.
+pair_r <- function(A, B, ia, ib, chunk = 2e5) {
+  out <- numeric(length(ia))
+  for (s in seq(1, length(ia), by = chunk)) {
+    k <- s:min(length(ia), s + chunk - 1)
+    out[k] <- rowSums(A[ia[k], , drop = FALSE] * B[ib[k], , drop = FALSE])
+  }
+  out
 }

@@ -1,0 +1,311 @@
+---
+title: "H25: distal co-expression, lncRNA–gene vs gene–gene equivalence"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+source(file.path(root, "R", "neighbors.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H25", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+bins <- c(0, 2000, 10000, 50000, 100000)
+bin_labels <- c("0-2 kb", "2-10 kb", "10-50 kb", "50-100 kb")
+margin <- 0.25
+B_colony <- 2000
+B_scaffold <- 1000
+min_span <- 500000
+n_cores <- max(1, parallel::detectCores() - 1)
+set.seed(25)
+```
+
+## Pre-registered decision rule
+
+> `supported`: Holm-adjusted p_TOST < 0.05 (colony bootstrap) in every
+> species. `not supported`: in any species, the 95% percentile colony-bootstrap
+> interval for Δ lies wholly below −0.25 or wholly above +0.25. Otherwise
+> `inconclusive` (failure to establish equivalence is not evidence for a
+> transcript-class difference).
+
+Δ = mean_b(L_b − G_b) / mean_b(G_b) over the bins (2, 10], (10, 50],
+(50, 100] kb, where L_b is the median residual r of kept lncRNA–gene pairs
+and G_b the weighted median of kept gene–gene orientations; species with
+mean_b(G_b) < 0.01 are `inconclusive`. Everything below follows
+`hypothesis.md` (completed 2026-10-09, `cb42e81`).
+
+Implementation notes (not in `hypothesis.md`; none changes the rule):
+
+- Quantile cut points use `quantile()` type 7; a value equal to a cut point
+  goes to the lower stratum. Tertiles of gap are over all orientations in
+  the bin (gene–gene pairs count twice), as in `feasibility_check.R`.
+- Residual SD divides by n − rank of the colony + timepoint design.
+- Weighted median: the smallest r at which cumulative weight reaches half
+  the total.
+- In a colony-bootstrap replicate the drawn colonies keep the full-data
+  strata and weights; only r is recomputed. Residualization uses the drawn
+  colony instances as levels.
+- In a scaffold-block replicate, scaffolds are drawn from those holding at
+  least one kept orientation.
+- C1 and C2 reuse the same colony-bootstrap index draws as the primary.
+
+## Data
+
+```{r data}
+cut_q <- function(x, ref, k) findInterval(x, quantile(ref, seq(0, 1, length.out = k + 1)[-c(1, k + 1)]), left.open = TRUE) + 1
+
+prep_species <- function(sp) {
+  ids <- design |> filter(species == sp, has_genes %in% TRUE, has_lncrna %in% TRUE) |> pull(sample_id)
+  g <- prep_vst(load_genes(sp) |> select(feature_id, any_of(ids)), design)
+  l <- prep_vst(load_lncrna(sp) |> select(feature_id, any_of(ids)), design)
+  ids <- intersect(colnames(g$vst), colnames(l$vst))
+  G <- g$vst[, ids]; L <- l$vst[, ids]
+  info <- design_for(G, design) |> mutate(colony = factor(colony), timepoint = factor(timepoint))
+  gc <- load_gene_coords(sp) |> filter(feature_id %in% rownames(G))
+  lc <- lncrna_coords(sp) |> filter(feature_id %in% rownames(L))
+  X <- model.matrix(~ colony + timepoint, data = info)
+  rsd <- function(m) { r <- residualize(m, info, c("colony", "timepoint")); sqrt(rowSums(r^2) / (ncol(m) - qr(X)$rank)) }
+  feat <- bind_rows(tibble(feature_id = rownames(G), class = "gene", mean = rowMeans(G), rsd = rsd(G)),
+                    tibble(feature_id = rownames(L), class = "lncrna", mean = rowMeans(L), rsd = rsd(L)))
+  span <- bind_rows(gc, lc) |> group_by(chrom) |> summarise(span = max(end), .groups = "drop")
+
+  lg <- neighbor_pairs(lc, gc, max_dist = 100000, bins = bins, bin_labels = bin_labels) |>
+    filter(!overlap, gap > 2000) |> mutate(class = "lncRNA-gene")
+  gg <- neighbor_pairs(gc, gc, same = TRUE, max_dist = 100000, bins = bins, bin_labels = bin_labels) |>
+    filter(!overlap, gap > 2000) |> mutate(class = "gene-gene")
+  pairs <- bind_rows(lg, gg) |> mutate(pair = row_number(), bin = droplevels(bin)) |>
+    left_join(span, by = "chrom")
+
+  # orientations: lncRNA-gene once (anchor gene), gene-gene twice
+  orient <- bind_rows(pairs |> filter(class == "lncRNA-gene") |> transmute(pair, class, bin, gap, chrom, span, anchor = b, partner = a),
+                      pairs |> filter(class == "gene-gene") |> transmute(pair, class, bin, gap, chrom, span, anchor = a, partner = b),
+                      pairs |> filter(class == "gene-gene") |> transmute(pair, class, bin, gap, chrom, span, anchor = b, partner = a))
+  fm <- setNames(feat$mean, feat$feature_id); fr <- setNames(feat$rsd, feat$feature_id)
+  gmean <- feat$mean[feat$class == "gene"]
+  orient <- orient |> group_by(bin) |> mutate(gap_t = cut_q(gap, gap, 3)) |> ungroup() |>
+    mutate(anchor_t = cut_q(fm[anchor], gmean, 3))
+
+  assign_strata <- function(o, k) {
+    o |> mutate(pm = cut_q(fm[partner], feat$mean, k), pr = cut_q(fr[partner], feat$rsd, k),
+                stratum = paste(bin, gap_t, anchor_t, pm, pr, sep = "|")) |>
+      group_by(stratum) |> mutate(n_lg = sum(class == "lncRNA-gene"), n_gg = sum(class == "gene-gene")) |> ungroup() |>
+      mutate(kept = n_lg >= 3 & n_gg >= 3)
+  }
+  o5 <- assign_strata(orient, 5); o3 <- assign_strata(orient, 3)
+  share5 <- o5 |> filter(class == "lncRNA-gene") |> group_by(bin) |> summarise(share = mean(kept), .groups = "drop")
+  level <- setNames(ifelse(share5$share < 0.5, "tertile", "quintile"), share5$bin)
+  orient <- bind_rows(lapply(names(level), function(b) (if (level[[b]] == "quintile") o5 else o3) |> filter(bin == b))) |>
+    filter(kept) |>
+    mutate(w = ifelse(class == "lncRNA-gene", 1, n_lg / n_gg), bin = factor(bin, levels = levels(pairs$bin)))
+
+  match_tab <- orient |> group_by(bin) |>
+    summarise(strata_kept = n_distinct(stratum), lncrna_gene_kept = sum(class == "lncRNA-gene"),
+              gene_gene_orientations_kept = sum(class == "gene-gene"), .groups = "drop") |>
+    left_join(pairs |> filter(class == "lncRNA-gene") |> count(bin, name = "lncrna_gene_all"), by = "bin") |>
+    mutate(species = sp, .before = 1, level = level[as.character(bin)], share_kept = lncrna_gene_kept / lncrna_gene_all)
+
+  list(species = sp, G = G, L = L, info = info, pairs = pairs, orient = orient, match = match_tab,
+       n = tibble(species = sp, samples = length(ids), colonies = n_distinct(info$colony),
+                  sites = n_distinct(info$site), genes = nrow(G), lncrna = nrow(L),
+                  lncrna_gene_pairs = sum(pairs$class == "lncRNA-gene"), gene_gene_pairs = sum(pairs$class == "gene-gene"),
+                  scaffolds = n_distinct(pairs$chrom)))
+}
+
+dat <- lapply(setNames(species_all, species_all), prep_species)
+n_tab <- bind_rows(lapply(dat, `[[`, "n"))
+match_tab <- bind_rows(lapply(dat, `[[`, "match"))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+write_csv(match_tab, file.path(out_dir, "matching_per_bin.csv"))
+knitr::kable(n_tab, format.args = list(big.mark = ","))
+knitr::kable(match_tab, digits = 3, format.args = list(big.mark = ","))
+```
+
+## Model
+
+```{r functions}
+wmedian <- function(x, w) { o <- order(x); x <- x[o]; cw <- cumsum(w[o]); x[which(cw >= cw[length(cw)] / 2)[1]] }
+
+# r for every pair given a sample index vector `cols` (columns, possibly
+# repeated) and colony labels for those columns.
+pair_correlations <- function(d, cols, colony_lab, terms) {
+  info <- d$info[cols, ] |> mutate(colony = factor(colony_lab))
+  A <- zrows(residualize(d$L[, cols, drop = FALSE], info, terms))
+  Gz <- zrows(residualize(d$G[, cols, drop = FALSE], info, terms))
+  p <- d$pairs
+  r <- numeric(nrow(p))
+  lg <- p$class == "lncRNA-gene"
+  r[lg] <- pair_r(A, Gz, match(p$a[lg], rownames(A)), match(p$b[lg], rownames(Gz)))
+  r[!lg] <- pair_r(Gz, Gz, match(p$a[!lg], rownames(Gz)), match(p$b[!lg], rownames(Gz)))
+  r
+}
+
+# Matched per-bin medians and delta for a set of orientations `o` (rows of
+# d$orient, possibly repeated) and pair correlations `r`.
+delta_stat <- function(o, r) {
+  per_bin <- o |> mutate(r = r[pair]) |> group_by(bin) |>
+    summarise(L = median(r[class == "lncRNA-gene"]),
+              G = wmedian(r[class == "gene-gene"], w[class == "gene-gene"]), .groups = "drop") |>
+    mutate(diff = L - G)
+  list(per_bin = per_bin, delta = mean(per_bin$diff) / mean(per_bin$G), G_mean = mean(per_bin$G))
+}
+
+boot_colony_idx <- function(d) {
+  cl <- d$info |> distinct(colony, site)
+  replicate(B_colony, {
+    drawn <- unlist(lapply(split(as.character(cl$colony), cl$site), function(x) sample(x, length(x), replace = TRUE)))
+    cols <- unlist(lapply(seq_along(drawn), function(k) which(d$info$colony == drawn[k])))
+    lab <- unlist(lapply(seq_along(drawn), function(k) rep(k, sum(d$info$colony == drawn[k]))))
+    list(cols = cols, lab = lab)
+  }, simplify = FALSE)
+}
+
+tost <- function(boot, est) {
+  p_lower <- (1 + sum(boot <= -margin)) / (length(boot) + 1)
+  p_upper <- (1 + sum(boot >= margin)) / (length(boot) + 1)
+  tibble(delta = est, delta_lo = quantile(boot, 0.025), delta_hi = quantile(boot, 0.975),
+         p_lower = p_lower, p_upper = p_upper, p_tost = max(p_lower, p_upper))
+}
+
+# Run the primary (colony + timepoint) and checks C1 (colony only) and C2
+# (scaffold span >= 500 kb) on the same colony-bootstrap draws.
+analyse_species <- function(d) {
+  full <- seq_len(nrow(d$info))
+  r_ct <- pair_correlations(d, full, as.character(d$info$colony), c("colony", "timepoint"))
+  r_c <- pair_correlations(d, full, as.character(d$info$colony), "colony")
+  o_all <- d$orient; o_long <- d$orient |> filter(span >= min_span)
+  sets <- list(primary = list(o = o_all, r = r_ct, terms = c("colony", "timepoint")),
+               C1_colony_only = list(o = o_all, r = r_c, terms = "colony"),
+               C2_span_500kb = list(o = o_long, r = r_ct, terms = c("colony", "timepoint")))
+  obs <- lapply(sets, function(s) delta_stat(s$o, s$r))
+  idx <- boot_colony_idx(d)
+  boot <- parallel::mclapply(idx, function(b) {
+    rr <- list(ct = pair_correlations(d, b$cols, b$lab, c("colony", "timepoint")),
+               c = pair_correlations(d, b$cols, b$lab, "colony"))
+    lapply(names(sets), function(nm) {
+      s <- delta_stat(sets[[nm]]$o, if (nm == "C1_colony_only") rr$c else rr$ct)
+      c(delta = s$delta, setNames(s$per_bin$diff, paste0("diff_", s$per_bin$bin)),
+        setNames(s$per_bin$L, paste0("L_", s$per_bin$bin)), setNames(s$per_bin$G, paste0("G_", s$per_bin$bin)))
+    }) |> setNames(names(sets))
+  }, mc.cores = n_cores)
+  if (any(vapply(boot, inherits, TRUE, "try-error"))) stop("colony bootstrap worker failed")
+
+  # C3: scaffold-block bootstrap, primary r fixed
+  by_scaf <- split(seq_len(nrow(o_all)), o_all$chrom)
+  scafs <- names(by_scaf)
+  scaf_draws <- replicate(B_scaffold, sample(scafs, length(scafs), replace = TRUE), simplify = FALSE)
+  scaf_boot <- vapply(scaf_draws, function(sc) delta_stat(o_all[unlist(by_scaf[sc]), ], r_ct)$delta, 0)
+
+  summ <- bind_rows(lapply(names(sets), function(nm) {
+    bd <- vapply(boot, function(b) b[[nm]][["delta"]], 0)
+    tost(bd, obs[[nm]]$delta) |> mutate(analysis = nm, G_mean = obs[[nm]]$G_mean,
+                                        orientations = nrow(sets[[nm]]$o), .before = 1)
+  }), tost(scaf_boot, obs$primary$delta) |> mutate(analysis = "C3_scaffold_block", G_mean = obs$primary$G_mean,
+                                                   orientations = nrow(o_all), .before = 1)) |>
+    mutate(species = d$species, .before = 1)
+
+  per_bin <- bind_rows(lapply(names(sets), function(nm) {
+    m <- do.call(rbind, lapply(boot, function(b) b[[nm]]))
+    obs[[nm]]$per_bin |> rowwise() |>
+      mutate(L_lo = quantile(m[, paste0("L_", bin)], 0.025), L_hi = quantile(m[, paste0("L_", bin)], 0.975),
+             G_lo = quantile(m[, paste0("G_", bin)], 0.025), G_hi = quantile(m[, paste0("G_", bin)], 0.975),
+             diff_lo = quantile(m[, paste0("diff_", bin)], 0.025), diff_hi = quantile(m[, paste0("diff_", bin)], 0.975)) |>
+      ungroup() |> mutate(analysis = nm, .before = 1)
+  })) |> mutate(species = d$species, .before = 1)
+
+  draws <- tibble(species = d$species, replicate = seq_len(B_colony),
+                  primary = vapply(boot, function(b) b$primary[["delta"]], 0),
+                  C1_colony_only = vapply(boot, function(b) b$C1_colony_only[["delta"]], 0),
+                  C2_span_500kb = vapply(boot, function(b) b$C2_span_500kb[["delta"]], 0))
+  list(summary = summ, per_bin = per_bin, draws = draws, scaf_draws = tibble(species = d$species, delta = scaf_boot))
+}
+```
+
+```{r run}
+res <- lapply(dat, analyse_species)
+summ <- bind_rows(lapply(res, `[[`, "summary"))
+per_bin <- bind_rows(lapply(res, `[[`, "per_bin"))
+write_csv(per_bin, file.path(out_dir, "per_bin_C4.csv"))
+write_csv(bind_rows(lapply(res, `[[`, "draws")), file.path(out_dir, "colony_bootstrap_draws.csv"))
+write_csv(bind_rows(lapply(res, `[[`, "scaf_draws")), file.path(out_dir, "scaffold_bootstrap_draws.csv"))
+
+decide <- function(s) {
+  s <- s |> mutate(no_reference = G_mean < 0.01,
+                   p_tost_holm = p.adjust(p_tost, "holm"),
+                   equivalent = !no_reference & p_tost_holm < 0.05,
+                   beyond_margin = !no_reference & (delta_hi < -margin | delta_lo > margin))
+  verdict <- if (all(s$equivalent)) "supported" else if (any(s$beyond_margin)) "not supported" else "inconclusive"
+  list(per_species = s, verdict = verdict)
+}
+decisions <- lapply(split(summ, summ$analysis), decide)
+summ_dec <- bind_rows(lapply(decisions, `[[`, "per_species"))
+write_csv(summ_dec, file.path(out_dir, "delta_summary.csv"))
+primary <- decisions$primary
+write_csv(primary$per_species, file.path(out_dir, "decision_per_species.csv"))
+knitr::kable(primary$per_species |> select(species, G_mean, delta, delta_lo, delta_hi, p_lower, p_upper, p_tost, p_tost_holm, equivalent, beyond_margin), digits = 4)
+```
+
+**Primary verdict: `r primary$verdict`.**
+
+```{r fig, fig.width = 10, fig.height = 4}
+fig <- per_bin |> filter(analysis == "primary") |>
+  select(species, bin, L, L_lo, L_hi, G, G_lo, G_hi) |>
+  pivot_longer(c(L, G), names_to = "class", values_to = "median_r") |>
+  mutate(lo = ifelse(class == "L", L_lo, G_lo), hi = ifelse(class == "L", L_hi, G_hi),
+         class = ifelse(class == "L", "lncRNA–gene", "gene–gene (matched)")) |>
+  select(species, bin, class, median_r, lo, hi)
+write_csv(fig, file.path(out_dir, "per_bin_figure_data.csv"))
+g <- ggplot(fig, aes(bin, median_r, colour = class, group = class)) +
+  geom_pointrange(aes(ymin = lo, ymax = hi), position = position_dodge(0.4)) +
+  geom_hline(yintercept = 0, colour = "grey70") + facet_wrap(~ species) +
+  scale_colour_manual(values = c("lncRNA–gene" = "black", "gene–gene (matched)" = "grey55")) +
+  labs(x = "Gap between pair members", y = "Median residual r (95% colony bootstrap)", colour = NULL) +
+  theme_bw() + theme(legend.position = "bottom")
+ggsave(file.path(out_dir, "per_bin_medians.png"), g, width = 10, height = 4, dpi = 150)
+g
+```
+
+## Sensitivity checks
+
+C1 (colony-only residualization), C2 (scaffolds spanning >= 500 kb) and C3
+(scaffold-block bootstrap in place of the colony bootstrap) are descriptive.
+
+```{r checks}
+knitr::kable(summ_dec |> filter(analysis != "primary") |>
+               select(analysis, species, orientations, G_mean, delta, delta_lo, delta_hi, p_tost, p_tost_holm, equivalent, beyond_margin), digits = 4)
+verdicts <- tibble(analysis = names(decisions), verdict = vapply(decisions, `[[`, "", "verdict")) |>
+  arrange(match(analysis, c("primary", "C1_colony_only", "C2_span_500kb", "C3_scaffold_block")))
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+knitr::kable(verdicts)
+```
+
+C4, per-bin medians and differences with colony-bootstrap intervals:
+
+```{r c4}
+knitr::kable(per_bin |> filter(analysis == "primary") |> select(species, bin, L, G, diff, diff_lo, diff_hi), digits = 4)
+```
+
+## Caveats
+
+- About 10 colonies per species; the colony bootstrap resamples 5 colonies
+  per site.
+- lncRNA strand is unknown (D-014) and gene models are incomplete.
+- Matching keeps the lncRNAs whose expression overlaps genes'; see
+  `matching_per_bin.csv` for the share kept.
+- Pair correlations share members; the two bootstraps address sample-level
+  and genomic dependence separately.
+- Follow-up on the same data as H17, not an independent replication.
+- Species is confounded with reference quality (Peve N50 0.17 Mb; Ptuh mapped
+  to *P. meandrina*).

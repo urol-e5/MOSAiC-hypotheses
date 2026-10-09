@@ -64,11 +64,6 @@ Implementation notes (not in `hypothesis.md`; none changes the rule):
 ## Data
 
 ```{r data}
-residualize <- function(m, info, terms) {
-  X <- model.matrix(as.formula(paste("~", paste(terms, collapse = " + "))), data = info)
-  t(qr.resid(qr(X), t(m)))
-}
-zrows <- function(m) { m <- m - rowMeans(m); m / sqrt(rowSums(m^2)) }   # rows with unit norm: r = dot product
 
 prep_species <- function(sp) {
   ids <- design |> filter(species == sp, has_genes %in% TRUE, has_lncrna %in% TRUE) |> pull(sample_id)
@@ -96,16 +91,6 @@ knitr::kable(n_tab, format.args = list(big.mark = ","))
 ## Model
 
 ```{r functions}
-# Pearson r for row pairs (ia of A, ib of B), A and B already z-normed by row.
-pair_r <- function(A, B, ia, ib, chunk = 2e5) {
-  out <- numeric(length(ia))
-  for (s in seq(1, length(ia), by = chunk)) {
-    k <- s:min(length(ia), s + chunk - 1)
-    out[k] <- rowSums(A[ia[k], , drop = FALSE] * B[ib[k], , drop = FALSE])
-  }
-  out
-}
-
 # Observed r for pairs, plus null medians for the cis (<= 10 kb, non-overlap) set.
 # `A`, `B`: z-normed matrices of the two layers; pairs$a in A, pairs$b in B.
 # Null partners for pair p come from B rows on other scaffolds in the decile of pairs$b[p].
