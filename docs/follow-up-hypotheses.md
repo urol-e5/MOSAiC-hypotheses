@@ -92,6 +92,11 @@ of a causal regulatory mechanism.
 
 ## H25. Beyond 2 kb, local co-expression is largely independent of transcript class
 
+*Pre-registered 2026-10-09 in [hypotheses/H25](../hypotheses/H25/hypothesis.md),
+which supersedes this section: the margin is ±25% of the gene–gene signal
+instead of ±0.05, and scaffold matching is replaced by the scaffold-block
+bootstrap.*
+
 **Basis:** [H17](../hypotheses/H17/RESULT.md) supported cis co-expression,
 but its descriptive gene–gene comparison showed similar correlations to
 lncRNA–gene pairs beyond 2 kb. [H08](../hypotheses/H08/RESULT.md) established

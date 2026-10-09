@@ -179,7 +179,7 @@ before it moves to `planned`.
 |---|---|---|
 | H23 | H02, H05 | Acropora's excess seasonal plasticity is concentrated in low-GBM orthologs (`inconclusive`) |
 | H24 | H05 | Orthologs retain similar GBM ranks across species (`inconclusive`) |
-| H25 | H08, H17 | Beyond 2 kb, lncRNA–gene and gene–gene co-expression are practically equivalent (exploratory: pattern first seen in H17) |
+| H25 | H08, H17 | Beyond 2 kb, lncRNA–gene and gene–gene co-expression are practically equivalent (exploratory: pattern first seen in H17) (`planned`) |
 | H26 | H08, H17 | Distal lncRNA–mRNA edges predict expression in held-out colonies |
 | H27 | H10 | Stable ITS2 profiles differ in seasonal symbiont-density trajectories (Peve, Ptuh) |
 

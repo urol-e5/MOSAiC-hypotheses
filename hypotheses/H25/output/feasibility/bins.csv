@@ -1,0 +1,19 @@
+species,class,bin,pairs,scaffolds,median_span_kb
+Apul,gene-gene,2-10 kb,14608,43,17738.817
+Apul,gene-gene,10-50 kb,54703,70,17738.817
+Apul,gene-gene,50-100 kb,63318,44,17738.817
+Apul,lncRNA-gene,2-10 kb,15741,42,17738.817
+Apul,lncRNA-gene,10-50 kb,67602,42,17738.817
+Apul,lncRNA-gene,50-100 kb,83901,42,17738.817
+Peve,gene-gene,2-10 kb,9390,2363,199.95
+Peve,gene-gene,10-50 kb,24850,2398,240.881
+Peve,gene-gene,50-100 kb,19775,1525,310.532
+Peve,lncRNA-gene,2-10 kb,5632,1633,176.315
+Peve,lncRNA-gene,10-50 kb,18321,1913,220.36
+Peve,lncRNA-gene,50-100 kb,14663,1312,288.231
+Ptuh,gene-gene,2-10 kb,16249,81,10450.942
+Ptuh,gene-gene,10-50 kb,62654,88,10450.942
+Ptuh,gene-gene,50-100 kb,71775,58,10450.942
+Ptuh,lncRNA-gene,2-10 kb,11677,77,10450.942
+Ptuh,lncRNA-gene,10-50 kb,54081,86,10450.942
+Ptuh,lncRNA-gene,50-100 kb,65706,60,10450.942
