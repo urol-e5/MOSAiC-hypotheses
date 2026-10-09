@@ -108,8 +108,8 @@ the way: [docs/decisions.md](docs/decisions.md).
 [Five proposed follow-up hypotheses (H23–H27)](docs/follow-up-hypotheses.md)
 build on supported findings, with predictions, test designs, and evidence
 criteria. Each sits on the board with `status: proposed` until its
-`hypothesis.md` is complete enough to move to `planned` (H23 is now
-`planned`); they are not results.
+`hypothesis.md` is complete enough to move to `planned`. H23 has been
+pre-registered and run (`inconclusive`); H24–H27 are not results.
 
 ## Layout
 

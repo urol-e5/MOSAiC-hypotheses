@@ -1,0 +1,8 @@
+check,verdict
+primary,inconclusive
+S1_joint,not supported
+S2_annotated,supported
+S3_cpg20,inconclusive
+S4_no_covariates,not supported
+S5_expr_strata,inconclusive
+S6_apul_plus_one,inconclusive (gate: Acropora excess not established)

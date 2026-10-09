@@ -2,7 +2,7 @@
 id: H23
 slug: acropora-plasticity-low-gbm
 title: Acropora's excess seasonal expression plasticity is concentrated in low-methylation orthologs
-status: planned
+status: inconclusive
 tier: 2
 layers: [cpg, genes, annotation]
 species: [Apul, Peve, Ptuh]

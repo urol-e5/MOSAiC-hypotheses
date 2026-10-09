@@ -1,0 +1,290 @@
+---
+title: "H23: where Acropora's excess seasonal plasticity sits along gene-body methylation"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+source(file.path(root, "R", "methylation.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2); library(splines); library(lme4) })
+design <- load_design()
+orth <- load_orthologs()
+out_dir <- file.path(root, "hypotheses", "H23", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+gene_key <- c(Apul = "apul_gene", Peve = "peve_gene", Ptuh = "ptuh_gene")
+n_boot <- 1000        # primary contrast and gate
+n_boot_sens <- 500    # sensitivity checks (first 500 replicates)
+n_cores <- min(8, parallel::detectCores())
+set.seed(23)
+```
+
+## Pre-registered decision rule
+
+> 1. Gate: if the 95% CI of E does not lie entirely above zero, the verdict
+>    is `inconclusive` (the gene set does not carry the excess H23 tries to
+>    locate), whatever the primary contrast.
+> 2. If more than 5% of bootstrap replicates fail, `inconclusive`.
+> 3. Otherwise:
+>    - `supported`: primary contrast > 0 with a 95% CI entirely above zero.
+>    - `not supported`: 95% CI entirely below zero.
+>    - `inconclusive`: CI includes zero.
+
+Primary contrast: Δ(25) − Δ(75), where Δ(p) is predicted amplitude for Apul
+minus the mean of Peve and Ptuh at GBM percentile p, centered covariates at 0,
+from
+
+`amplitude ~ species * (gbm_pct + ns(mean_expr_c, 3) + log_len_c + log_ncpg_c) + (1 | group_id)`.
+
+E = mean amplitude of eligible Apul genes minus the mean of the Peve and Ptuh
+means. Colony bootstrap within species x site, B = 1000, seed 23.
+
+Operational choices not spelled out in `hypothesis.md` (none changes the rule):
+
+- **Ortholog-to-gene map** is the one `genes_by_ortholog()` uses (first gene
+  per group in matrix order), kept with both ids so CpGs and coordinates can
+  be joined.
+- **Linear GBM term.** `gbm_pct` enters linearly, so the primary contrast
+  equals 25 x (sum of the Peve:gbm_pct and Ptuh:gbm_pct interaction
+  coefficients). It is computed that way; Δ(p) for the figure uses
+  `predict(re.form = NA)`.
+- **Percentiles and centering are recomputed within each analysis gene set**
+  (primary and each sensitivity check) and in every bootstrap replicate.
+- **Failed replicate** = `lmer` error, or `isSingular()` (the `group_id`
+  variance estimated at zero).
+- **Parallelism.** Resampled colony sets are drawn serially from seed 23
+  before fitting, so results do not depend on the number of cores.
+
+## Data
+
+```{r data}
+ortholog_map <- function(sp, genes) {
+  og <- orth |> select(group_id, gene = all_of(gene_key[[sp]])) |> filter(!is.na(gene)) |> distinct(gene, .keep_all = TRUE)
+  tibble(gene = genes$feature_id) |> inner_join(og, by = "gene") |> distinct(group_id, .keep_all = TRUE)
+}
+
+prep_species <- function(sp) {
+  cpg <- as_count_matrix(load_cpg(sp))
+  ids <- intersect(colnames(cpg), design$sample_id[design$has_cpg %in% TRUE & design$has_genes %in% TRUE])
+  ex <- prep_vst(genes_by_ortholog(sp) |> select(feature_id, all_of(ids)), design)
+  ids <- intersect(ids, colnames(ex$vst))
+  coords <- load_gene_coords(sp)
+  gb <- gene_body_methylation(cpg[, ids, drop = FALSE], coords, min_cpg = 5)
+  map <- ortholog_map(sp, load_genes(sp)) |>
+    filter(group_id %in% rownames(ex$vst), gene %in% rownames(gb$gbm)) |>
+    left_join(coords |> transmute(gene = feature_id, len = end - start + 1), by = "gene")
+  stopifnot(!anyNA(map$len))
+  info <- design_for(ex$vst[, ids, drop = FALSE], design)
+  list(species = sp, info = info,
+       vst = ex$vst[map$group_id, ids, drop = FALSE],
+       gbm = gb$gbm[map$gene, ids, drop = FALSE],
+       genes = tibble(species = sp, group_id = map$group_id, gene = map$gene,
+                      n_cpg = unname(gb$n_cpg[map$gene]), len = map$len),
+       n = tibble(species = sp, samples = length(ids), colonies = n_distinct(info$colony),
+                  cpg_sites = nrow(cpg), orthologs_expressed = nrow(ex$vst),
+                  genes_with_5_cpg = nrow(gb$gbm), eligible = nrow(map),
+                  median_cpg_per_gene = median(gb$n_cpg[map$gene])))
+}
+
+sp_dat <- setNames(lapply(species_all, prep_species), species_all)
+n_tab <- bind_rows(lapply(sp_dat, `[[`, "n"))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab, format.args = list(big.mark = ","))
+```
+
+## Per-gene summaries
+
+```{r per-gene}
+# Per-gene amplitude, GBM and mean expression for one species, given sample
+# columns `cols` (may repeat) and their colony labels `colony`.
+per_gene <- function(d, cols = seq_len(ncol(d$vst)), colony = d$info$colony) {
+  colony <- factor(colony)
+  tp <- factor(d$info$timepoint[cols], levels = c("TP1", "TP2", "TP3", "TP4"))
+  X <- model.matrix(~ colony + tp, contrasts.arg = list(colony = "contr.sum"))
+  b <- qr.coef(qr(X), t(d$vst[, cols, drop = FALSE]))
+  tp_means <- sweep(rbind(0, b[c("tpTP2", "tpTP3", "tpTP4"), , drop = FALSE]), 2, b["(Intercept)", ], "+")
+  col_mean <- function(m) rowMeans(sapply(split(seq_along(cols), colony), function(j) rowMeans(m[, cols[j], drop = FALSE])))
+  d$genes |> mutate(amplitude = apply(tp_means, 2, sd),
+                    gbm = col_mean(d$gbm), mean_expr = col_mean(d$vst))
+}
+
+pg_full <- bind_rows(lapply(sp_dat, per_gene))
+write_csv(pg_full, file.path(out_dir, "per_gene.csv"))
+```
+
+## Model
+
+```{r model-fns}
+ann_groups <- orth$group_id[!is.na(orth$avg_identity) & orth$avg_identity >= 60 &
+                            !is.na(orth$protein_name) & orth$protein_name != ""]
+elig <- split(pg_full$group_id, pg_full$species)
+joint_groups <- Reduce(intersect, elig)
+apul_plus_groups <- intersect(elig$Apul, union(elig$Peve, elig$Ptuh))
+
+checks <- list(
+  primary = list(filter = function(pg) pg, covariates = TRUE, strata = FALSE),
+  S1_joint = list(filter = function(pg) filter(pg, group_id %in% joint_groups), covariates = TRUE, strata = FALSE),
+  S2_annotated = list(filter = function(pg) filter(pg, group_id %in% ann_groups), covariates = TRUE, strata = FALSE),
+  S3_cpg20 = list(filter = function(pg) filter(pg, n_cpg >= 20), covariates = TRUE, strata = FALSE),
+  S4_no_covariates = list(filter = function(pg) pg, covariates = FALSE, strata = FALSE),
+  S5_expr_strata = list(filter = function(pg) pg, covariates = TRUE, strata = TRUE),
+  S6_apul_plus_one = list(filter = function(pg) filter(pg, group_id %in% apul_plus_groups), covariates = TRUE, strata = FALSE))
+
+pct <- function(x) 100 * dplyr::percent_rank(x)
+
+prepare <- function(pg, chk) {
+  pg <- chk$filter(pg) |> group_by(species)
+  pg <- if (chk$strata) pg |> mutate(expr_q = ntile(mean_expr, 5)) |> group_by(species, expr_q) |> mutate(gbm_pct = pct(gbm))
+        else pg |> mutate(gbm_pct = pct(gbm))
+  pg |> group_by(species) |>
+    mutate(mean_expr_c = mean_expr - mean(mean_expr),
+           log_len_c = log10(len) - mean(log10(len)),
+           log_ncpg_c = log10(n_cpg) - mean(log10(n_cpg))) |>
+    ungroup() |> mutate(species = factor(species, levels = species_all))
+}
+
+form_cov <- amplitude ~ species * (gbm_pct + ns(mean_expr_c, 3) + log_len_c + log_ncpg_c) + (1 | group_id)
+form_raw <- amplitude ~ species * gbm_pct + (1 | group_id)
+
+fit_check <- function(pg, chk, curve = FALSE) {
+  d <- prepare(pg, chk)
+  sp_mean <- tapply(d$amplitude, d$species, mean)
+  out <- tibble(E = unname(sp_mean["Apul"] - mean(sp_mean[c("Peve", "Ptuh")])),
+                pooled_sd = sqrt(mean(tapply(d$amplitude, d$species, var))),
+                contrast = NA_real_, ok = FALSE)
+  fit <- tryCatch(lmer(if (chk$covariates) form_cov else form_raw, data = d, REML = TRUE), error = function(e) NULL)
+  if (is.null(fit) || isSingular(fit)) return(out)
+  b <- fixef(fit)
+  out$contrast <- 25 * (b[["speciesPeve:gbm_pct"]] + b[["speciesPtuh:gbm_pct"]])
+  out$ok <- TRUE
+  if (curve) {
+    nd <- expand_grid(species = factor(species_all, levels = species_all), gbm_pct = c(0, 100),
+                      mean_expr_c = 0, log_len_c = 0, log_ncpg_c = 0)
+    p <- matrix(predict(fit, newdata = nd, re.form = NA), nrow = 2)   # rows gbm 0/100, cols species
+    delta <- p[, 1] - rowMeans(p[, 2:3])
+    out$delta0 <- delta[1]; out$delta100 <- delta[2]
+  }
+  out
+}
+```
+
+```{r estimates}
+point <- bind_rows(lapply(names(checks), function(k) fit_check(pg_full, checks[[k]], curve = TRUE) |> mutate(check = k)))
+genes_per_check <- bind_rows(lapply(names(checks), function(k)
+  prepare(pg_full, checks[[k]]) |> count(species) |> mutate(check = k))) |>
+  pivot_wider(names_from = species, values_from = n)
+knitr::kable(genes_per_check)
+```
+
+## Colony bootstrap
+
+```{r bootstrap}
+# Draw all resamples first (serial, seed 23): colonies with replacement within
+# species x site, duplicates relabeled as distinct colonies.
+draw <- function(d) {
+  cols_by_col <- split(seq_len(ncol(d$vst)), d$info$colony)
+  site <- d$info$site[match(names(cols_by_col), d$info$colony)]
+  pick <- unlist(lapply(split(names(cols_by_col), site), function(cs) sample(cs, length(cs), replace = TRUE)))
+  cols <- unlist(lapply(seq_along(pick), function(k) cols_by_col[[pick[k]]]))
+  lab <- unlist(lapply(seq_along(pick), function(k) rep(paste0(pick[k], "_b", k), length(cols_by_col[[pick[k]]]))))
+  list(cols = cols, colony = lab)
+}
+draws <- lapply(seq_len(n_boot), function(b) lapply(sp_dat, draw))
+
+boot_one <- function(b) {
+  pg <- bind_rows(lapply(species_all, function(sp) {
+    dr <- draws[[b]][[sp]]
+    per_gene(sp_dat[[sp]], dr$cols, dr$colony)
+  }))
+  ks <- if (b <= n_boot_sens) names(checks) else "primary"
+  bind_rows(lapply(ks, function(k) fit_check(pg, checks[[k]]) |> mutate(check = k))) |> mutate(rep = b)
+}
+
+boot_file <- file.path(out_dir, "bootstrap_replicates.csv")
+boot <- bind_rows(parallel::mclapply(seq_len(n_boot), boot_one, mc.cores = n_cores))
+write_csv(boot, boot_file)
+```
+
+```{r summarise}
+ci <- function(x) quantile(x, c(0.025, 0.975), na.rm = TRUE, names = FALSE)
+est <- boot |>
+  group_by(check) |>
+  summarise(n_rep = n(), n_failed = sum(!ok),
+            E_lo = ci(E)[1], E_hi = ci(E)[2],
+            contrast_lo = ci(contrast[ok])[1], contrast_hi = ci(contrast[ok])[2],
+            std_lo = ci((contrast / pooled_sd)[ok])[1], std_hi = ci((contrast / pooled_sd)[ok])[2],
+            .groups = "drop") |>
+  right_join(point |> transmute(check, E, contrast, contrast_std = contrast / pooled_sd, pooled_sd, delta0, delta100), by = "check") |>
+  mutate(check = factor(check, levels = names(checks))) |> arrange(check) |>
+  select(check, E, E_lo, E_hi, contrast, contrast_lo, contrast_hi, contrast_std, std_lo, std_hi,
+         pooled_sd, delta0, delta100, n_rep, n_failed)
+write_csv(est, file.path(out_dir, "estimates.csv"))
+knitr::kable(est, digits = 4)
+
+decide <- function(r) {
+  if (!(r$E_lo > 0)) return("inconclusive (gate: Acropora excess not established)")
+  if (r$n_failed / r$n_rep > 0.05) return("inconclusive (> 5% bootstrap failures)")
+  if (r$contrast_lo > 0) "supported" else if (r$contrast_hi < 0) "not supported" else "inconclusive"
+}
+verdicts <- tibble(check = est$check, verdict = vapply(seq_len(nrow(est)), function(i) decide(est[i, ]), ""))
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+verdict <- verdicts$verdict[verdicts$check == "primary"]
+knitr::kable(verdicts)
+```
+
+**Primary verdict: `r verdict`.** Sensitivity-check verdicts are descriptive
+and do not change it.
+
+## Figures
+
+`delta0` and `delta100` in `estimates.csv` are Δ(0) and Δ(100) from the
+full-data fit; Δ(p) is linear between them.
+
+```{r fig-deciles, fig.width = 7, fig.height = 4}
+dec <- pg_full |> group_by(species) |> mutate(gbm_decile = ntile(gbm, 10)) |>
+  group_by(species, gbm_decile) |>
+  summarise(n = n(), amp_median = median(amplitude), amp_q25 = quantile(amplitude, 0.25),
+            amp_q75 = quantile(amplitude, 0.75), .groups = "drop")
+write_csv(dec, file.path(out_dir, "amplitude_by_gbm_decile.csv"))
+g <- ggplot(dec, aes(gbm_decile, amp_median, colour = species)) +
+  geom_pointrange(aes(ymin = amp_q25, ymax = amp_q75), position = position_dodge(width = 0.5), size = 0.3) +
+  scale_x_continuous(breaks = 1:10) +
+  labs(x = "Within-species gene-body methylation decile (1 = lowest)",
+       y = "Seasonal amplitude (SD of TP means, vst)\nmedian, bars IQR", colour = NULL) +
+  theme_bw()
+ggsave(file.path(out_dir, "amplitude_by_gbm_decile.png"), g, width = 7, height = 4, dpi = 150)
+g
+```
+
+```{r fig-checks, fig.width = 7, fig.height = 3.5}
+g2 <- ggplot(est, aes(contrast, factor(check, levels = rev(names(checks))))) +
+  geom_vline(xintercept = 0, linetype = 2) +
+  geom_pointrange(aes(xmin = contrast_lo, xmax = contrast_hi)) +
+  labs(x = "Primary contrast D(25) - D(75), vst units (95% colony-bootstrap CI)", y = NULL) +
+  theme_bw()
+ggsave(file.path(out_dir, "contrast_by_check.png"), g2, width = 7, height = 3.5, dpi = 150)
+write_csv(est |> select(check, contrast, contrast_lo, contrast_hi), file.path(out_dir, "contrast_by_check.csv"))
+g2
+```
+
+## Caveats
+
+- About 10 colonies per species (`r paste(n_tab$colonies, collapse = " / ")`),
+  `r paste(n_tab$samples, collapse = " / ")` samples (Apul / Peve / Ptuh).
+- Eligible gene counts differ more than ten-fold across species because of
+  the upstream CpG filter (D-008); low-GBM percentiles in Apul and Peve may
+  not be unmethylated genes.
+- Amplitude rests on four timepoint means per gene.
+- Follow-up on the same data as H02 and H05, not an independent replication.
