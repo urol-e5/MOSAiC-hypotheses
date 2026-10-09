@@ -36,4 +36,5 @@ Imports:
     vegan,
     variancePartition,
     lme4,
-    glmnet
+    glmnet,
+    pls
