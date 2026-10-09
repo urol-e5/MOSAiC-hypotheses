@@ -99,6 +99,10 @@ raven target exceeds a day; none is expected to. See D-004 in
 Full planning document: [docs/plan.md](docs/plan.md). Decisions taken along
 the way: [docs/decisions.md](docs/decisions.md).
 
+[Five proposed follow-up hypotheses (H23–H27)](docs/follow-up-hypotheses.md)
+build on supported findings, with predictions, test designs, and evidence
+criteria. These are proposals awaiting complete pre-registration, not results.
+
 ## Layout
 
 | Path | What |
