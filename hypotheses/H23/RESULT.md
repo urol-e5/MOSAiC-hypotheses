@@ -68,12 +68,7 @@ per-species sets before analysis because of an eligibility count (see
 `hypothesis.md`). This is a follow-up on the same data as H02 and H05, not an
 independent replication.
 
-**Current Findings:** qualifies under CLAUDE.md §6(b): the `inconclusive`
-primary contrast bounds an effect size. A report has not yet been written.
-The candidates are a short H23 report, or adding H23 to the gene-body
-methylation synthesis
-(<https://robertslab.github.io/current-findings/reports/coral-gene-body-methylation-stable-not-seasonal/>),
-which covers H05.
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-gene-body-methylation-stable-not-seasonal/> (gene-body methylation synthesis, v0.2, with H04–H06, H15, H16, H18). Qualifies under CLAUDE.md §6(b): the `inconclusive` primary contrast bounds an effect size.
 
 **Outputs:** in `output/`
 - `n_per_species.csv`: samples, orthologs and eligible genes per species
