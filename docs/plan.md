@@ -168,6 +168,25 @@ pre-registrations:
 Q2 and Q4 need a parent–offspring design (e.g. a spawning or larval-rearing
 experiment) and are left for a different dataset.
 
+### 2.5c Third slate (2026-10-08): follow-ups from supported results
+
+Five follow-ups built on H02, H05, H08, H10, and H17. Details and evidence
+criteria: [follow-up-hypotheses.md](follow-up-hypotheses.md). Each has a
+`hypothesis.md` at `status: proposed` (D-016) listing what must be fixed
+before it moves to `planned`.
+
+| ID | Builds on | Claim |
+|---|---|---|
+| H23 | H02, H05 | Acropora's excess seasonal plasticity is concentrated in low-GBM orthologs |
+| H24 | H05 | Orthologs retain similar GBM ranks across species |
+| H25 | H08, H17 | Beyond 2 kb, lncRNA–gene and gene–gene co-expression are practically equivalent (exploratory: pattern first seen in H17) |
+| H26 | H08, H17 | Distal lncRNA–mRNA edges predict expression in held-out colonies |
+| H27 | H10 | Stable ITS2 profiles differ in seasonal symbiont-density trajectories (Peve, Ptuh) |
+
+Suggested order: H23, H24, then H25; H26 needs careful validation and H27
+an eligibility count on the joined data first. None is an independent
+replication of the results it builds on.
+
 ### 2.6 Operating rules (go in `CLAUDE.md`)
 
 These rules make the repo safe to run with an agent in the loop:

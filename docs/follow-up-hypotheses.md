@@ -1,8 +1,9 @@
 # Five follow-up hypotheses from supported MOSAiC findings
 
 Developed 2026-10-08 from the committed results of H02, H05, H08, H10,
-and H17. Proposed IDs H23–H27 are reserved here for discussion; these are
-test plans, not completed pre-registrations or tested results. No new
+and H17. H23–H27 each have a `hypotheses/Hxx/hypothesis.md` at
+`status: proposed` (D-016); these are test plans, not completed
+pre-registrations or tested results. No new
 associations were calculated to choose these predictions or thresholds.
 
 The strongest starting points are: Acropora has substantially greater

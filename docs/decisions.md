@@ -168,3 +168,12 @@ If coverage becomes necessary, the per-sample Bismark coverage files would
 have to be added to `config/upstream.yml`; they are large and should be
 read on raven.
 
+## D-016 (2026-10-08) `proposed` status for incomplete pre-registrations
+
+H23–H27 are listed on the status board before their pre-registrations are
+complete (open items include matching bins, bootstrap counts, and, for H27,
+an effect threshold and power simulation). `planned` means the decision rule
+is frozen, so these use a new status, `proposed`, which comes before
+`planned`. A `proposed` hypothesis has no `analysis.qmd` and no target in
+`_targets.R`. Moving it to `planned` is a commit that resolves its "Before
+moving to planned" list; from then on CLAUDE.md section 2 applies unchanged.

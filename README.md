@@ -87,13 +87,19 @@ manifest entries.
 | H20 | 3 | Transcriptome–temperature mismatch predicts later loss of biomass | desktop |
 | H21 | 3 | Frontloading–plasticity trade-off in stress orthologs | desktop |
 | H22 | 4 | Expression forecasts next-timepoint physiology at held-out sites | desktop |
+| H23 | 2 | Acropora's excess plasticity sits in low-methylation orthologs (proposed) | desktop |
+| H24 | 2 | Orthologs keep similar gene-body methylation ranks across species (proposed) | desktop |
+| H25 | 2 | Beyond 2 kb, lncRNA–gene and gene–gene co-expression are equivalent (proposed) | desktop |
+| H26 | 2 | Distal lncRNA–mRNA edges predict expression in held-out colonies (proposed) | raven |
+| H27 | 3 | Stable ITS2 profiles differ in seasonal symbiont-density trajectories (proposed) | desktop |
 
 Compute: **desktop** runs on a laptop (16 GB, 8 cores) in under an hour.
 **raven** needs more memory or hours of per-feature model fits: H04 fits a
 variance partition per CpG (about 2 M sites for Ptuh), H08 correlates every
 lncRNA x mRNA pair (about 3 x 10^8 per species) under 200 permutations, and
-H09 builds a WGCNA TOM on about 20 k genes. **klone** is the fallback if any
-raven target exceeds a day; none is expected to. See D-004 in
+H09 builds a WGCNA TOM on about 20 k genes, and H26 repeats its full
+leave-one-colony-out selection under every permutation. **klone** is the
+fallback if any raven target exceeds a day; none is expected to. See D-004 in
 [docs/decisions.md](docs/decisions.md).
 
 Full planning document: [docs/plan.md](docs/plan.md). Decisions taken along
@@ -101,7 +107,8 @@ the way: [docs/decisions.md](docs/decisions.md).
 
 [Five proposed follow-up hypotheses (H23–H27)](docs/follow-up-hypotheses.md)
 build on supported findings, with predictions, test designs, and evidence
-criteria. These are proposals awaiting complete pre-registration, not results.
+criteria. They sit on the board with `status: proposed` until their
+`hypothesis.md` is complete enough to move to `planned`; they are not results.
 
 ## Layout
 

@@ -2,7 +2,7 @@
 id: Hxx
 slug: short-slug
 title: One-sentence hypothesis as a claim
-status: planned        # planned | running | supported | not supported | inconclusive | withdrawn
+status: planned        # proposed | planned | running | supported | not supported | inconclusive | withdrawn
 tier: 1                # 1 variance structure, 2 regulatory, 3 phenotype/environment, 4 integration
 layers: [genes]        # layers from config/design.csv has_<layer> flags
 species: [Apul, Peve, Ptuh]

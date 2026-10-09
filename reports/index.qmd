@@ -14,7 +14,7 @@ Rules for adding a hypothesis are in [CLAUDE.md](https://github.com/urol-e5/MOSA
 
 ```{r}
 library(gt)
-status_colors <- c(planned = "#e9ecef", running = "#fff3cd", supported = "#d1e7dd",
+status_colors <- c(proposed = "#f8f9fa", planned = "#e9ecef", running = "#fff3cd", supported = "#d1e7dd",
                    `not supported` = "#f8d7da", inconclusive = "#e2e3e5", withdrawn = "#dee2e6")
 board |>
   dplyr::mutate(layers = vapply(layers, paste, "", collapse = ", "),
