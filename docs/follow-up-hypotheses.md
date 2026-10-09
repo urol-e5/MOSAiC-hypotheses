@@ -16,6 +16,10 @@ and a causal effect of methylation are not established by those findings.
 
 ## H23. Acropora's excess seasonal plasticity is concentrated in low-methylation genes
 
+*Pre-registered 2026-10-08 in [hypotheses/H23](../hypotheses/H23/hypothesis.md),
+which supersedes this section: the joint gene set below has only 88
+orthologs, so the primary test uses per-species gene sets.*
+
 **Basis:** [H02](../hypotheses/H02/RESULT.md) found 5,007 timepoint-DE
 ortholog groups in Acropora versus 505 and 414 in Pocillopora and Porites.
 [H05](../hypotheses/H05/RESULT.md) found lower temporal variability with

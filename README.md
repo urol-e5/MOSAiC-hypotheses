@@ -87,7 +87,7 @@ manifest entries.
 | H20 | 3 | Transcriptome–temperature mismatch predicts later loss of biomass | desktop |
 | H21 | 3 | Frontloading–plasticity trade-off in stress orthologs | desktop |
 | H22 | 4 | Expression forecasts next-timepoint physiology at held-out sites | desktop |
-| H23 | 2 | Acropora's excess plasticity sits in low-methylation orthologs (proposed) | desktop |
+| H23 | 2 | Acropora's excess plasticity sits in low-methylation orthologs | desktop |
 | H24 | 2 | Orthologs keep similar gene-body methylation ranks across species (proposed) | desktop |
 | H25 | 2 | Beyond 2 kb, lncRNA–gene and gene–gene co-expression are equivalent (proposed) | desktop |
 | H26 | 2 | Distal lncRNA–mRNA edges predict expression in held-out colonies (proposed) | raven |
@@ -107,8 +107,9 @@ the way: [docs/decisions.md](docs/decisions.md).
 
 [Five proposed follow-up hypotheses (H23–H27)](docs/follow-up-hypotheses.md)
 build on supported findings, with predictions, test designs, and evidence
-criteria. They sit on the board with `status: proposed` until their
-`hypothesis.md` is complete enough to move to `planned`; they are not results.
+criteria. Each sits on the board with `status: proposed` until its
+`hypothesis.md` is complete enough to move to `planned` (H23 is now
+`planned`); they are not results.
 
 ## Layout
 

@@ -177,7 +177,7 @@ before it moves to `planned`.
 
 | ID | Builds on | Claim |
 |---|---|---|
-| H23 | H02, H05 | Acropora's excess seasonal plasticity is concentrated in low-GBM orthologs |
+| H23 | H02, H05 | Acropora's excess seasonal plasticity is concentrated in low-GBM orthologs (`planned`) |
 | H24 | H05 | Orthologs retain similar GBM ranks across species |
 | H25 | H08, H17 | Beyond 2 kb, lncRNA–gene and gene–gene co-expression are practically equivalent (exploratory: pattern first seen in H17) |
 | H26 | H08, H17 | Distal lncRNA–mRNA edges predict expression in held-out colonies |
