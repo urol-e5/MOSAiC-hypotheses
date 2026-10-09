@@ -2,7 +2,7 @@
 id: H25
 slug: distal-coexpression-class-equivalence
 title: Beyond 2 kb, local co-expression is practically equivalent for lncRNA–gene and gene–gene pairs
-status: planned
+status: inconclusive
 tier: 2
 layers: [lncrna, genes, annotation]
 species: [Apul, Peve, Ptuh]

@@ -1,0 +1,4 @@
+species,samples,colonies,sites,genes,lncrna,lncrna_gene_pairs,gene_gene_pairs,scaffolds
+Apul,40,10,2,21108,15559,167244,132629,74
+Peve,38,10,2,20841,8319,38616,54015,3191
+Ptuh,39,10,2,20796,11236,131464,150678,114

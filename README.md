@@ -109,8 +109,8 @@ the way: [docs/decisions.md](docs/decisions.md).
 build on supported findings, with predictions, test designs, and evidence
 criteria. Each sits on the board with `status: proposed` until its
 `hypothesis.md` is complete enough to move to `planned`. H23 and H24 have
-been pre-registered and run (both `inconclusive`); H25 is pre-registered
-(`planned`); H26 and H27 are not results.
+been pre-registered and run (both `inconclusive`), as has H25 (`inconclusive`);
+H26 and H27 are not results.
 
 ## Layout
 
