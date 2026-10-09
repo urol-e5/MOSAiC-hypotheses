@@ -2,7 +2,7 @@
 id: H20
 slug: transcriptome-temperature-mismatch
 title: Colonies whose transcriptome lags current temperature lose biomass and calcification by the next timepoint
-status: planned
+status: withdrawn
 tier: 3
 layers: [genes, temperature, physiology]
 species: [Apul, Peve, Ptuh]
@@ -83,4 +83,35 @@ rates).
 
 ## Amendments
 
-(Leave empty. Dated entries only, added if the decision rule has to change.)
+### Withdrawal (2026-10-08), before any expression or physiology data were analysed
+
+**Status: withdrawn.** Both temperature predictors collapse to the timepoint
+label, and the pre-registered Part A pipeline produces the predicted negative
+slope when there is no memory at all, so neither the memory test nor the cost
+test it feeds can be interpreted. Evidence from `temperature_check.R`
+(temperature, nominal dates and the design table only; outputs in `output/`):
+
+- 30-day windows before each nominal date (as H11). Mean temperature at
+  Mahana / Manava: TP1 27.58 / 27.59, TP2 29.35 / 29.39, TP3 27.05 / 26.99,
+  TP4 27.68 / 27.63 C. The thermal axis can only learn "TP2 vs the rest".
+- dT/dt (C per 30 days): TP1 0.15 / 0.16, TP2 0.59 / 0.57, TP3 0.30 / 0.27,
+  TP4 0.71 / 0.63. It is positive at every timepoint, so the lag-sign check
+  has no cooling period, and the two sites differ by at most 0.08, so the
+  between-site contrast the confounds section relies on is absent. Part A is a
+  four-level timepoint contrast. Logger coverage is 16 of 30 days at TP1 and
+  23 to 24 at TP2 and TP4.
+- Simulation with synthetic expression that tracks current temperature with
+  no lag (true Part A slope 0), 10 colonies x 4 timepoints at the observed
+  site temperatures, 2000 features, LOCO ridge as pre-registered, 100 runs
+  per signal level (temperature R^2 0.05, 0.2, 0.5): the Part A slope was
+  negative with a 95% CI excluding 0 in 100% of runs at every level (median
+  -0.81, -0.28, -0.12). LOCO ridge predictions shrink toward the mean
+  temperature, so m = S - T is strongly negative where T is high (median
+  correlation of m with T -0.98 to -0.90), and T and dT/dt are both high at
+  TP2. Part B's |m| inherits the same artefact.
+
+Testing thermal memory needs sites or loggers whose temperature histories
+differ at the same timepoint, or more timepoints with cooling and warming
+periods, and a mismatch measure whose null is not biased by shrinkage (for
+example, compare against axes refitted with timepoint labels permuted within
+colony). That belongs in a new hypothesis. Source question Q8 stays open.
