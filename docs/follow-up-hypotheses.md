@@ -132,6 +132,11 @@ colonies or a new year are needed for confirmation.
 
 ## H26. Distal lncRNA–mRNA co-expression generalizes to held-out colonies
 
+*Pre-registered 2026-10-09 in [hypotheses/H26](../hypotheses/H26/hypothesis.md),
+which supersedes this section: Peve's dominant scaffold_167 locus is
+excluded (D-017), and the improvement metric, counts and permutation scheme
+are fixed.*
+
 **Basis:** [H08](../hypotheses/H08/RESULT.md) found abundant strong edges,
 but shared libraries could contribute. [H17](../hypotheses/H17/RESULT.md)
 showed that genomic proximity accounts for some co-expression.

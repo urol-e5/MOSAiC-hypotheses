@@ -1,0 +1,4 @@
+species,samples,colonies,genes_filtered,lncrna_filtered,lncrna_with_coords,lncrna_far_from_genes,lncrna_flank_ok,lncrna_isolated,scaffolds_with_isolated,min_distinct_permutations,composition_outliers_iqr
+Apul,40,10,21108,15559,15559,681,15512,656,38,2880,2
+Peve,38,10,20837,8314,8314,937,5588,297,137,2880,1
+Ptuh,39,10,20796,11236,11236,1350,11103,1317,54,2880,2

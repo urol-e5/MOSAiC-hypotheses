@@ -46,3 +46,7 @@ fit_timepoint_deseq <- function(counts, info, test = c("LRT", "Wald")) {
 mirna_qc_samples <- function(m, min_reads = 1000) {
   colnames(m)[colSums(m) >= min_reads]
 }
+
+# Peve features on the scaffold_167 locus that dominates Peve libraries
+# (decision D-017). Analyses that exclude it say so in hypothesis.md.
+peve_dominant_locus <- c(paste0("lncRNA_", 4889:4893), paste0("Peve_0000961", 6:9))

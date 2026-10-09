@@ -177,3 +177,24 @@ is frozen, so these use a new status, `proposed`, which comes before
 `planned`. A `proposed` hypothesis has no `analysis.qmd` and no target in
 `_targets.R`. Moving it to `planned` is a commit that resolves its "Before
 moving to planned" list; from then on CLAUDE.md section 2 applies unchanged.
+
+## D-017 (2026-10-09) Peve reads are dominated by one scaffold_167 locus
+
+In Peve, a median 69% of raw gene + lncRNA reads per library fall on one
+locus, `Porites_evermani_scaffold_167` about 401.5–408.4 kb: five nested
+lncRNAs (`lncRNA_4889`–`lncRNA_4893`, the three largest each 15.8% of all
+reads, i.e. the same reads counted more than once) and four short adjacent
+genes (`Peve_00009616`–`Peve_00009619`, 200–300 bp, no ortholog or SwissProt
+annotation). The share rises across the year (median TP1 0.57, TP2 0.72, TP3
+0.70, TP4 0.78). The top-10-feature read fraction is 0.70 in Peve against
+0.07–0.08 in Apul and Ptuh; with the locus removed it is 0.13. This looks
+like a highly expressed repetitive or rRNA-like element annotated as both
+genes and lncRNAs. Found while completing H26's pre-registration
+(`hypotheses/H26/feasibility_check.R`; per-library totals only).
+
+H26 excludes these nine features in Peve and computes library-composition
+covariates without them. Earlier Peve analyses used the matrices as
+delivered; DESeq2's median-of-ratios size factors are robust to a few
+dominant features, but a time-varying share of this size could still leak
+into Peve timepoint effects through normalization. Not yet raised upstream
+(urol-e5/timeseries_molecular); decided 2026-10-09 to record it here first.
