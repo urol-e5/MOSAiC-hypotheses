@@ -103,5 +103,8 @@ list(
              extra_files = "R/expression.R"),
   tar_quarto(H23, "hypotheses/H23/analysis.qmd",
              execute_params = { harmonized; reproduction_gate; list() },
-             extra_files = c("R/expression.R", "R/methylation.R"))
+             extra_files = c("R/expression.R", "R/methylation.R", "R/ortholog_gbm.R")),
+  tar_quarto(H24, "hypotheses/H24/analysis.qmd",
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = c("R/expression.R", "R/methylation.R", "R/ortholog_gbm.R"))
 )

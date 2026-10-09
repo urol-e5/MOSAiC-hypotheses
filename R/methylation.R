@@ -27,6 +27,18 @@ gene_body_methylation <- function(cpg, coords, min_cpg = 5) {
   list(gbm = gbm, n_cpg = setNames(n[keep], coords$feature_id[keep]))
 }
 
+# CpG row indices inside each gene body, by the same overlap rule as
+# gene_body_methylation(). Returns a list named by coords$feature_id for the
+# genes in `genes` (default all). Used by H24 to subsample CpGs per gene.
+gene_cpg_index <- function(cpg_ids, coords, genes = coords$feature_id) {
+  coords <- coords[coords$feature_id %in% genes, ]
+  pos <- parse_cpg_id(cpg_ids)
+  gr_cpg <- GenomicRanges::GRanges(pos$chrom, IRanges::IRanges(pos$pos, width = 1))
+  gr_gene <- GenomicRanges::GRanges(coords$chrom, IRanges::IRanges(coords$start, coords$end))
+  hits <- GenomicRanges::findOverlaps(gr_cpg, gr_gene, ignore.strand = TRUE)
+  split(S4Vectors::queryHits(hits), factor(coords$feature_id[S4Vectors::subjectHits(hits)], levels = coords$feature_id))
+}
+
 # Strand-aware windows of `width` bp immediately upstream of each gene, in the
 # same shape as load_gene_coords(), for gene_body_methylation(). Used by H06.
 upstream_coords <- function(coords, width = 2000) {

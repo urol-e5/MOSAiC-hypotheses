@@ -1,0 +1,13 @@
+check,pair,n_orthologs,runs,strata_level,n_strata,smallest_stratum
+primary,Apul-Peve,91,TRUE,expr tertiles,3,30
+primary,Apul-Ptuh,678,TRUE,expr x length tertiles,9,36
+primary,Peve-Ptuh,610,TRUE,expr x length tertiles,9,36
+C1_cpg20,Apul-Peve,9,FALSE,NA,NA,NA
+C1_cpg20,Apul-Ptuh,97,TRUE,expr tertiles,3,32
+C1_cpg20,Peve-Ptuh,197,TRUE,expr x length tertiles,9,13
+C2_annotated,Apul-Peve,30,TRUE,expr tertiles,3,10
+C2_annotated,Apul-Ptuh,271,TRUE,expr x length tertiles,9,17
+C2_annotated,Peve-Ptuh,242,TRUE,expr x length tertiles,9,16
+C4_joint,Apul-Peve,88,TRUE,expr tertiles,3,29
+C4_joint,Apul-Ptuh,88,TRUE,expr tertiles,3,29
+C4_joint,Peve-Ptuh,88,TRUE,expr tertiles,3,29

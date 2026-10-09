@@ -1,0 +1,5 @@
+check,pairs_run,verdict
+primary,3,inconclusive
+C1_cpg20,2,inconclusive
+C2_annotated,3,not supported
+C4_joint,3,inconclusive

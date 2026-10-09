@@ -2,7 +2,7 @@
 id: H24
 slug: ortholog-gbm-rank-conservation
 title: Orthologs retain similar gene-body methylation ranks across species
-status: planned
+status: inconclusive
 tier: 2
 layers: [cpg, genes, annotation]
 species: [Apul, Peve, Ptuh]

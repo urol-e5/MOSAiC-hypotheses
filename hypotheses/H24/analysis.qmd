@@ -1,0 +1,278 @@
+---
+title: "H24: conservation of gene-body methylation rank across orthologs"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+source(file.path(root, "R", "methylation.R"))
+source(file.path(root, "R", "ortholog_gbm.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2) })
+design <- load_design()
+orth <- load_orthologs()
+out_dir <- file.path(root, "hypotheses", "H24", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+pairs <- list(c("Apul", "Peve"), c("Apul", "Ptuh"), c("Peve", "Ptuh"))
+pair_names <- vapply(pairs, paste, "", collapse = "-")
+n_boot <- 1000; n_boot_check <- 500
+n_perm <- 2000; n_perm_check <- 1000
+n_c3 <- 100; c3_cpg <- 5
+min_stratum <- 10; min_check <- 30
+seed <- 24
+```
+
+## Pre-registered decision rule
+
+> `supported`: for all three species pairs, rho > 0.30, a colony-bootstrap CI
+> entirely above zero, and Holm-adjusted p < 0.05. `not supported`: any pair
+> with its CI entirely below zero (contradicts universal conservation).
+> Otherwise `inconclusive`. The 0.30 threshold is a proposed minimum effect,
+> not an estimate from these data.
+
+rho is Spearman's correlation between two species' per-gene GBM over the
+orthologs eligible in both. p is one-sided against 2,000 permutations within
+matching strata of expression, gene length and CpG count. CIs come from 1,000
+colony resamples within species x site.
+
+Operational choices not spelled out in `hypothesis.md` (none changes the rule):
+
+- **Seeds.** `set.seed(24)` at the start of each random stage: primary
+  permutations, bootstrap draws, check permutations, C3 draws. Pairs are
+  processed in the order Apul–Peve, Apul–Ptuh, Peve–Ptuh.
+- **Tertiles and halves** are `dplyr::ntile()` on the averaged percentile
+  rank. Percentile ranks are `dplyr::percent_rank()` within the gene set
+  being analysed, so strata are recomputed for each check's set.
+- **Spearman** is computed as the Pearson correlation of average ranks, so
+  permuting ranks within strata is the same as permuting GBM values.
+- **Holm across pairs within a check** uses only the pairs that ran.
+- **C3** draws 5 CpGs per gene without replacement from that gene's CpGs, in
+  both species, then recomputes colony-mean GBM. It uses the full-data
+  colonies; no bootstrap or permutation.
+
+## Data
+
+```{r data}
+sp_dat <- setNames(lapply(species_all, prep_ortholog_species, design = design, orthologs = orth), species_all)
+n_tab <- bind_rows(lapply(sp_dat, `[[`, "n"))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab, format.args = list(big.mark = ","))
+
+per_gene <- bind_rows(lapply(sp_dat, function(d) d$genes |>
+  mutate(gbm = colony_mean(d$gbm, colony = d$info$colony),
+         mean_expr = colony_mean(d$vst, colony = d$info$colony))))
+write_csv(per_gene, file.path(out_dir, "per_gene.csv"))
+```
+
+## Gene sets and strata
+
+```{r sets}
+ann_groups <- orth$group_id[!is.na(orth$avg_identity) & orth$avg_identity >= 60 &
+                            !is.na(orth$protein_name) & orth$protein_name != ""]
+elig <- split(per_gene$group_id, per_gene$species)
+joint_groups <- Reduce(intersect, elig)
+
+# Per-pair table: one row per ortholog eligible in both species.
+pair_table <- function(pg, a, b) {
+  inner_join(pg |> filter(species == a) |> select(group_id, gbm_a = gbm, expr_a = mean_expr, len_a = len, ncpg_a = n_cpg),
+             pg |> filter(species == b) |> select(group_id, gbm_b = gbm, expr_b = mean_expr, len_b = len, ncpg_b = n_cpg),
+             by = "group_id")
+}
+
+check_sets <- list(
+  primary = function(d) d,
+  C1_cpg20 = function(d) filter(d, ncpg_a >= 20, ncpg_b >= 20),
+  C2_annotated = function(d) filter(d, group_id %in% ann_groups),
+  C4_joint = function(d) filter(d, group_id %in% joint_groups))
+
+# Finest level of the pre-registered hierarchy with every stratum >= 10.
+make_strata <- function(d) {
+  avg_pr <- function(x, y) (percent_rank(x) + percent_rank(y)) / 2
+  e <- avg_pr(d$expr_a, d$expr_b); l <- avg_pr(log(d$len_a), log(d$len_b)); k <- avg_pr(d$ncpg_a, d$ncpg_b)
+  levels <- list(
+    "expr x length x CpG tertiles" = interaction(ntile(e, 3), ntile(l, 3), ntile(k, 3), drop = TRUE),
+    "expr x length tertiles" = interaction(ntile(e, 3), ntile(l, 3), drop = TRUE),
+    "expr tertiles" = factor(ntile(e, 3)),
+    "expr halves" = factor(ntile(e, 2)),
+    "none" = factor(rep(1, nrow(d))))
+  for (nm in names(levels)) if (min(table(levels[[nm]])) >= min_stratum) return(list(level = nm, strata = levels[[nm]]))
+}
+
+spearman <- function(x, y) cor(rank(x), rank(y))
+
+perm_null <- function(d, strata, n) {
+  ra <- rank(d$gbm_a); rb <- rank(d$gbm_b)
+  idx <- split(seq_len(nrow(d)), strata)
+  replicate(n, { rp <- rb; for (ix in idx) rp[ix] <- rb[ix][sample.int(length(ix))]; cor(ra, rp) })
+}
+
+full_pairs <- setNames(lapply(pairs, function(p) pair_table(per_gene, p[1], p[2])), pair_names)
+sets <- bind_rows(lapply(names(check_sets), function(k) bind_rows(lapply(pair_names, function(pn) {
+  d <- check_sets[[k]](full_pairs[[pn]])
+  st <- if (nrow(d) >= min_check || k == "primary") make_strata(d) else list(level = NA, strata = NULL)
+  tibble(check = k, pair = pn, n_orthologs = nrow(d), runs = nrow(d) >= min_check || k == "primary",
+         strata_level = st$level, n_strata = if (is.null(st$strata)) NA_integer_ else nlevels(st$strata),
+         smallest_stratum = if (is.null(st$strata)) NA_integer_ else min(table(st$strata)))
+}))))
+write_csv(sets, file.path(out_dir, "pair_sets.csv"))
+knitr::kable(sets)
+```
+
+## Observed correlations and permutation nulls
+
+```{r perms}
+run_perms <- function(k, n) {
+  bind_rows(lapply(pair_names, function(pn) {
+    d <- check_sets[[k]](full_pairs[[pn]])
+    if (k != "primary" && nrow(d) < min_check) return(NULL)
+    st <- make_strata(d)
+    null <- perm_null(d, st$strata, n)
+    obs <- spearman(d$gbm_a, d$gbm_b)
+    tibble(check = k, pair = pn, rho = obs, null_mean = mean(null), excess = obs - mean(null),
+           p = (1 + sum(null >= obs)) / (n + 1), null = list(null))
+  }))
+}
+
+set.seed(seed)
+obs_primary <- run_perms("primary", n_perm)
+set.seed(seed)
+obs_checks <- bind_rows(lapply(c("C1_cpg20", "C2_annotated", "C4_joint"), run_perms, n = n_perm_check))
+obs <- bind_rows(obs_primary, obs_checks) |> group_by(check) |> mutate(p_holm = p.adjust(p, "holm")) |> ungroup()
+write_csv(obs |> select(check, pair, null) |> unnest_longer(null, values_to = "null_rho"),
+          file.path(out_dir, "null_distributions.csv"))
+```
+
+## Colony bootstrap
+
+```{r bootstrap}
+set.seed(seed)
+draws <- lapply(seq_len(n_boot), function(b) lapply(sp_dat, draw_colonies))
+
+boot <- bind_rows(lapply(seq_len(n_boot), function(b) {
+  pg <- bind_rows(lapply(species_all, function(sp) {
+    d <- sp_dat[[sp]]; dr <- draws[[b]][[sp]]
+    d$genes |> mutate(gbm = colony_mean(d$gbm, dr$cols, dr$colony), mean_expr = NA_real_)
+  }))
+  ks <- if (b <= n_boot_check) names(check_sets) else "primary"
+  bind_rows(lapply(ks, function(k) bind_rows(lapply(seq_along(pairs), function(i) {
+    d <- check_sets[[k]](full_pairs[[i]] |> select(group_id, len_a, len_b, ncpg_a, ncpg_b) |>
+                           left_join(pg |> filter(species == pairs[[i]][1]) |> select(group_id, gbm_a = gbm), by = "group_id") |>
+                           left_join(pg |> filter(species == pairs[[i]][2]) |> select(group_id, gbm_b = gbm), by = "group_id"))
+    if (k != "primary" && nrow(d) < min_check) return(NULL)
+    tibble(rep = b, check = k, pair = pair_names[i], rho = spearman(d$gbm_a, d$gbm_b))
+  }))))
+}))
+write_csv(boot, file.path(out_dir, "bootstrap_replicates.csv"))
+```
+
+## Estimates and verdict
+
+```{r estimates}
+ci <- boot |> group_by(check, pair) |>
+  summarise(n_rep = n(), rho_lo = quantile(rho, 0.025), rho_hi = quantile(rho, 0.975), .groups = "drop")
+est <- obs |> select(-null) |> left_join(ci, by = c("check", "pair")) |>
+  left_join(sets |> select(check, pair, n_orthologs, strata_level), by = c("check", "pair")) |>
+  mutate(meets = rho > 0.30 & rho_lo > 0 & p_holm < 0.05, reversed = rho_hi < 0,
+         check = factor(check, levels = names(check_sets))) |>
+  arrange(check, pair) |>
+  select(check, pair, n_orthologs, strata_level, rho, rho_lo, rho_hi, null_mean, excess, p, p_holm, meets, reversed, n_rep)
+write_csv(est, file.path(out_dir, "estimates.csv"))
+knitr::kable(est, digits = 4)
+
+decide <- function(e) if (nrow(e) == 3 && all(e$meets)) "supported" else if (any(e$reversed)) "not supported" else "inconclusive"
+verdicts <- est |> group_by(check) |> summarise(pairs_run = n(), verdict = decide(pick(everything())), .groups = "drop")
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+verdict <- verdicts$verdict[verdicts$check == "primary"]
+knitr::kable(verdicts)
+```
+
+**Primary verdict: `r verdict`.** Check verdicts apply the same rule to the
+pairs that ran and are descriptive; they do not change the primary verdict.
+For checks with fewer than three pairs, `supported` is not available.
+
+## C3: equal CpGs per gene
+
+```{r c3}
+cpg_sub <- lapply(species_all, function(sp) {
+  d <- sp_dat[[sp]]
+  cpg <- as_count_matrix(load_cpg(sp))[, colnames(d$gbm), drop = FALSE]
+  idx <- gene_cpg_index(rownames(cpg), load_gene_coords(sp), d$genes$gene)[d$genes$gene]
+  stopifnot(all(lengths(idx) == d$genes$n_cpg))
+  used <- sort(unique(unlist(idx)))
+  list(cpg = cpg[used, , drop = FALSE], idx = lapply(idx, match, table = used))
+})
+names(cpg_sub) <- species_all
+
+set.seed(seed)
+c3 <- bind_rows(lapply(seq_len(n_c3), function(r) {
+  pg <- bind_rows(lapply(species_all, function(sp) {
+    d <- sp_dat[[sp]]; cs <- cpg_sub[[sp]]
+    pick <- lapply(cs$idx, function(ix) ix[sample.int(length(ix), c3_cpg)])
+    m <- Matrix::sparseMatrix(i = rep(seq_along(pick), each = c3_cpg), j = unlist(pick), x = 1 / c3_cpg,
+                              dims = c(length(pick), nrow(cs$cpg)))
+    g <- as.matrix(m %*% cs$cpg)
+    d$genes |> mutate(gbm = colony_mean(g, colony = d$info$colony))
+  }))
+  bind_rows(lapply(seq_along(pairs), function(i) {
+    d <- inner_join(pg |> filter(species == pairs[[i]][1]) |> select(group_id, gbm_a = gbm),
+                    pg |> filter(species == pairs[[i]][2]) |> select(group_id, gbm_b = gbm), by = "group_id")
+    tibble(draw = r, pair = pair_names[i], rho = spearman(d$gbm_a, d$gbm_b))
+  }))
+}))
+write_csv(c3, file.path(out_dir, "c3_equal_cpg_draws.csv"))
+c3_sum <- c3 |> group_by(pair) |>
+  summarise(rho_median = median(rho), rho_q025 = quantile(rho, 0.025), rho_q975 = quantile(rho, 0.975), .groups = "drop")
+write_csv(c3_sum, file.path(out_dir, "c3_equal_cpg_summary.csv"))
+knitr::kable(c3_sum, digits = 4)
+```
+
+## Figures
+
+```{r fig-scatter, fig.width = 9, fig.height = 3.4}
+ranks <- bind_rows(lapply(pair_names, function(pn) full_pairs[[pn]] |>
+  transmute(pair = pn, group_id, rank_a = percent_rank(gbm_a), rank_b = percent_rank(gbm_b))))
+write_csv(ranks, file.path(out_dir, "gbm_rank_pairs.csv"))
+lab <- est |> filter(check == "primary") |> transmute(pair, label = sprintf("rho = %.2f\nn = %d", rho, n_orthologs))
+g <- ggplot(ranks, aes(rank_a, rank_b)) +
+  geom_point(size = 0.5, alpha = 0.4) +
+  geom_text(data = lab, aes(x = 0.02, y = 0.98, label = label), hjust = 0, vjust = 1, size = 3) +
+  facet_wrap(~ pair) +
+  labs(x = "GBM percentile, first species", y = "GBM percentile, second species") +
+  coord_equal() + theme_bw()
+ggsave(file.path(out_dir, "gbm_rank_pairs.png"), g, width = 9, height = 3.4, dpi = 150)
+g
+```
+
+```{r fig-null, fig.width = 9, fig.height = 3}
+nulls <- obs_primary |> select(pair, null) |> unnest_longer(null, values_to = "null_rho")
+g2 <- ggplot(nulls, aes(null_rho)) +
+  geom_histogram(bins = 40, fill = "grey70") +
+  geom_vline(data = obs_primary, aes(xintercept = rho), colour = "red") +
+  facet_wrap(~ pair, scales = "free_y") +
+  labs(x = "Spearman rho: matched-strata permutation null (grey), observed (red)", y = "Permutations") +
+  theme_bw()
+ggsave(file.path(out_dir, "observed_vs_null.png"), g2, width = 9, height = 3, dpi = 150)
+g2
+```
+
+## Caveats
+
+- 10 colonies per species (`r paste(n_tab$samples, collapse = " / ")`
+  samples, Apul / Peve / Ptuh).
+- Eligible genes differ more than ten-fold across species because of the
+  upstream CpG filter (D-008); pairs with Apul or Peve rest on a truncated,
+  probably mostly methylated, GBM range.
+- No CpG coverage is available (D-015); C3 equalizes CpG count only.
+- Follow-up on the same data as H05, not an independent replication.

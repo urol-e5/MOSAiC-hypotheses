@@ -17,6 +17,7 @@ setwd(root)
 source(file.path(root, "R", "load.R"))
 source(file.path(root, "R", "expression.R"))
 source(file.path(root, "R", "methylation.R"))
+source(file.path(root, "R", "ortholog_gbm.R"))
 suppressPackageStartupMessages({ library(tidyr); library(ggplot2); library(splines); library(lme4) })
 design <- load_design()
 orth <- load_orthologs()
@@ -24,7 +25,6 @@ out_dir <- file.path(root, "hypotheses", "H23", "output")
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 species_all <- c("Apul", "Peve", "Ptuh")
-gene_key <- c(Apul = "apul_gene", Peve = "peve_gene", Ptuh = "ptuh_gene")
 n_boot <- 1000        # primary contrast and gate
 n_boot_sens <- 500    # sensitivity checks (first 500 replicates)
 n_cores <- min(8, parallel::detectCores())
@@ -53,7 +53,8 @@ means. Colony bootstrap within species x site, B = 1000, seed 23.
 
 Operational choices not spelled out in `hypothesis.md` (none changes the rule):
 
-- **Ortholog-to-gene map** is the one `genes_by_ortholog()` uses (first gene
+- **Ortholog-to-gene map** (`ortholog_map()` in `R/ortholog_gbm.R`) is the
+  one `genes_by_ortholog()` uses (first gene
   per group in matrix order), kept with both ids so CpGs and coordinates can
   be joined.
 - **Linear GBM term.** `gbm_pct` enters linearly, so the primary contrast
@@ -70,35 +71,7 @@ Operational choices not spelled out in `hypothesis.md` (none changes the rule):
 ## Data
 
 ```{r data}
-ortholog_map <- function(sp, genes) {
-  og <- orth |> select(group_id, gene = all_of(gene_key[[sp]])) |> filter(!is.na(gene)) |> distinct(gene, .keep_all = TRUE)
-  tibble(gene = genes$feature_id) |> inner_join(og, by = "gene") |> distinct(group_id, .keep_all = TRUE)
-}
-
-prep_species <- function(sp) {
-  cpg <- as_count_matrix(load_cpg(sp))
-  ids <- intersect(colnames(cpg), design$sample_id[design$has_cpg %in% TRUE & design$has_genes %in% TRUE])
-  ex <- prep_vst(genes_by_ortholog(sp) |> select(feature_id, all_of(ids)), design)
-  ids <- intersect(ids, colnames(ex$vst))
-  coords <- load_gene_coords(sp)
-  gb <- gene_body_methylation(cpg[, ids, drop = FALSE], coords, min_cpg = 5)
-  map <- ortholog_map(sp, load_genes(sp)) |>
-    filter(group_id %in% rownames(ex$vst), gene %in% rownames(gb$gbm)) |>
-    left_join(coords |> transmute(gene = feature_id, len = end - start + 1), by = "gene")
-  stopifnot(!anyNA(map$len))
-  info <- design_for(ex$vst[, ids, drop = FALSE], design)
-  list(species = sp, info = info,
-       vst = ex$vst[map$group_id, ids, drop = FALSE],
-       gbm = gb$gbm[map$gene, ids, drop = FALSE],
-       genes = tibble(species = sp, group_id = map$group_id, gene = map$gene,
-                      n_cpg = unname(gb$n_cpg[map$gene]), len = map$len),
-       n = tibble(species = sp, samples = length(ids), colonies = n_distinct(info$colony),
-                  cpg_sites = nrow(cpg), orthologs_expressed = nrow(ex$vst),
-                  genes_with_5_cpg = nrow(gb$gbm), eligible = nrow(map),
-                  median_cpg_per_gene = median(gb$n_cpg[map$gene])))
-}
-
-sp_dat <- setNames(lapply(species_all, prep_species), species_all)
+sp_dat <- setNames(lapply(species_all, prep_ortholog_species, design = design, orthologs = orth), species_all)
 n_tab <- bind_rows(lapply(sp_dat, `[[`, "n"))
 write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
 knitr::kable(n_tab, format.args = list(big.mark = ","))
@@ -115,9 +88,8 @@ per_gene <- function(d, cols = seq_len(ncol(d$vst)), colony = d$info$colony) {
   X <- model.matrix(~ colony + tp, contrasts.arg = list(colony = "contr.sum"))
   b <- qr.coef(qr(X), t(d$vst[, cols, drop = FALSE]))
   tp_means <- sweep(rbind(0, b[c("tpTP2", "tpTP3", "tpTP4"), , drop = FALSE]), 2, b["(Intercept)", ], "+")
-  col_mean <- function(m) rowMeans(sapply(split(seq_along(cols), colony), function(j) rowMeans(m[, cols[j], drop = FALSE])))
   d$genes |> mutate(amplitude = apply(tp_means, 2, sd),
-                    gbm = col_mean(d$gbm), mean_expr = col_mean(d$vst))
+                    gbm = colony_mean(d$gbm, cols, colony), mean_expr = colony_mean(d$vst, cols, colony))
 }
 
 pg_full <- bind_rows(lapply(sp_dat, per_gene))
@@ -193,15 +165,7 @@ knitr::kable(genes_per_check)
 ```{r bootstrap}
 # Draw all resamples first (serial, seed 23): colonies with replacement within
 # species x site, duplicates relabeled as distinct colonies.
-draw <- function(d) {
-  cols_by_col <- split(seq_len(ncol(d$vst)), d$info$colony)
-  site <- d$info$site[match(names(cols_by_col), d$info$colony)]
-  pick <- unlist(lapply(split(names(cols_by_col), site), function(cs) sample(cs, length(cs), replace = TRUE)))
-  cols <- unlist(lapply(seq_along(pick), function(k) cols_by_col[[pick[k]]]))
-  lab <- unlist(lapply(seq_along(pick), function(k) rep(paste0(pick[k], "_b", k), length(cols_by_col[[pick[k]]]))))
-  list(cols = cols, colony = lab)
-}
-draws <- lapply(seq_len(n_boot), function(b) lapply(sp_dat, draw))
+draws <- lapply(seq_len(n_boot), function(b) lapply(sp_dat, draw_colonies))
 
 boot_one <- function(b) {
   pg <- bind_rows(lapply(species_all, function(sp) {
