@@ -1,0 +1,336 @@
+---
+title: "H26: distal lncRNA–mRNA prediction in held-out colonies"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+source(file.path(root, "R", "neighbors.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H26", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+flank <- 10000
+r_min <- 0.6
+n_targets <- 100
+B_boot <- 2000
+B_perm <- 1000
+min_distinct_perm <- 200
+improvement_min <- 0.05
+n_cores <- max(1, parallel::detectCores() - 1)
+set.seed(26)
+```
+
+## Pre-registered decision rule
+
+> `supported`: in at least two species, I >= 0.05, a bootstrap interval with
+> lower bound > 0, and Holm-adjusted permutation p < 0.05. `not supported`:
+> upper bound of the bootstrap interval below 0.05 in at least two species.
+> Otherwise `inconclusive`, including when matching leaves too few distinct
+> permutations (fewer than 200 for a species).
+
+I = mean over leave-one-colony-out folds of I_c = 1 − Σ_g MSE_full,g / s_g²
+÷ Σ_g MSE_nuis,g / s_g² on the held-out colony, s_g² the variance of target
+g's training nuisance residuals. Everything below follows `hypothesis.md`
+(completed 2026-10-09, `49a4e5b`).
+
+Implementation notes (not in `hypothesis.md`; none changes the rule):
+
+- Library size and top-10 fraction use all raw gene + lncRNA counts of the
+  library (unfiltered; Peve without the D-017 locus).
+- In each fold, gene size factors and the vst dispersion trend are fitted
+  on all filtered genes of the training samples; lncRNA size factors on all
+  filtered lncRNAs of the training samples, and the lncRNA dispersion trend
+  on the predictor lncRNAs (isolated ones) only, to keep the 1,000
+  permutation re-runs tractable. Held-out samples use the training
+  geometric means and dispersion function.
+- Gene normalization does not depend on the lncRNA permutation, so it is
+  computed once per fold and reused; when a permutation leaves a training
+  sample without a lncRNA value, that sample is dropped from selection and
+  model fits but its gene normalization is unchanged.
+- Correlations between an isolated lncRNA and a target on the same scaffold
+  are set to 0 before selection.
+- `lmer` is fitted by REML with default controls; a fit that errors gives
+  that target no prediction and it is dropped from the fold sums.
+- Non-finite correlations (a constant residual row) are set to 0 before
+  selection, so such a target cannot be selected and s_g² > 0.
+- Bootstrap and permutation index draws are made serially before any
+  parallel step.
+
+## Data
+
+```{r data}
+flt <- function(m) m[rowMeans(m >= 10) >= 0.25, , drop = FALSE]   # H01 filter, fixed on all samples
+
+isolated <- function(coords, all_genes, span, same = FALSE) {
+  near <- if (same) neighbor_pairs(coords, all_genes, same = FALSE, max_dist = flank, bins = c(-Inf, flank), bin_labels = "near") |> filter(a != b)
+          else neighbor_pairs(coords, all_genes, max_dist = flank, bins = c(-Inf, flank), bin_labels = "near")
+  coords |> left_join(span, by = "chrom") |>
+    filter(!feature_id %in% near$a, start > flank, end + flank <= span) |> pull(feature_id)
+}
+
+prep_species <- function(sp, drop_locus = TRUE, drop_outliers = FALSE) {
+  drop_f <- if (sp == "Peve" && drop_locus) peve_dominant_locus else character(0)
+  graw <- as_count_matrix(load_genes(sp)); lraw <- as_count_matrix(load_lncrna(sp))
+  graw <- round(graw[!rownames(graw) %in% drop_f, ]); lraw <- round(lraw[!rownames(lraw) %in% drop_f, ])
+  ids <- design |> filter(species == sp, has_genes %in% TRUE, has_lncrna %in% TRUE) |> pull(sample_id)
+  ids <- Reduce(intersect, list(ids, colnames(graw), colnames(lraw)))
+  raw_all <- rbind(graw[, ids], lraw[, ids])
+  lib <- tibble(sample_id = ids, loglib = log(colSums(raw_all)),
+                top10 = apply(raw_all, 2, function(x) sum(sort(x, decreasing = TRUE)[1:10]) / sum(x)))
+  q <- quantile(lib$top10, c(0.25, 0.75))
+  lib <- lib |> mutate(outlier = top10 > q[2] + 1.5 * diff(q))
+  if (drop_outliers) ids <- lib$sample_id[!lib$outlier]
+  G <- flt(graw[, ids]); L <- flt(lraw[, ids])
+  info <- design |> filter(sample_id %in% ids) |> arrange(match(sample_id, ids)) |>
+    left_join(lib, by = "sample_id") |> mutate(timepoint = factor(timepoint), colony = as.character(colony))
+  gc_all <- load_gene_coords(sp); lc_all <- lncrna_coords(sp)
+  span <- bind_rows(gc_all, lc_all) |> group_by(chrom) |> summarise(span = max(end), .groups = "drop")
+  iso_l <- isolated(lc_all |> filter(feature_id %in% rownames(L)), gc_all, span)
+  iso_g <- isolated(gc_all |> filter(feature_id %in% rownames(G)), gc_all, span, same = TRUE)
+  scaf <- c(setNames(gc_all$chrom, gc_all$feature_id), setNames(lc_all$chrom, lc_all$feature_id))
+  list(species = sp, G = G, L = L, info = info, iso_l = iso_l, iso_g = iso_g, scaf = scaf,
+       n = tibble(species = sp, samples = length(ids), colonies = n_distinct(info$colony),
+                  genes = nrow(G), lncrna = nrow(L), isolated_lncrna = length(iso_l), isolated_genes = length(iso_g),
+                  composition_outliers = sum(lib$outlier), locus_dropped = length(drop_f) > 0, outliers_dropped = drop_outliers))
+}
+
+dat <- lapply(setNames(species_all, species_all), prep_species)
+n_tab <- bind_rows(lapply(dat, `[[`, "n"))
+write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(n_tab, format.args = list(big.mark = ","))
+```
+
+## Model
+
+```{r functions}
+geo_means <- function(m) exp(rowMeans(log(m)))
+
+# Fit size factors and dispersion trend on `train` counts; transform train
+# and test. `disp_rows`: rows used for the dispersion trend (and returned).
+norm_fold <- function(train, test, disp_rows = rownames(train)) {
+  gm <- geo_means(train)
+  sf_train <- DESeq2::estimateSizeFactorsForMatrix(train, geoMeans = gm)
+  sf_test <- DESeq2::estimateSizeFactorsForMatrix(test, geoMeans = gm)
+  dds <- DESeq2::DESeqDataSetFromMatrix(train[disp_rows, , drop = FALSE], data.frame(row.names = colnames(train)), ~ 1)
+  DESeq2::sizeFactors(dds) <- sf_train
+  dds <- suppressMessages(DESeq2::estimateDispersions(dds, quiet = TRUE))
+  vtr <- SummarizedExperiment::assay(DESeq2::varianceStabilizingTransformation(dds, blind = FALSE))
+  dte <- DESeq2::DESeqDataSetFromMatrix(test[disp_rows, , drop = FALSE], data.frame(row.names = colnames(test)), ~ 1)
+  DESeq2::sizeFactors(dte) <- sf_test
+  DESeq2::dispersionFunction(dte) <- DESeq2::dispersionFunction(dds)
+  vte <- SummarizedExperiment::assay(DESeq2::varianceStabilizingTransformation(dte, blind = FALSE))
+  list(train = vtr, test = vte)
+}
+
+folds_of <- function(d) unique(d$info$colony)
+
+# Gene normalization per fold (independent of the lncRNA permutation).
+gene_norms <- function(d) {
+  lapply(setNames(folds_of(d), folds_of(d)), function(cc) {
+    te <- d$info$colony == cc
+    norm_fold(d$G[, !te, drop = FALSE], d$G[, te, drop = FALSE])
+  })
+}
+
+nuis_terms <- c("colony", "timepoint", "loglib", "top10")
+
+# One full leave-one-colony-out run. `Lraw`: lncRNA counts aligned to
+# d$info rows (columns may be NA after a permutation). `pred`: "lncrna" or
+# "gene"; `pred_ids`: predictor features.
+run_pipeline <- function(d, gn, Lraw, pred = c("lncrna", "gene"), pred_ids) {
+  pred <- match.arg(pred)
+  has_l <- if (pred == "lncrna") colSums(is.na(Lraw)) == 0 else rep(TRUE, ncol(d$G))
+  fold_res <- lapply(folds_of(d), function(cc) {
+    te_all <- d$info$colony == cc
+    tr <- !te_all & has_l; te <- te_all & has_l
+    gtr <- gn[[cc]]$train[, has_l[!te_all], drop = FALSE]
+    gte <- gn[[cc]]$test[, has_l[te_all], drop = FALSE]
+    if (pred == "lncrna") {
+      ln <- norm_fold(Lraw[, tr, drop = FALSE], Lraw[, te, drop = FALSE], disp_rows = pred_ids)
+      ptr <- ln$train; pte <- ln$test
+    } else {
+      ptr <- gtr[pred_ids, , drop = FALSE]; pte <- gte[pred_ids, , drop = FALSE]
+    }
+    itr <- d$info[tr, ] |> mutate(colony = factor(colony))
+    ite <- d$info[te, ]
+    Gres <- residualize(gtr, itr, nuis_terms)
+    Pz <- zrows(residualize(ptr, itr, nuis_terms)); Gz <- zrows(Gres)
+    R <- Pz %*% t(Gz); R[!is.finite(R)] <- 0
+    same <- outer(d$scaf[rownames(Pz)], d$scaf[rownames(Gz)], `==`); R[same | is.na(same)] <- 0
+    if (pred == "gene") R[outer(rownames(Pz), rownames(Gz), `==`)] <- 0
+    A <- abs(R); best <- max.col(t(A), ties.method = "first"); best_r <- A[cbind(best, seq_len(ncol(A)))]
+    sel <- tibble(target = colnames(A), predictor = rownames(A)[best], abs_r = best_r) |>
+      filter(abs_r >= r_min) |> arrange(desc(abs_r)) |> slice_head(n = n_targets)
+    if (nrow(sel) == 0 || sum(te) == 0) return(list(I_c = 0, n_sel = 0L, targets = NULL))
+    per_t <- bind_rows(lapply(seq_len(nrow(sel)), function(k) {
+      dtr <- itr |> mutate(y = gtr[sel$target[k], ], x = ptr[sel$predictor[k], ])
+      dte <- ite |> mutate(y = gte[sel$target[k], ], x = pte[sel$predictor[k], ], timepoint = factor(timepoint, levels(itr$timepoint)))
+      tryCatch({
+        f0 <- lme4::lmer(y ~ timepoint + loglib + top10 + (1 | colony), data = dtr)
+        f1 <- lme4::lmer(y ~ timepoint + loglib + top10 + x + (1 | colony), data = dtr)
+        e0 <- mean((dte$y - predict(f0, dte, re.form = NA))^2); e1 <- mean((dte$y - predict(f1, dte, re.form = NA))^2)
+        s2 <- var(Gres[sel$target[k], ])
+        tibble(target = sel$target[k], predictor = sel$predictor[k], abs_r = sel$abs_r[k], s2 = s2,
+               mse_nuis = e0, mse_full = e1, scaled_nuis = e0 / s2, scaled_full = e1 / s2)
+      }, error = function(e) NULL)
+    }))
+    list(I_c = if (nrow(per_t)) 1 - sum(per_t$scaled_full) / sum(per_t$scaled_nuis) else 0,
+         n_sel = nrow(sel), targets = per_t |> mutate(held_out = cc))
+  })
+  names(fold_res) <- folds_of(d)
+  list(I_c = vapply(fold_res, `[[`, 0, "I_c"), n_sel = vapply(fold_res, `[[`, 0L, "n_sel"),
+       targets = bind_rows(lapply(fold_res, `[[`, "targets")))
+}
+
+boot_I <- function(I_c, d, idx) {
+  b <- vapply(idx, function(i) mean(I_c[i]), 0)
+  c(lo = unname(quantile(b, 0.025)), hi = unname(quantile(b, 0.975)))
+}
+boot_draws <- function(d) {
+  cs <- d$info |> distinct(colony, site)
+  byc <- split(cs$colony, cs$site)
+  replicate(B_boot, unlist(lapply(byc, function(x) sample(x, length(x), replace = TRUE))), simplify = FALSE)
+}
+
+# All within-site reassignments; sample B_perm distinct non-identity ones.
+perm_draws <- function(d) {
+  cs <- d$info |> distinct(colony, site)
+  byc <- split(cs$colony, cs$site)
+  per_site <- lapply(byc, function(x) { p <- combinat_perms(length(x)); lapply(seq_len(nrow(p)), function(i) setNames(x[p[i, ]], x)) })
+  total <- prod(lengths(per_site))
+  grid <- expand.grid(lapply(per_site, seq_along))
+  ident <- which(apply(grid, 1, function(r) all(mapply(function(ps, k) all(ps[[k]] == names(ps[[k]])), per_site, r))))
+  pick <- sample(setdiff(seq_len(total), ident), min(B_perm, total - 1))
+  list(distinct = total - 1, maps = lapply(pick, function(i) unlist(unname(mapply(function(ps, k) ps[[k]], per_site, grid[i, ], SIMPLIFY = FALSE)))))
+}
+combinat_perms <- function(n) { if (n == 1) return(matrix(1L)); p <- combinat_perms(n - 1); do.call(rbind, lapply(seq_len(n), function(k) cbind(k, matrix(setdiff(seq_len(n), k)[p], nrow(p))))) }
+
+# Permuted lncRNA counts: sample (colony k, tp t) takes colony map[k]'s tp t.
+permute_lncrna <- function(d, map) {
+  key <- paste(d$info$colony, d$info$timepoint)
+  src <- match(paste(map[d$info$colony], d$info$timepoint), key)
+  out <- d$L[, src, drop = FALSE]; colnames(out) <- colnames(d$L)
+  out
+}
+```
+
+```{r primary}
+analyse_species <- function(d) {
+  gn <- gene_norms(d)
+  obs <- run_pipeline(d, gn, d$L, "lncrna", d$iso_l)
+  cs <- d$info |> distinct(colony, site)
+  bidx <- lapply(boot_draws(d), function(x) match(x, names(obs$I_c)))
+  pd <- perm_draws(d)
+  perm_I <- unlist(parallel::mclapply(pd$maps, function(map) {
+    r <- run_pipeline(d, gn, permute_lncrna(d, map), "lncrna", d$iso_l); mean(r$I_c)
+  }, mc.cores = n_cores))
+  I <- mean(obs$I_c); ci <- boot_I(obs$I_c, d, bidx)
+  list(obs = obs, gn = gn, bidx = bidx, perm_I = perm_I,
+       summary = tibble(species = d$species, I = I, I_lo = ci[["lo"]], I_hi = ci[["hi"]],
+                        folds_with_pairs = sum(obs$n_sel > 0), targets_total = sum(obs$n_sel),
+                        distinct_permutations = pd$distinct, permutations = length(perm_I),
+                        p_perm = (1 + sum(perm_I >= I)) / (length(perm_I) + 1)))
+}
+res <- lapply(dat, analyse_species)
+
+summ <- bind_rows(lapply(res, `[[`, "summary")) |>
+  mutate(p_holm = p.adjust(p_perm, "holm"),
+         enough_perms = distinct_permutations >= min_distinct_perm,
+         passes = enough_perms & I >= improvement_min & I_lo > 0 & p_holm < 0.05,
+         fails = enough_perms & I_hi < improvement_min)
+verdict <- if (sum(summ$passes) >= 2) "supported" else if (sum(summ$fails) >= 2) "not supported" else "inconclusive"
+write_csv(summ, file.path(out_dir, "decision_per_species.csv"))
+write_csv(bind_rows(lapply(res, function(r) tibble(species = r$summary$species, held_out = names(r$obs$I_c), I_c = r$obs$I_c, targets = r$obs$n_sel))),
+          file.path(out_dir, "fold_improvement.csv"))
+write_csv(bind_rows(lapply(res, function(r) r$obs$targets |> mutate(species = r$summary$species, .before = 1))),
+          file.path(out_dir, "selected_targets.csv"))
+write_csv(bind_rows(lapply(res, function(r) tibble(species = r$summary$species, I_perm = r$perm_I))),
+          file.path(out_dir, "permutation_null.csv"))
+knitr::kable(summ, digits = 4)
+```
+
+**Primary verdict: `r verdict`.**
+
+```{r fig, fig.width = 10, fig.height = 3.5}
+fig <- bind_rows(lapply(res, function(r) tibble(species = r$summary$species, value = r$perm_I, what = "permutation null")))
+obs_tab <- summ |> select(species, I, I_lo, I_hi)
+write_csv(obs_tab, file.path(out_dir, "figure_observed.csv"))
+g <- ggplot(fig, aes(value)) + geom_histogram(bins = 40, fill = "grey75") +
+  geom_vline(data = obs_tab, aes(xintercept = I)) + geom_vline(xintercept = improvement_min, linetype = 2, colour = "grey40") +
+  facet_wrap(~ species, scales = "free_y") +
+  labs(x = "Held-out improvement I (1 − MSE full / MSE nuisance)", y = "Permutations",
+       caption = "Line: observed I. Dashed: 5% threshold.") + theme_bw()
+ggsave(file.path(out_dir, "improvement_vs_null.png"), g, width = 10, height = 3.5, dpi = 150)
+g
+```
+
+## Sensitivity checks
+
+Descriptive; I and its colony-block bootstrap interval, no permutation.
+
+```{r checks}
+check_row <- function(label, d, gn, Lraw, pred, ids) {
+  r <- run_pipeline(d, gn, Lraw, pred, ids)
+  bidx <- lapply(boot_draws(d), function(x) match(x, names(r$I_c)))
+  ci <- boot_I(r$I_c, d, bidx)
+  tibble(check = label, species = d$species, I = mean(r$I_c), I_lo = ci[["lo"]], I_hi = ci[["hi"]],
+         folds_with_pairs = sum(r$n_sel > 0), targets_total = sum(r$n_sel), samples = nrow(d$info))
+}
+
+# C1: expression-matched isolated genes as predictors
+c1_ids <- function(d) {
+  vst_mean <- function(m) rowMeans(SummarizedExperiment::assay(DESeq2::vst(DESeq2::DESeqDataSetFromMatrix(m, data.frame(row.names = colnames(m)), ~ 1), blind = TRUE)))
+  allv <- c(vst_mean(d$G), vst_mean(d$L))
+  dec_cut <- quantile(allv[c(d$iso_l, d$iso_g)], seq(0.1, 0.9, 0.1))
+  dl <- findInterval(allv[d$iso_l], dec_cut) + 1; dg <- findInterval(allv[d$iso_g], dec_cut) + 1
+  pool <- split(d$iso_g, dg)
+  unique(vapply(dl, function(k) {
+    if (is.null(pool[[as.character(k)]])) k <- as.integer(names(pool))[which.min(abs(as.integer(names(pool)) - k))]
+    p <- pool[[as.character(k)]]; p[sample.int(length(p), 1)]
+  }, ""))
+}
+checks <- bind_rows(lapply(species_all, function(sp) {
+  d <- dat[[sp]]
+  rows <- list(check_row("C1_gene_predictors", d, res[[sp]]$gn, NULL, "gene", c1_ids(d)))
+  d2 <- prep_species(sp, drop_outliers = TRUE)
+  rows <- c(rows, list(check_row("C2_no_composition_outliers", d2, gene_norms(d2), d2$L, "lncrna", d2$iso_l)))
+  if (sp == "Peve") {
+    d3 <- prep_species(sp, drop_locus = FALSE)
+    rows <- c(rows, list(check_row("C3_peve_locus_kept", d3, gene_norms(d3), d3$L, "lncrna", d3$iso_l)))
+  }
+  bind_rows(rows)
+}))
+write_csv(checks, file.path(out_dir, "sensitivity_checks.csv"))
+knitr::kable(checks, digits = 4)
+
+verdicts <- tibble(analysis = "primary", verdict = verdict)
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+```
+
+## Caveats
+
+- About 10 colonies per species; each fold trains on 9 colonies (about 36
+  samples) and tests on about 4 samples of one colony.
+- lncRNA and gene counts come from the same libraries; composition
+  covariates are proxies, so held-out success cannot rule out reproducible
+  shared-library effects or prove trans regulation.
+- lncRNA strand is unknown (D-014); isolation relies on incomplete gene
+  models. Peve has few isolated lncRNAs.
+- Peve's dominant scaffold_167 locus is excluded (D-017); C3 shows the effect
+  of keeping it.
+- Species is confounded with reference quality (Peve N50 0.17 Mb; Ptuh mapped
+  to *P. meandrina*).
