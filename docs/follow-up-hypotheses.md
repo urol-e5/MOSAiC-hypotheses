@@ -55,6 +55,10 @@ exclude exactly the low-methylation genes of interest.
 
 ## H24. Orthologs retain similar gene-body methylation ranks across species
 
+*Pre-registered 2026-10-08 in [hypotheses/H24](../hypotheses/H24/hypothesis.md),
+which supersedes this section: correlations use per-pair ortholog sets (91,
+678 and 610) instead of the 88-gene three-way set.*
+
 **Basis:** [H05](../hypotheses/H05/RESULT.md) supported the same GBM–expression
 relationship in all three species, but did not establish whether the same
 genes occupy the methylated portion of each genome.

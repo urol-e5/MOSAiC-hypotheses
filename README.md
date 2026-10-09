@@ -88,7 +88,7 @@ manifest entries.
 | H21 | 3 | Frontloading–plasticity trade-off in stress orthologs | desktop |
 | H22 | 4 | Expression forecasts next-timepoint physiology at held-out sites | desktop |
 | H23 | 2 | Acropora's excess plasticity sits in low-methylation orthologs | desktop |
-| H24 | 2 | Orthologs keep similar gene-body methylation ranks across species (proposed) | desktop |
+| H24 | 2 | Orthologs keep similar gene-body methylation ranks across species | desktop |
 | H25 | 2 | Beyond 2 kb, lncRNA–gene and gene–gene co-expression are equivalent (proposed) | desktop |
 | H26 | 2 | Distal lncRNA–mRNA edges predict expression in held-out colonies (proposed) | raven |
 | H27 | 3 | Stable ITS2 profiles differ in seasonal symbiont-density trajectories (proposed) | desktop |
@@ -109,7 +109,8 @@ the way: [docs/decisions.md](docs/decisions.md).
 build on supported findings, with predictions, test designs, and evidence
 criteria. Each sits on the board with `status: proposed` until its
 `hypothesis.md` is complete enough to move to `planned`. H23 has been
-pre-registered and run (`inconclusive`); H24–H27 are not results.
+pre-registered and run (`inconclusive`), H24 is `planned`; H24–H27 are not
+results.
 
 ## Layout
 
