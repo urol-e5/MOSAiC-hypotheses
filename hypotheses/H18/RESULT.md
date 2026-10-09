@@ -9,6 +9,13 @@ day. Analysis follows Amendment 1 in `hypothesis.md` (separate nulls for
 the two unique fractions; ordered per-species classification), written
 before any H18 analysis ran.
 
+**Outputs refreshed:** 2026-10-08 on raven (R 4.3.3, 47 cores, 19 min) after
+`d4708a2` made the OLS/lmer equivalence check a hard stop and extended it to
+the >= 20 CpG subset. Verdicts and every previously reported number are
+unchanged (largest relative difference 6e-6, in one `prop_mediated` null
+draw); the files gain `d_R2_M`/`d_R2_L` and the subset's `lmer` columns, and
+the subset passes the check (max difference 1.9e-5 < 1e-4).
+
 **Samples used:** samples with CpG, lncRNA and gene data. About 10 colonies
 per species.
 
@@ -87,9 +94,9 @@ which is why Ptuh has 10 times more pairs.
 - `n_per_species.csv`, `included_vs_excluded_genes.csv`: samples, pairs, and the selected-subset check
 - `commonality_summary.csv`: R², commonality fractions, nulls, path coefficients, CIs, `lmer` values, classification
 - `null_draws.csv`: all permutation draws for both nulls (1.6 MB)
-- `ols_vs_lmer.csv`: equivalence check
+- `ols_vs_lmer.csv`: OLS/lmer equivalence check, primary
 - `commonality.png`, `commonality_figure_data.csv`: figure and its data
-- `sens_mincpg20_summary.csv`: >= 20 CpG check
+- `sens_mincpg20_summary.csv`, `sens_mincpg20_ols_vs_lmer.csv`: >= 20 CpG check and its OLS/lmer equivalence check
 - `verdicts.csv`: verdict for each analysis
 
 not supported
