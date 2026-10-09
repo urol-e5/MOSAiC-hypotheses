@@ -67,11 +67,9 @@ also carry the molecular layers (Mahana low, Manava high; 3-df test), the
 pattern is similar: Ptuh AFDW (FDR 8e-6) and cells (0.024), and Apul cells
 (0.002). Peve has nothing.
 
-**Current Findings:** not reported under §6 rule (a); the verdict is not
-`supported`. Rule (b) arguably applies: with 45–50 colonies per species the
-intervals bound effects usefully, and Ptuh's interaction is strong. Whether
-to report is left as a decision; RESULT.md will be updated if a report is
-written.
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-nutrient-site-seasonal-physiology/>
+(reported under CLAUDE.md §6 rule (b): 45–50 colonies per species, so the
+effect intervals are informative even though the verdict is inconclusive).
 
 **Caveats:** physiology n is 45–50 colonies per species (15–19 per site),
 much larger than the molecular layers. Each colony was sampled at 2–4
