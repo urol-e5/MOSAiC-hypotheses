@@ -65,10 +65,7 @@ gene sets were changed from the proposal's joint set to per-pair sets before
 analysis because of an eligibility count (see `hypothesis.md`). This is a
 follow-up on the same data as H05, not an independent replication.
 
-**Current Findings:** to be decided; see CLAUDE.md §6. The candidate is the
-gene-body methylation synthesis
-(<https://robertslab.github.io/current-findings/reports/coral-gene-body-methylation-stable-not-seasonal/>),
-which covers H05 and H23.
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-gene-body-methylation-stable-not-seasonal/> (gene-body methylation synthesis, v0.3, with H04–H06, H15, H16, H18, H23). Included under CLAUDE.md §6(c): it answers the same question as the other GBM hypotheses.
 
 **Outputs:** in `output/`
 - `n_per_species.csv`: samples, orthologs and eligible genes per species
