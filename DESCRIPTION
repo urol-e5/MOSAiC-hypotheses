@@ -37,4 +37,5 @@ Imports:
     variancePartition,
     lme4,
     glmnet,
-    pls
+    pls,
+    MOFA2

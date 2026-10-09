@@ -1,0 +1,289 @@
+---
+title: "H13: multi-omics latent factors, season vs colony"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error = function(e) "../..")
+knitr::opts_knit$set(root.dir = root)
+setwd(root)
+source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "expression.R"))
+suppressPackageStartupMessages({ library(tidyr); library(ggplot2); library(MOFA2) })
+design <- load_design()
+out_dir <- file.path(root, "hypotheses", "H13", "output")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+species_all <- c("Apul", "Peve", "Ptuh")
+layers <- c("genes", "mirna", "lncrna", "cpg", "metabolomics", "lipidomics")
+n_top <- 5000
+n_factors <- 10
+mofa_seed <- 20261008
+seeds_extra <- c(1, 2, 3)        # not pre-registered: initialisation stability
+summer <- c("TP1", "TP2")        # prediction: TP1/TP2 vs TP3/TP4
+set.seed(20261008)
+```
+
+## Pre-registered decision rule
+
+> `supported` if, in all three species, the factor with the highest total
+> variance explained has summer/winter AUC > 0.8 and loads (> 5% variance) on
+> at least three layers. `not supported` if the top factor is colony-dominated
+> (ICC > 0.7) with AUC < 0.6 in all species. Otherwise `inconclusive`.
+
+Model: MOFA2 per species, 10 factors, six views (genes, miRNA, lncRNA, CpG,
+metabolomics, lipidomics), top 5000 most variable features per view (all
+miRNAs). Missing views allowed (primary); samples present in all six views
+(sensitivity). Per factor: variance explained per view, AUC of factor value
+for summer (TP1, TP2) vs winter (TP3, TP4), ICC for colony. No hypothesis
+tests enter the decision, so no multiple-testing correction applies.
+
+Operational choices not spelled out in `hypothesis.md` (none changes the rule):
+
+- **Transforms.** Genes and lncRNA: the H01 filter and blind vst
+  (`prep_vst`). miRNA: libraries below 1,000 reads dropped (D-011), poscounts
+  size factors (as H07), then `varianceStabilizingTransformation`; no
+  expression filter, since the rule says all miRNAs; zero-variance loci
+  dropped. CpG: percent methylation as delivered (>= 10x in all samples of
+  that species), zero-variance sites dropped. Metabolomics and lipidomics:
+  the pooled matrices are split by sample id, log2-transformed (as H14), and
+  features with any non-finite value in that species dropped. "Most variable"
+  is the variance of the transformed values within the species.
+- **Samples.** Primary: every sample of the species present in at least one
+  view after QC; MOFA2 treats absent views as missing. Sensitivity: samples
+  present in all six views.
+- **MOFA2 settings** are package defaults (Gaussian likelihood for every
+  view, features centred, views not scaled, `convergence_mode = "fast"`),
+  except 10 factors and seed `r mofa_seed`. Factors are not dropped.
+- **"Highest total variance explained"**: the factor with the largest sum
+  over views of its per-view R² (equivalently the largest mean).
+- **AUC** is direction-free: max(AUC, 1 − AUC), because a factor's sign is
+  arbitrary.
+- **ICC for colony**: `lmer(factor ~ 1 + (1 | colony))`, colony variance over
+  colony plus residual variance.
+- **"A later factor separates colonies"** (prediction, not in the rule) is
+  reported as the highest colony ICC among the other nine factors.
+- **Not pre-registered:** the primary model is refitted with three more seeds
+  to show whether the top factor and the verdict depend on initialisation.
+
+## Data
+
+```{r data}
+species_ids <- function(sp) design$sample_id[design$species == sp]
+
+top_var <- function(m, n) {
+  m <- m[matrixStats::rowVars(m) > 0, , drop = FALSE]
+  if (nrow(m) > n) m[order(matrixStats::rowVars(m), decreasing = TRUE)[seq_len(n)], , drop = FALSE] else m
+}
+
+prep_mirna <- function(sp) {
+  m <- as_count_matrix(load_mirna(sp))
+  info <- design_for(m, design)
+  keep <- info$has_mirna %in% TRUE & colnames(m) %in% mirna_qc_samples(m)
+  m <- round(m[, keep, drop = FALSE])
+  dds <- DESeq2::DESeqDataSetFromMatrix(m, colData = as.data.frame(info[keep, ]), design = ~ 1)
+  dds <- DESeq2::estimateSizeFactors(dds, type = "poscounts")
+  SummarizedExperiment::assay(DESeq2::varianceStabilizingTransformation(dds, blind = TRUE))
+}
+
+prep_pooled <- function(df, sp, flag) {
+  m <- as_count_matrix(df)
+  ids <- intersect(colnames(m), design$sample_id[design$species == sp & design[[flag]] %in% TRUE])
+  x <- log2(m[, ids, drop = FALSE])
+  x[rowSums(!is.finite(x)) == 0, , drop = FALSE]
+}
+
+prep_species <- function(sp) {
+  ids <- species_ids(sp)
+  v <- list(
+    genes = prep_vst(load_genes(sp) |> select(feature_id, any_of(ids)), design)$vst,
+    mirna = prep_mirna(sp),
+    lncrna = prep_vst(load_lncrna(sp) |> select(feature_id, any_of(ids)), design)$vst,
+    cpg = { m <- as_count_matrix(load_cpg(sp)); m[, intersect(colnames(m), ids), drop = FALSE] },
+    metabolomics = prep_pooled(load_metabolomics(), sp, "has_metabolomics"),
+    lipidomics = prep_pooled(load_lipidomics(), sp, "has_lipidomics"))
+  features_in <- sapply(v, nrow)
+  v$mirna <- top_var(v$mirna, Inf)
+  v[setdiff(layers, "mirna")] <- lapply(v[setdiff(layers, "mirna")], top_var, n = n_top)
+  samples <- sort(unique(unlist(lapply(v, colnames))))
+  complete <- Reduce(intersect, lapply(v, colnames))
+  info <- design |> filter(sample_id %in% samples) |> arrange(match(sample_id, samples)) |>
+    mutate(winter = !timepoint %in% summer)
+  n <- tibble(species = sp, view = layers, features_in = features_in[layers], features_used = sapply(v[layers], nrow),
+              samples = sapply(v[layers], ncol))
+  list(views = v, samples = samples, complete = complete, info = info, n = n)
+}
+
+dat <- lapply(setNames(species_all, species_all), prep_species)
+
+n_tab <- bind_rows(lapply(dat, `[[`, "n"))
+write_csv(n_tab, file.path(out_dir, "n_per_view.csv"))
+knitr::kable(n_tab |> pivot_wider(names_from = species, values_from = c(features_used, samples)), format.args = list(big.mark = ","))
+
+overlap <- bind_rows(lapply(species_all, function(sp) {
+  d <- dat[[sp]]
+  d$info |> select(sample_id, colony, timepoint) |>
+    mutate(species = sp, .before = 1, !!!setNames(lapply(layers, function(l) d$info$sample_id %in% colnames(d$views[[l]])), layers),
+           n_views = rowSums(across(all_of(layers))))
+}))
+write_csv(overlap, file.path(out_dir, "sample_view_overlap.csv"))
+samp_tab <- overlap |> group_by(species) |>
+  summarise(samples_any_view = n(), samples_all_six = sum(n_views == 6), colonies = n_distinct(colony),
+            summer_all_six = sum(n_views == 6 & timepoint %in% summer), winter_all_six = sum(n_views == 6 & !timepoint %in% summer),
+            .groups = "drop")
+write_csv(samp_tab, file.path(out_dir, "n_per_species.csv"))
+knitr::kable(samp_tab)
+knitr::kable(overlap |> count(species, timepoint, n_views) |> pivot_wider(names_from = n_views, values_from = n, values_fill = 0, names_prefix = "views_"))
+```
+
+Metabolomics and lipidomics have no TP2 samples for Apul and Ptuh, so in
+those species TP2 enters the primary model with at most four views and the
+all-six sensitivity set has summer = TP1 only.
+
+## Model
+
+```{r mofa}
+fit_mofa <- function(sp, samples, seed = mofa_seed) {
+  d <- dat[[sp]]
+  views <- lapply(d$views, function(m) {
+    out <- matrix(NA_real_, nrow(m), length(samples), dimnames = list(rownames(m), samples))
+    s <- intersect(samples, colnames(m)); out[, s] <- m[, s]
+    out[rowSums(!is.na(out)) > 0 & matrixStats::rowVars(out, na.rm = TRUE) > 0, , drop = FALSE]
+  })
+  views <- views[sapply(views, function(m) nrow(m) > 0 && sum(colSums(!is.na(m)) > 0) >= 3)]
+  obj <- create_mofa(views)
+  mo <- get_default_model_options(obj); mo$num_factors <- n_factors
+  to <- get_default_training_options(obj); to$seed <- seed; to$verbose <- FALSE
+  obj <- prepare_mofa(obj, model_options = mo, training_options = to)
+  f <- tempfile(fileext = ".hdf5")
+  invisible(capture.output(m <- run_mofa(obj, f, use_basilisk = TRUE)))
+  m
+}
+
+auc_dirfree <- function(score, winter) {
+  ok <- is.finite(score); s <- score[ok]; w <- winter[ok]
+  r <- rank(s); n1 <- sum(w); n0 <- sum(!w)
+  a <- (sum(r[w]) - n1 * (n1 + 1) / 2) / (n1 * n0)
+  max(a, 1 - a)
+}
+
+icc_colony <- function(score, colony) {
+  df <- data.frame(y = score, colony = factor(colony))
+  df <- df[is.finite(df$y), ]
+  fit <- lme4::lmer(y ~ 1 + (1 | colony), data = df, REML = TRUE)
+  vc <- as.data.frame(lme4::VarCorr(fit))
+  vc$vcov[vc$grp == "colony"] / sum(vc$vcov)
+}
+
+summarise_model <- function(sp, m, info) {
+  r2 <- get_variance_explained(m)$r2_per_factor[[1]]          # factors x views, percent
+  Z <- get_factors(m)[[1]]
+  info <- info[match(rownames(Z), info$sample_id), ]
+  full <- matrix(0, nrow(r2), length(layers), dimnames = list(rownames(r2), layers))
+  full[, colnames(r2)] <- r2
+  tibble(species = sp, factor = rownames(r2), total_r2 = rowSums(full),
+         views_over_5pct = rowSums(full > 5),
+         auc_summer_winter = apply(Z, 2, auc_dirfree, winter = info$winter),
+         icc_colony = apply(Z, 2, icc_colony, colony = info$colony)) |>
+    bind_cols(as_tibble(full, .name_repair = ~ paste0("r2_", .x))) |>
+    mutate(rank_total = rank(-total_r2, ties.method = "first")) |>
+    arrange(rank_total)
+}
+
+decide <- function(fac) {
+  top <- fac |> filter(rank_total == 1) |>
+    mutate(passes = auc_summer_winter > 0.8 & views_over_5pct >= 3,
+           colony_dominated = icc_colony > 0.7 & auc_summer_winter < 0.6)
+  later <- fac |> filter(rank_total > 1) |> group_by(species) |>
+    summarise(best_colony_factor = factor[which.max(icc_colony)], best_colony_icc = max(icc_colony), .groups = "drop")
+  top <- top |> left_join(later, by = "species")
+  verdict <- if (all(top$passes)) "supported" else if (all(top$colony_dominated)) "not supported" else "inconclusive"
+  list(top = top, verdict = verdict)
+}
+
+run_set <- function(set = c("primary", "complete"), seed = mofa_seed) {
+  set <- match.arg(set)
+  bind_rows(lapply(species_all, function(sp) {
+    s <- if (set == "primary") dat[[sp]]$samples else dat[[sp]]$complete
+    summarise_model(sp, fit_mofa(sp, s, seed), dat[[sp]]$info)
+  }))
+}
+
+fac <- run_set("primary")
+write_csv(fac, file.path(out_dir, "factors_primary.csv"))
+primary <- decide(fac)
+write_csv(primary$top, file.path(out_dir, "decision_per_species.csv"))
+knitr::kable(primary$top |> select(species, factor, total_r2, views_over_5pct, auc_summer_winter, icc_colony,
+                                   passes, colony_dominated, best_colony_factor, best_colony_icc), digits = 3)
+```
+
+**Primary verdict: `r primary$verdict`.**
+
+```{r fig, fig.width = 10, fig.height = 4}
+fig <- fac |> select(species, factor, rank_total, auc_summer_winter, icc_colony, starts_with("r2_")) |>
+  pivot_longer(starts_with("r2_"), names_to = "view", values_to = "r2", names_prefix = "r2_") |>
+  mutate(factor = factor(factor, levels = paste0("Factor", 1:n_factors)), view = factor(view, layers))
+write_csv(fig, file.path(out_dir, "variance_explained_figure_data.csv"))
+g <- ggplot(fig, aes(factor, view, fill = r2)) + geom_tile() +
+  geom_text(data = distinct(fig, species, factor, auc_summer_winter), aes(factor, 6.75, label = sprintf("%.2f", auc_summer_winter)),
+            inherit.aes = FALSE, size = 2.5) +
+  facet_wrap(~ species) + scale_fill_gradient(low = "white", high = "grey15", name = "R² (%)") +
+  labs(x = NULL, y = NULL, caption = "Numbers above columns: summer/winter AUC") +
+  theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+ggsave(file.path(out_dir, "variance_explained.png"), g, width = 10, height = 4, dpi = 150)
+g
+```
+
+## Sensitivity checks
+
+### Samples with all six views
+
+```{r sens-complete}
+fac_c <- run_set("complete")
+write_csv(fac_c, file.path(out_dir, "sens_complete_factors.csv"))
+sens_c <- decide(fac_c)
+write_csv(sens_c$top, file.path(out_dir, "sens_complete_decision.csv"))
+knitr::kable(sens_c$top |> select(species, factor, total_r2, views_over_5pct, auc_summer_winter, icc_colony, passes, colony_dominated), digits = 3)
+```
+
+Verdict, all six views: `r sens_c$verdict`.
+
+### Initialisation seeds (not pre-registered)
+
+```{r sens-seeds}
+seed_runs <- lapply(seeds_extra, function(s) { f <- run_set("primary", seed = s); list(fac = f |> mutate(seed = s), dec = decide(f)) })
+seed_tab <- bind_rows(lapply(seed_runs, function(r) r$dec$top |> mutate(seed = r$fac$seed[1], verdict = r$dec$verdict))) |>
+  select(seed, species, total_r2, views_over_5pct, auc_summer_winter, icc_colony, passes, colony_dominated, verdict)
+write_csv(seed_tab, file.path(out_dir, "sens_seeds_decision.csv"))
+knitr::kable(seed_tab, digits = 3)
+```
+
+```{r summary}
+verdicts <- tibble(analysis = c("primary (missing views allowed)", "all six views",
+                                paste("seed", seeds_extra, "(not pre-registered)")),
+                   verdict = c(primary$verdict, sens_c$verdict, vapply(seed_runs, function(r) r$dec$verdict, "")))
+write_csv(verdicts, file.path(out_dir, "verdicts.csv"))
+knitr::kable(verdicts)
+```
+
+## Caveats
+
+- About 10 colonies per species; AUC compares about 20 summer with 20 winter
+  samples (fewer with all six views), and ICC rests on 10 colony levels.
+- Apul and Ptuh have no TP2 metabolomics or lipidomics, so their summer
+  samples are thinner in those views.
+- Variance explained is not comparable across views of very different size
+  and noise (about 50 miRNAs against 5000 genes); MOFA2 does not scale views
+  by default.
+- Peve miRNA depth falls with timepoint (D-011), so a miRNA seasonal loading
+  in Peve may be technical.
+- CpG matrices differ in construction across species (D-008, D-015).
+- Species is confounded with reference quality (Peve N50 0.17 Mb; Ptuh mapped
+  to *P. meandrina*).
