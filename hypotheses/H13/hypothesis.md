@@ -2,7 +2,7 @@
 id: H13
 slug: multiomics-latent-factors
 title: A single latent factor spanning all omics layers separates summer from winter samples
-status: planned
+status: not supported
 tier: 4
 layers: [genes, mirna, lncrna, cpg, metabolomics, lipidomics]
 species: [Apul, Peve, Ptuh]
