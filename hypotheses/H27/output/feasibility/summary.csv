@@ -1,0 +1,5 @@
+rule,species,eligible_profiles,colonies_in_eligible,all_four_in_eligible,colonies_total,colonies_qualifying
+stable,Peve,1,16,14,45,27
+stable,Ptuh,1,10,4,45,19
+tp1,Peve,2,25,21,45,38
+tp1,Ptuh,3,28,21,45,36

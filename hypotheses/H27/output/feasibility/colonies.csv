@@ -1,0 +1,181 @@
+species,colony,site,paired_tp,all_four,profiles_seen,min_share,tp1_profile,tp1_share,profile,haplotype,qualifies,rule
+Peve,POR-209,Mahana,4,TRUE,1,1,C15-C15l-C15n-C15bb-C15.8,1,C15-C15l-C15n-C15bb-C15.8,Porites lobata lutea,TRUE,stable
+Peve,POR-214,Mahana,4,TRUE,1,1,C15-C15l-C15bm-C15n,1,C15-C15l-C15bm-C15n,Porites lobata lutea,TRUE,stable
+Peve,POR-216,Mahana,4,TRUE,1,1,C15/C15ev,1,C15/C15ev,Porites evermanni,TRUE,stable
+Peve,POR-221,Mahana,4,TRUE,1,1,C15-C15l-C15n-C15bb-C15.8,1,C15-C15l-C15n-C15bb-C15.8,Porites lobata lutea,TRUE,stable
+Peve,POR-224,Mahana,4,TRUE,1,0.9783363802559416,C15-C15l-C15n-C15bb-C15.8,1,C15-C15l-C15n-C15bb-C15.8,Porites lobata lutea,TRUE,stable
+Peve,POR-235,Mahana,2,FALSE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,FALSE,stable
+Peve,POR-236,Mahana,2,FALSE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,FALSE,stable
+Peve,POR-240,Mahana,4,TRUE,2,1,C15-C15l-C15n-C15bb-C15.8,1,NA,Porites lobata lutea,FALSE,stable
+Peve,POR-242,Mahana,4,TRUE,2,0.7508632723532437,C15/C116,1,NA,Porites lobata lutea,FALSE,stable
+Peve,POR-245,Mahana,4,TRUE,1,0.9396177237185056,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-251,Mahana,2,FALSE,2,0.7404983639567078,C15-C15l-C15n,0.7404983639567078,NA,Porites lobata lutea,FALSE,stable
+Peve,POR-253,Mahana,4,TRUE,1,1,C15-C15l-C15bm-C15n,1,C15-C15l-C15bm-C15n,Porites lobata lutea,TRUE,stable
+Peve,POR-260,Mahana,4,TRUE,1,1,C15-C15bn-C15dq,1,C15-C15bn-C15dq,Porites evermanni,TRUE,stable
+Peve,POR-262,Mahana,3,FALSE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-266,Mahana,2,FALSE,1,1,C15-C15l-C15bm-C15n,1,C15-C15l-C15bm-C15n,Porites lobata lutea,FALSE,stable
+Peve,POR-338,Hilton,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-340,Hilton,4,TRUE,2,1,C15-C15kl-C15he-C15vz,1,NA,Porites evermanni,FALSE,stable
+Peve,POR-341,Hilton,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-349,Hilton,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-353,Hilton,3,FALSE,2,1,C15-C15l-C15bm-C15n,1,NA,Porites lobata lutea,FALSE,stable
+Peve,POR-354,Hilton,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-355,Hilton,3,FALSE,2,0.9695951107715813,C15-C15kl-C15he-C15vz,1,NA,Porites evermanni,FALSE,stable
+Peve,POR-357,Hilton,4,TRUE,4,0.7127373417721519,C15-C15l-C15n-C15bb-C15.8,1,NA,Porites evermanni,FALSE,stable
+Peve,POR-362,Hilton,3,FALSE,2,1,C15-C15kl-C15he-C15vz,1,NA,Porites evermanni,FALSE,stable
+Peve,POR-365,Hilton,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-367,Hilton,4,TRUE,3,0.9857734366705596,C15/C15ev,0.9857734366705596,NA,Porites evermanni,FALSE,stable
+Peve,POR-381,Hilton,4,TRUE,1,1,C15-C15l-C15n-C15bb-C15.8,1,C15-C15l-C15n-C15bb-C15.8,Porites lobata lutea,TRUE,stable
+Peve,POR-383,Hilton,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-384,Hilton,4,TRUE,1,1,C15-C15l-C15bm-C15n,1,C15-C15l-C15bm-C15n,Porites lobata lutea,TRUE,stable
+Peve,POR-385,Hilton,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-69,Manava,4,TRUE,3,1,C15-C15kl-C15pm,1,NA,Porites evermanni,FALSE,stable
+Peve,POR-70,Manava,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-71,Manava,4,TRUE,1,0.98934481976876,C15-C15kl-C15he-C15vz,0.98934481976876,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-72,Manava,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-73,Manava,3,FALSE,2,1,NA,NA,NA,Porites evermanni,FALSE,stable
+Peve,POR-74,Manava,4,TRUE,1,1,C15-C15wa-C15kl-C15he-C15vz,1,C15-C15wa-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-75,Manava,4,TRUE,1,1,C15-C15wa-C15kl-C15he-C15vz,1,C15-C15wa-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-76,Manava,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-77,Manava,2,FALSE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,FALSE,stable
+Peve,POR-78,Manava,2,FALSE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,FALSE,stable
+Peve,POR-79,Manava,4,TRUE,2,1,C15-C15kl,1,NA,Porites evermanni,FALSE,stable
+Peve,POR-80,Manava,3,FALSE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-81,Manava,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-82,Manava,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,stable
+Peve,POR-83,Manava,4,TRUE,2,1,C15-C15he,1,NA,Porites evermanni,FALSE,stable
+Ptuh,POC-200,Mahana,4,TRUE,1,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,TRUE,stable
+Ptuh,POC-201,Mahana,2,FALSE,1,0.9858959537572254,NA,NA,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-205,Mahana,3,FALSE,1,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,TRUE,stable
+Ptuh,POC-207,Mahana,3,FALSE,1,1,NA,NA,C1/C42.2/C42g/C42a-C1b-C1au-C1az-C3-C42h,Pocillopora meandrina,TRUE,stable
+Ptuh,POC-215,Mahana,1,FALSE,1,0.9429613077737269,NA,NA,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,FALSE,stable
+Ptuh,POC-217,Mahana,1,FALSE,1,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,FALSE,stable
+Ptuh,POC-219,Mahana,4,TRUE,1,0.9658087307595256,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,0.9708302169035153,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora tuahiniensis,TRUE,stable
+Ptuh,POC-222,Mahana,4,TRUE,2,0.9286781977364937,C1d-C42.2-C1-C1k-C1b-C3cg,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-238,Mahana,4,TRUE,1,0.9785944073249196,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,TRUE,stable
+Ptuh,POC-239,Mahana,3,FALSE,1,0.9772407979769598,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,0.9800370446593949,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,TRUE,stable
+Ptuh,POC-248,Mahana,4,TRUE,1,1,C1/C42.2/C42g/C42a-C1b-C1au-C1az-C3-C42h,1,C1/C42.2/C42g/C42a-C1b-C1au-C1az-C3-C42h,Pocillopora meandrina,TRUE,stable
+Ptuh,POC-254,Mahana,2,FALSE,1,1,NA,NA,C1/C42.2/C42g/C42a-C1b-C1au-C1az-C3-C42h,Pocillopora meandrina,FALSE,stable
+Ptuh,POC-255,Mahana,4,TRUE,2,0.9452000397101161,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-257,Mahana,3,FALSE,2,1,NA,NA,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-259,Mahana,4,TRUE,2,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-346,Hilton,3,FALSE,2,1,C1d/C42g-C42.2-C1-C42a-C1b,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-358,Hilton,3,FALSE,1,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora tuahiniensis,TRUE,stable
+Ptuh,POC-359,Hilton,4,TRUE,2,1,C1/C42.2/C42g/C42a-C1b-C1au-C1az-C3-C42h,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-366,Hilton,3,FALSE,1,1,NA,NA,C42a/C42.2/C1/C42b-C1b-C1az-C1au-C3,Pocillopora meandrina,TRUE,stable
+Ptuh,POC-369,Hilton,4,TRUE,1,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,Pocillopora tuahiniensis,TRUE,stable
+Ptuh,POC-371,Hilton,4,TRUE,1,0.9572140381282496,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,1,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,Pocillopora tuahiniensis,TRUE,stable
+Ptuh,POC-372,Hilton,4,TRUE,2,0.9613165379926858,C1d-C42.2-C1-C1k-C1b-C3cg,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-373,Hilton,4,TRUE,2,1,C1d-C42.2-C1-C1k-C1b-C3cg,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-375,Hilton,4,TRUE,2,1,C1d-C42.2-C1-C1k-C1b-C3cg,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-377,Hilton,4,TRUE,2,0.9303918266531941,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,0.9303918266531941,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-378,Hilton,4,TRUE,2,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-386,Hilton,4,TRUE,2,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,NA,Pocillopora meandrina,FALSE,stable
+Ptuh,POC-391,Hilton,4,TRUE,2,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-394,Hilton,3,FALSE,1,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora tuahiniensis,TRUE,stable
+Ptuh,POC-395,Hilton,3,FALSE,1,0.9653081845739306,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,0.9653081845739306,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,TRUE,stable
+Ptuh,POC-40,Manava,4,TRUE,2,0.9737161342498989,C1d-C42.2-C1-C1k-C1b-C3cg,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-41,Manava,1,FALSE,1,1,NA,NA,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,FALSE,stable
+Ptuh,POC-42,Manava,4,TRUE,2,1,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-43,Manava,4,TRUE,1,1,C1d-C42.2-C1-C1k-C1b-C3cg,1,C1d-C42.2-C1-C1k-C1b-C3cg,Pocillopora tuahiniensis,TRUE,stable
+Ptuh,POC-44,Manava,4,TRUE,1,1,C1d-C42.2-C1-C1k-C1b-C3cg,1,C1d-C42.2-C1-C1k-C1b-C3cg,Pocillopora tuahiniensis,TRUE,stable
+Ptuh,POC-45,Manava,4,TRUE,1,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,TRUE,stable
+Ptuh,POC-47,Manava,4,TRUE,3,0.8646945562751619,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-48,Manava,3,FALSE,1,0.981358189081225,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,1,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,Pocillopora tuahiniensis,TRUE,stable
+Ptuh,POC-50,Manava,3,FALSE,1,0.5991048593350383,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-52,Manava,4,TRUE,1,1,C1d-C42.2-C1-C1k-C1b-C3cg,1,C1d-C42.2-C1-C1k-C1b-C3cg,Pocillopora tuahiniensis,TRUE,stable
+Ptuh,POC-53,Manava,3,FALSE,1,0.9691432511635925,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora tuahiniensis,TRUE,stable
+Ptuh,POC-55,Manava,4,TRUE,2,1,C1/C42.2/C42g/C42a-C1b-C1au-C1az-C3-C42h,1,NA,Pocillopora meandrina,FALSE,stable
+Ptuh,POC-56,Manava,2,FALSE,2,1,C1d-C42.2-C1-C1k-C1b-C3cg,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-57,Manava,4,TRUE,2,0.7052726453357369,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,POC-68,Manava,4,TRUE,2,1,C1d-C42.2-C1-C1k-C1b-C3cg,1,NA,Pocillopora tuahiniensis,FALSE,stable
+Peve,POR-209,Mahana,4,TRUE,1,1,C15-C15l-C15n-C15bb-C15.8,1,C15-C15l-C15n-C15bb-C15.8,Porites lobata lutea,TRUE,tp1
+Peve,POR-214,Mahana,4,TRUE,1,1,C15-C15l-C15bm-C15n,1,C15-C15l-C15bm-C15n,Porites lobata lutea,TRUE,tp1
+Peve,POR-216,Mahana,4,TRUE,1,1,C15/C15ev,1,C15/C15ev,Porites evermanni,TRUE,tp1
+Peve,POR-221,Mahana,4,TRUE,1,1,C15-C15l-C15n-C15bb-C15.8,1,C15-C15l-C15n-C15bb-C15.8,Porites lobata lutea,TRUE,tp1
+Peve,POR-224,Mahana,4,TRUE,1,0.9783363802559416,C15-C15l-C15n-C15bb-C15.8,1,C15-C15l-C15n-C15bb-C15.8,Porites lobata lutea,TRUE,tp1
+Peve,POR-235,Mahana,2,FALSE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,FALSE,tp1
+Peve,POR-236,Mahana,2,FALSE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,FALSE,tp1
+Peve,POR-240,Mahana,4,TRUE,2,1,C15-C15l-C15n-C15bb-C15.8,1,C15-C15l-C15n-C15bb-C15.8,Porites lobata lutea,TRUE,tp1
+Peve,POR-242,Mahana,4,TRUE,2,0.7508632723532437,C15/C116,1,C15/C116,Porites lobata lutea,TRUE,tp1
+Peve,POR-245,Mahana,4,TRUE,1,0.9396177237185056,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-251,Mahana,2,FALSE,2,0.7404983639567078,C15-C15l-C15n,0.7404983639567078,C15-C15l-C15n,Porites lobata lutea,FALSE,tp1
+Peve,POR-253,Mahana,4,TRUE,1,1,C15-C15l-C15bm-C15n,1,C15-C15l-C15bm-C15n,Porites lobata lutea,TRUE,tp1
+Peve,POR-260,Mahana,4,TRUE,1,1,C15-C15bn-C15dq,1,C15-C15bn-C15dq,Porites evermanni,TRUE,tp1
+Peve,POR-262,Mahana,3,FALSE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-266,Mahana,2,FALSE,1,1,C15-C15l-C15bm-C15n,1,C15-C15l-C15bm-C15n,Porites lobata lutea,FALSE,tp1
+Peve,POR-338,Hilton,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-340,Hilton,4,TRUE,2,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-341,Hilton,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-349,Hilton,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-353,Hilton,3,FALSE,2,1,C15-C15l-C15bm-C15n,1,C15-C15l-C15bm-C15n,Porites lobata lutea,TRUE,tp1
+Peve,POR-354,Hilton,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-355,Hilton,3,FALSE,2,0.9695951107715813,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-357,Hilton,4,TRUE,4,0.7127373417721519,C15-C15l-C15n-C15bb-C15.8,1,C15-C15l-C15n-C15bb-C15.8,Porites evermanni,TRUE,tp1
+Peve,POR-362,Hilton,3,FALSE,2,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-365,Hilton,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-367,Hilton,4,TRUE,3,0.9857734366705596,C15/C15ev,0.9857734366705596,C15/C15ev,Porites evermanni,TRUE,tp1
+Peve,POR-381,Hilton,4,TRUE,1,1,C15-C15l-C15n-C15bb-C15.8,1,C15-C15l-C15n-C15bb-C15.8,Porites lobata lutea,TRUE,tp1
+Peve,POR-383,Hilton,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-384,Hilton,4,TRUE,1,1,C15-C15l-C15bm-C15n,1,C15-C15l-C15bm-C15n,Porites lobata lutea,TRUE,tp1
+Peve,POR-385,Hilton,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-69,Manava,4,TRUE,3,1,C15-C15kl-C15pm,1,C15-C15kl-C15pm,Porites evermanni,TRUE,tp1
+Peve,POR-70,Manava,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-71,Manava,4,TRUE,1,0.98934481976876,C15-C15kl-C15he-C15vz,0.98934481976876,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-72,Manava,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-73,Manava,3,FALSE,2,1,NA,NA,NA,Porites evermanni,FALSE,tp1
+Peve,POR-74,Manava,4,TRUE,1,1,C15-C15wa-C15kl-C15he-C15vz,1,C15-C15wa-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-75,Manava,4,TRUE,1,1,C15-C15wa-C15kl-C15he-C15vz,1,C15-C15wa-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-76,Manava,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-77,Manava,2,FALSE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,FALSE,tp1
+Peve,POR-78,Manava,2,FALSE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,FALSE,tp1
+Peve,POR-79,Manava,4,TRUE,2,1,C15-C15kl,1,C15-C15kl,Porites evermanni,TRUE,tp1
+Peve,POR-80,Manava,3,FALSE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-81,Manava,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-82,Manava,4,TRUE,1,1,C15-C15kl-C15he-C15vz,1,C15-C15kl-C15he-C15vz,Porites evermanni,TRUE,tp1
+Peve,POR-83,Manava,4,TRUE,2,1,C15-C15he,1,C15-C15he,Porites evermanni,TRUE,tp1
+Ptuh,POC-200,Mahana,4,TRUE,1,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,TRUE,tp1
+Ptuh,POC-201,Mahana,2,FALSE,1,0.9858959537572254,NA,NA,NA,Pocillopora tuahiniensis,FALSE,tp1
+Ptuh,POC-205,Mahana,3,FALSE,1,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,TRUE,tp1
+Ptuh,POC-207,Mahana,3,FALSE,1,1,NA,NA,NA,Pocillopora meandrina,FALSE,tp1
+Ptuh,POC-215,Mahana,1,FALSE,1,0.9429613077737269,NA,NA,NA,Pocillopora meandrina,FALSE,tp1
+Ptuh,POC-217,Mahana,1,FALSE,1,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,FALSE,tp1
+Ptuh,POC-219,Mahana,4,TRUE,1,0.9658087307595256,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,0.9708302169035153,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-222,Mahana,4,TRUE,2,0.9286781977364937,C1d-C42.2-C1-C1k-C1b-C3cg,1,C1d-C42.2-C1-C1k-C1b-C3cg,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-238,Mahana,4,TRUE,1,0.9785944073249196,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,TRUE,tp1
+Ptuh,POC-239,Mahana,3,FALSE,1,0.9772407979769598,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,0.9800370446593949,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,TRUE,tp1
+Ptuh,POC-248,Mahana,4,TRUE,1,1,C1/C42.2/C42g/C42a-C1b-C1au-C1az-C3-C42h,1,C1/C42.2/C42g/C42a-C1b-C1au-C1az-C3-C42h,Pocillopora meandrina,TRUE,tp1
+Ptuh,POC-254,Mahana,2,FALSE,1,1,NA,NA,NA,Pocillopora meandrina,FALSE,tp1
+Ptuh,POC-255,Mahana,4,TRUE,2,0.9452000397101161,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-257,Mahana,3,FALSE,2,1,NA,NA,NA,Pocillopora tuahiniensis,FALSE,tp1
+Ptuh,POC-259,Mahana,4,TRUE,2,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-346,Hilton,3,FALSE,2,1,C1d/C42g-C42.2-C1-C42a-C1b,1,C1d/C42g-C42.2-C1-C42a-C1b,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-358,Hilton,3,FALSE,1,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-359,Hilton,4,TRUE,2,1,C1/C42.2/C42g/C42a-C1b-C1au-C1az-C3-C42h,1,C1/C42.2/C42g/C42a-C1b-C1au-C1az-C3-C42h,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-366,Hilton,3,FALSE,1,1,NA,NA,NA,Pocillopora meandrina,FALSE,tp1
+Ptuh,POC-369,Hilton,4,TRUE,1,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-371,Hilton,4,TRUE,1,0.9572140381282496,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,1,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-372,Hilton,4,TRUE,2,0.9613165379926858,C1d-C42.2-C1-C1k-C1b-C3cg,1,C1d-C42.2-C1-C1k-C1b-C3cg,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-373,Hilton,4,TRUE,2,1,C1d-C42.2-C1-C1k-C1b-C3cg,1,C1d-C42.2-C1-C1k-C1b-C3cg,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-375,Hilton,4,TRUE,2,1,C1d-C42.2-C1-C1k-C1b-C3cg,1,C1d-C42.2-C1-C1k-C1b-C3cg,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-377,Hilton,4,TRUE,2,0.9303918266531941,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,0.9303918266531941,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-378,Hilton,4,TRUE,2,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-386,Hilton,4,TRUE,2,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,TRUE,tp1
+Ptuh,POC-391,Hilton,4,TRUE,2,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-394,Hilton,3,FALSE,1,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-395,Hilton,3,FALSE,1,0.9653081845739306,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,0.9653081845739306,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,TRUE,tp1
+Ptuh,POC-40,Manava,4,TRUE,2,0.9737161342498989,C1d-C42.2-C1-C1k-C1b-C3cg,1,C1d-C42.2-C1-C1k-C1b-C3cg,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-41,Manava,1,FALSE,1,1,NA,NA,NA,Pocillopora meandrina,FALSE,tp1
+Ptuh,POC-42,Manava,4,TRUE,2,1,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,1,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-43,Manava,4,TRUE,1,1,C1d-C42.2-C1-C1k-C1b-C3cg,1,C1d-C42.2-C1-C1k-C1b-C3cg,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-44,Manava,4,TRUE,1,1,C1d-C42.2-C1-C1k-C1b-C3cg,1,C1d-C42.2-C1-C1k-C1b-C3cg,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-45,Manava,4,TRUE,1,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora meandrina,TRUE,tp1
+Ptuh,POC-47,Manava,4,TRUE,3,0.8646945562751619,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,1,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-48,Manava,3,FALSE,1,0.981358189081225,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,1,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-50,Manava,3,FALSE,1,0.5991048593350383,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-52,Manava,4,TRUE,1,1,C1d-C42.2-C1-C1k-C1b-C3cg,1,C1d-C42.2-C1-C1k-C1b-C3cg,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-53,Manava,3,FALSE,1,0.9691432511635925,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,1,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-55,Manava,4,TRUE,2,1,C1/C42.2/C42g/C42a-C1b-C1au-C1az-C3-C42h,1,C1/C42.2/C42g/C42a-C1b-C1au-C1az-C3-C42h,Pocillopora meandrina,TRUE,tp1
+Ptuh,POC-56,Manava,2,FALSE,2,1,C1d-C42.2-C1-C1k-C1b-C3cg,1,C1d-C42.2-C1-C1k-C1b-C3cg,Pocillopora tuahiniensis,FALSE,tp1
+Ptuh,POC-57,Manava,4,TRUE,2,0.7052726453357369,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,1,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,POC-68,Manava,4,TRUE,2,1,C1d-C42.2-C1-C1k-C1b-C3cg,1,C1d-C42.2-C1-C1k-C1b-C3cg,Pocillopora tuahiniensis,TRUE,tp1

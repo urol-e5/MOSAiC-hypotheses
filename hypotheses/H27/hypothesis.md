@@ -2,7 +2,7 @@
 id: H27
 slug: its2-profile-density-trajectories
 title: Colonies with different stable ITS2 profiles follow different seasonal symbiont-density trajectories
-status: proposed
+status: withdrawn
 tier: 3
 layers: [its2, physiology]
 species: [Peve, Ptuh]
@@ -70,3 +70,38 @@ needs the effect threshold and power simulation below.
 - Fix bootstrap replicate counts.
 
 ## Amendments
+
+### Withdrawal (2026-10-10), before the pre-registration was completed and before any cell-density data were analysed
+
+**Status: withdrawn.** Under the proposal's own eligibility rule each species
+has one eligible ITS2 profile, and two are required, so both species would be
+`inconclusive` by construction. The profiles that are available also track
+host lineage. Evidence from `feasibility_check.R` (ITS2 profile abundances,
+site, host haplotype and whether `cells.cm2` is present; no cell-density
+value read; outputs in `output/feasibility/`):
+
+- Stable colonies (same dominant profile at every timepoint with ITS2 and
+  `cells.cm2`, >= 3 such timepoints, dominant share >= 0.8 at each): Peve 27
+  of 45, Ptuh 19 of 45. Most colonies are stable in identity (median
+  dominant share 1.0); instability comes from colonies whose dominant profile
+  changes (Peve 13, Ptuh 20 colonies with two or more dominant profiles).
+- Eligible profiles (>= 5 stable colonies at >= 2 sites): Peve 1
+  (`C15-C15kl-C15he-C15vz`, 16 colonies), Ptuh 1
+  (`C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br`, 10 colonies). Every other
+  stable profile has 1 to 4 colonies.
+- The pre-registered TP1-assignment check would give Peve 2 eligible
+  profiles (19 and 6 colonies) and Ptuh 3 (9, 6, 13), but it was a
+  sensitivity check, not the test, and it answers a different question
+  (starting profile rather than stable identity).
+- Profiles track host lineage. The 45 ITS2 colonies per species include
+  other host species by haplotype: Peve colonies with *Porites lobata/lutea*
+  and Ptuh colonies with *Pocillopora meandrina*. Peve's `C15-C15l-...`
+  profiles occur mostly in *P. lobata/lutea* colonies; Ptuh's `C1d-...`
+  profiles only in *P. tuahiniensis*. A profile-by-timepoint effect would be
+  largely a host-lineage effect.
+
+A successor would need profiles assigned at TP1 (or another rule fixed
+without reference to later stability), host lineage as a stratum or
+covariate (comparing profiles within one host lineage where possible), and
+its own effect threshold and power simulation. That belongs in a new
+hypothesis.

@@ -91,7 +91,7 @@ manifest entries.
 | H24 | 2 | Orthologs keep similar gene-body methylation ranks across species | desktop |
 | H25 | 2 | Beyond 2 kb, lncRNA–gene and gene–gene co-expression are equivalent | desktop |
 | H26 | 2 | Distal lncRNA–mRNA edges predict expression in held-out colonies | raven |
-| H27 | 3 | Stable ITS2 profiles differ in seasonal symbiont-density trajectories (proposed) | desktop |
+| H27 | 3 | Stable ITS2 profiles differ in seasonal symbiont-density trajectories (withdrawn) | desktop |
 
 Compute: **desktop** runs on a laptop (16 GB, 8 cores) in under an hour.
 **raven** needs more memory or hours of per-feature model fits: H04 fits a
@@ -110,7 +110,8 @@ build on supported findings, with predictions, test designs, and evidence
 criteria. Each sits on the board with `status: proposed` until its
 `hypothesis.md` is complete enough to move to `planned`. H23 and H24 have
 been pre-registered and run (both `inconclusive`), as has H25 (`inconclusive`);
-H26 has been run (`not supported`); H27 is not a result.
+H26 has been run (`not supported`); H27 was withdrawn before
+pre-registration (too few eligible ITS2 profiles).
 
 ## Layout
 

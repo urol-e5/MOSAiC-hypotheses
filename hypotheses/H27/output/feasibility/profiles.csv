@@ -1,0 +1,29 @@
+species,profile,colonies,sites,site_list,all_four_colonies,haplotypes,eligible,rule
+Peve,C15-C15bn-C15dq,1,1,Mahana,1,Porites evermanni,FALSE,stable
+Peve,C15-C15kl-C15he-C15vz,16,3,"Hilton,Mahana,Manava",14,Porites evermanni,TRUE,stable
+Peve,C15-C15l-C15bm-C15n,3,2,"Hilton,Mahana",3,Porites lobata lutea,FALSE,stable
+Peve,C15-C15l-C15n-C15bb-C15.8,4,2,"Hilton,Mahana",4,Porites lobata lutea,FALSE,stable
+Peve,C15-C15wa-C15kl-C15he-C15vz,2,1,Manava,2,Porites evermanni,FALSE,stable
+Peve,C15/C15ev,1,1,Mahana,1,Porites evermanni,FALSE,stable
+Ptuh,C1/C42.2/C42g/C42a-C1b-C1au-C1az-C3-C42h,2,1,Mahana,1,Pocillopora meandrina,FALSE,stable
+Ptuh,C1d-C42.2-C1-C1k-C1b-C3cg,3,1,Manava,3,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,2,2,"Hilton,Manava",1,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,1,1,Hilton,1,Pocillopora tuahiniensis,FALSE,stable
+Ptuh,C42a/C42.2/C1/C42b-C1b-C1az-C1au-C3,1,1,Hilton,0,Pocillopora meandrina,FALSE,stable
+Ptuh,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,10,3,"Hilton,Mahana,Manava",4,Pocillopora meandrina;Pocillopora tuahiniensis,TRUE,stable
+Peve,C15-C15bn-C15dq,1,1,Mahana,1,Porites evermanni,FALSE,tp1
+Peve,C15-C15he,1,1,Manava,1,Porites evermanni,FALSE,tp1
+Peve,C15-C15kl,1,1,Manava,1,Porites evermanni,FALSE,tp1
+Peve,C15-C15kl-C15he-C15vz,19,3,"Hilton,Mahana,Manava",15,Porites evermanni,TRUE,tp1
+Peve,C15-C15kl-C15pm,1,1,Manava,1,Porites evermanni,FALSE,tp1
+Peve,C15-C15l-C15bm-C15n,4,2,"Hilton,Mahana",3,Porites lobata lutea,FALSE,tp1
+Peve,C15-C15l-C15n-C15bb-C15.8,6,2,"Hilton,Mahana",6,Porites evermanni;Porites lobata lutea,TRUE,tp1
+Peve,C15-C15wa-C15kl-C15he-C15vz,2,1,Manava,2,Porites evermanni,FALSE,tp1
+Peve,C15/C116,1,1,Mahana,1,Porites lobata lutea,FALSE,tp1
+Peve,C15/C15ev,2,2,"Hilton,Mahana",2,Porites evermanni,FALSE,tp1
+Ptuh,C1/C42.2/C42g/C42a-C1b-C1au-C1az-C3-C42h,3,3,"Hilton,Mahana,Manava",3,Pocillopora meandrina;Pocillopora tuahiniensis,FALSE,tp1
+Ptuh,C1d-C42.2-C1-C1k-C1b-C3cg,9,3,"Hilton,Mahana,Manava",9,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,C1d/C1/C42.2/C3-C1b-C3cg-C45c-C115k-C1au-C41p,4,2,"Hilton,Manava",3,Pocillopora tuahiniensis,FALSE,tp1
+Ptuh,C1d/C42.2/C1/C3cg-C1b-C3cw-C115k-C45c,6,3,"Hilton,Mahana,Manava",6,Pocillopora tuahiniensis,TRUE,tp1
+Ptuh,C1d/C42g-C42.2-C1-C42a-C1b,1,1,Hilton,0,Pocillopora tuahiniensis,FALSE,tp1
+Ptuh,C42g/C1/C42.2/C42a-C42h-C1b-C42b-C1ew-C42br,13,3,"Hilton,Mahana,Manava",6,Pocillopora meandrina;Pocillopora tuahiniensis,TRUE,tp1

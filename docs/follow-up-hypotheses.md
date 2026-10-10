@@ -179,6 +179,10 @@ next validation step.
 
 ## H27. Stable symbiont profiles predict different seasonal symbiont-density trajectories
 
+*Withdrawn 2026-10-10 in [hypotheses/H27](../hypotheses/H27/hypothesis.md):
+the stability rule leaves one eligible ITS2 profile per species, and
+profiles track host lineage.*
+
 **Basis:** [H10](../hypotheses/H10/RESULT.md) supported colony-associated
 ITS2 composition in all species. Its secondary genus comparison tested
 average physiology, not profile-specific seasonal trajectories.
