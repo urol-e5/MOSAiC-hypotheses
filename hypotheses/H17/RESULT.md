@@ -85,7 +85,7 @@ partners are measured in the same samples, the per-sample library effects
 flagged in H08 are in both the observed and null medians and cancel in dr.
 Correlation is not function: functional validation still needs perturbation.
 
-**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-lncrna-cis-coexpression/> (lncRNA co-expression, with H08 and H17).
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-lncrna-cis-coexpression/> (lncRNA co-expression synthesis, v0.3, with H08, H17, H25, H26).
 
 **Outputs:** in `output/`
 - `n_per_species.csv`: samples, colonies, residual df, features

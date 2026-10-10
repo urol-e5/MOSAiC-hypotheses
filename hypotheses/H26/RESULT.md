@@ -80,12 +80,7 @@ on incomplete gene models. This is follow-up on the same data as H08 and
 H17, not an independent replication. Species is confounded with reference
 quality (Peve N50 0.17 Mb; Ptuh mapped to *P. meandrina*).
 
-**Current Findings:** qualifies under CLAUDE.md §6 (b) and (c): the result
-bounds the effect (held-out improvement upper bounds −0.18 and −0.14 in Peve
-and Ptuh, against +0.07 to +0.73 for the gene benchmark) and answers the same
-question as the lncRNA co-expression synthesis
-(<https://robertslab.github.io/current-findings/reports/coral-lncrna-cis-coexpression/>,
-H08, H17; H25 pending). Adding H26 to that report is pending.
+**Current Findings:** <https://robertslab.github.io/current-findings/reports/coral-lncrna-cis-coexpression/> (lncRNA co-expression synthesis, v0.3, with H08, H17, H25). Included under CLAUDE.md §6(b) and (c): it bounds held-out improvement (upper bounds −0.18 and −0.14 in Peve and Ptuh) and answers the same question as H08 and H17.
 
 **Outputs:** in `output/`
 - `n_per_species.csv`: samples, features and isolated lncRNAs actually used
