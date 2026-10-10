@@ -318,6 +318,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#d-014-2026-10-07-lncrna-features-have-no-strand" id="toc-d-014-2026-10-07-lncrna-features-have-no-strand" class="nav-link" data-scroll-target="#d-014-2026-10-07-lncrna-features-have-no-strand">D-014 (2026-10-07) lncRNA features have no strand</a></li>
   <li><a href="#d-015-2026-10-08-cpg-matrices-carry-no-coverage" id="toc-d-015-2026-10-08-cpg-matrices-carry-no-coverage" class="nav-link" data-scroll-target="#d-015-2026-10-08-cpg-matrices-carry-no-coverage">D-015 (2026-10-08) CpG matrices carry no coverage</a></li>
   <li><a href="#d-016-2026-10-08-proposed-status-for-incomplete-pre-registrations" id="toc-d-016-2026-10-08-proposed-status-for-incomplete-pre-registrations" class="nav-link" data-scroll-target="#d-016-2026-10-08-proposed-status-for-incomplete-pre-registrations">D-016 (2026-10-08) <code>proposed</code> status for incomplete pre-registrations</a></li>
+  <li><a href="#d-017-2026-10-09-peve-reads-are-dominated-by-one-scaffold_167-locus" id="toc-d-017-2026-10-09-peve-reads-are-dominated-by-one-scaffold_167-locus" class="nav-link" data-scroll-target="#d-017-2026-10-09-peve-reads-are-dominated-by-one-scaffold_167-locus">D-017 (2026-10-09) Peve reads are dominated by one scaffold_167 locus</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -418,6 +419,11 @@ ul.task-list li input[type="checkbox"] {
 <section id="d-016-2026-10-08-proposed-status-for-incomplete-pre-registrations" class="level2">
 <h2 class="anchored" data-anchor-id="d-016-2026-10-08-proposed-status-for-incomplete-pre-registrations">D-016 (2026-10-08) <code>proposed</code> status for incomplete pre-registrations</h2>
 <p>H23–H27 are listed on the status board before their pre-registrations are complete (open items include matching bins, bootstrap counts, and, for H27, an effect threshold and power simulation). <code>planned</code> means the decision rule is frozen, so these use a new status, <code>proposed</code>, which comes before <code>planned</code>. A <code>proposed</code> hypothesis has no <code>analysis.qmd</code> and no target in <code>_targets.R</code>. Moving it to <code>planned</code> is a commit that resolves its “Before moving to planned” list; from then on CLAUDE.md section 2 applies unchanged.</p>
+</section>
+<section id="d-017-2026-10-09-peve-reads-are-dominated-by-one-scaffold_167-locus" class="level2">
+<h2 class="anchored" data-anchor-id="d-017-2026-10-09-peve-reads-are-dominated-by-one-scaffold_167-locus">D-017 (2026-10-09) Peve reads are dominated by one scaffold_167 locus</h2>
+<p>In Peve, a median 69% of raw gene + lncRNA reads per library fall on one locus, <code>Porites_evermani_scaffold_167</code> about 401.5–408.4 kb: five nested lncRNAs (<code>lncRNA_4889</code>–<code>lncRNA_4893</code>, the three largest each 15.8% of all reads, i.e.&nbsp;the same reads counted more than once) and four short adjacent genes (<code>Peve_00009616</code>–<code>Peve_00009619</code>, 200–300 bp, no ortholog or SwissProt annotation). The share rises across the year (median TP1 0.57, TP2 0.72, TP3 0.70, TP4 0.78). The top-10-feature read fraction is 0.70 in Peve against 0.07–0.08 in Apul and Ptuh; with the locus removed it is 0.13. This looks like a highly expressed repetitive or rRNA-like element annotated as both genes and lncRNAs. Found while completing H26’s pre-registration (<code>hypotheses/H26/feasibility_check.R</code>; per-library totals only).</p>
+<p>H26 excludes these nine features in Peve and computes library-composition covariates without them. Earlier Peve analyses used the matrices as delivered; DESeq2’s median-of-ratios size factors are robust to a few dominant features, but a time-varying share of this size could still leak into Peve timepoint effects through normalization. Not yet raised upstream (urol-e5/timeseries_molecular); decided 2026-10-09 to record it here first.</p>
 
 
 </section>
