@@ -1,0 +1,4 @@
+species,samples,colonies,genes,lncrna,isolated_lncrna,isolated_genes,composition_outliers,locus_dropped,outliers_dropped
+Apul,40,10,21108,15559,656,742,2,FALSE,FALSE
+Peve,38,10,20837,8314,297,878,1,TRUE,FALSE
+Ptuh,39,10,20796,11236,1317,732,2,FALSE,FALSE

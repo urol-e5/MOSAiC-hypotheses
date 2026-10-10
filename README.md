@@ -110,7 +110,7 @@ build on supported findings, with predictions, test designs, and evidence
 criteria. Each sits on the board with `status: proposed` until its
 `hypothesis.md` is complete enough to move to `planned`. H23 and H24 have
 been pre-registered and run (both `inconclusive`), as has H25 (`inconclusive`);
-H26 is pre-registered (`planned`); H27 is not a result.
+H26 has been run (`not supported`); H27 is not a result.
 
 ## Layout
 

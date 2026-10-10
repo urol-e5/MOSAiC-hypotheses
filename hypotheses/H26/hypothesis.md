@@ -2,7 +2,7 @@
 id: H26
 slug: distal-lncrna-heldout-prediction
 title: Distal lncRNA–mRNA co-expression predicts gene expression in held-out colonies
-status: planned
+status: not supported
 tier: 2
 layers: [lncrna, genes, annotation]
 species: [Apul, Peve, Ptuh]
