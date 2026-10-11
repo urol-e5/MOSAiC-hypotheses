@@ -38,4 +38,5 @@ Imports:
     lme4,
     glmnet,
     pls,
-    MOFA2
+    MOFA2,
+    RhpcBLASctl

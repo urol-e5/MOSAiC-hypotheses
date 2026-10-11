@@ -198,3 +198,69 @@ delivered; DESeq2's median-of-ratios size factors are robust to a few
 dominant features, but a time-varying share of this size could still leak
 into Peve timepoint effects through normalization. Not yet raised upstream
 (urol-e5/timeseries_molecular); decided 2026-10-09 to record it here first.
+
+## D-018 (2026-10-10) Threaded BLAS on raven: worker count matters more
+
+Raven R links multithreaded OpenBLAS (48 threads by default) on 24 physical
+cores (Xeon Gold 5220R, 2 threads per core). Forked analyses use
+`detectCores() - 1` = 47 workers, and the H08 rerun reached load average
+~136. `R/parallel.R` adds `pin_blas_threads(n = 1)`: it sets
+`OPENBLAS_NUM_THREADS`/`OMP_NUM_THREADS`/`MKL_NUM_THREADS` (for child R
+processes) and calls `RhpcBLASctl::blas_set_num_threads()` (for this process
+and its forks), and skips the latter if RhpcBLASctl is missing.
+
+Benchmarks on raven, 2026-10-10, machine otherwise idle (load < 10), seconds
+of wall time, `default` = 48 BLAS threads, `pinned` = 1:
+
+| piece | workers | default | pinned |
+|---|---|---|---|
+| H08 `count_edges`, Apul 15,559 x 21,108, one pass, no fork | 1 | 16.7 | 9.4 |
+| H08 `count_edges`, 47 or 48 permutations | 47 | 141, 143, 145 | 160, 161, 161 |
+| same | 24 | 77 | 74 |
+| same | 16 | | 50 |
+| same | 12 | 90 | 48 |
+| same | 6 | | 76 |
+| `fit_varpart()`, Apul 20,000 genes x 40 samples | 47 | 31, 27, 28 | 30, 28, 28 |
+| same | 24 | 30 | 30 |
+| same | 12 | 46 | 46 |
+| same, 500 genes serial | 1 | 11.1 | 11.1 |
+| H18 full render (`quarto render`) | 47 | 19 min (committed run) | 16 min |
+
+Findings:
+
+- The variancePartition / lme4 fits never start BLAS threads (2 threads per
+  worker in both modes; 40 x few-column matrices are below OpenBLAS's
+  threading cutoff). Pinning does not change their speed, so it is not the
+  cause of H04's 0.24 s/feature/worker (the open item in D-013). Here the
+  47-worker rate was 0.065 s/feature/worker against 0.022 serial, and
+  throughput stops improving at about 24 workers, the physical core count.
+  H04's slower rate on the 1.8 M Ptuh CpGs is more likely memory per fork.
+- H08's correlation pass is memory-bandwidth bound. 47 workers are about 3x
+  slower than 12–16 pinned workers for the same 48 permutations. Pinning
+  helps only once workers are reduced (12 workers: 90 s default, 48 s
+  pinned); at 47 workers it is about 12% slower.
+- Pinning changes lme4 results beyond floating-point level. Default vs
+  pinned `fit_varpart()` on 20,000 genes: 5,738 features differ by > 1e-6,
+  7 by > 1e-3, max 0.024 (fits on the zero-variance boundary); medians of
+  every component agree to 1e-5. Each mode is bit-reproducible on rerun.
+  H18 rendered pinned matched every committed output CSV to <= 6e-10
+  absolute, with identical text columns and verdicts.
+
+Choice: `pin_blas_threads()` is opt-in, and neither `_targets.R` nor a
+project `.Rprofile`/`.Renviron` calls it. A global pin on its own makes no
+analysis faster at the current worker counts (H08 gets slower). The gain
+needs fewer workers, and most analyses hard-code `detectCores() - 1`, so
+that change means editing their `analysis.qmd` and marking the targets
+outdated. A global pin would also make H01/H04 reruns drift from their
+committed varpart outputs with no speed benefit. For a raven rerun, use the
+existing overrides:
+
+    OPENBLAS_NUM_THREADS=1 H08_WORKERS=12 Rscript -e 'targets::tar_make(H08)'
+    H04_WORKERS=24 Rscript -e 'targets::tar_make(H04)'
+
+(Environment variables set in the calling shell reach the knitr R process;
+checked in `/proc/<pid>/environ` during the H18 render.) When an analysis
+that forks is next edited for other reasons, cap its workers (about 16 for
+memory-bound passes, 24 for CPU-bound fits) and call `pin_blas_threads()`
+before forking. The change does not touch decision rules. H09's WGCNA
+threads were not benchmarked.
