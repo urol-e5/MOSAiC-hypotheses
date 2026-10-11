@@ -319,6 +319,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#d-015-2026-10-08-cpg-matrices-carry-no-coverage" id="toc-d-015-2026-10-08-cpg-matrices-carry-no-coverage" class="nav-link" data-scroll-target="#d-015-2026-10-08-cpg-matrices-carry-no-coverage">D-015 (2026-10-08) CpG matrices carry no coverage</a></li>
   <li><a href="#d-016-2026-10-08-proposed-status-for-incomplete-pre-registrations" id="toc-d-016-2026-10-08-proposed-status-for-incomplete-pre-registrations" class="nav-link" data-scroll-target="#d-016-2026-10-08-proposed-status-for-incomplete-pre-registrations">D-016 (2026-10-08) <code>proposed</code> status for incomplete pre-registrations</a></li>
   <li><a href="#d-017-2026-10-09-peve-reads-are-dominated-by-one-scaffold_167-locus" id="toc-d-017-2026-10-09-peve-reads-are-dominated-by-one-scaffold_167-locus" class="nav-link" data-scroll-target="#d-017-2026-10-09-peve-reads-are-dominated-by-one-scaffold_167-locus">D-017 (2026-10-09) Peve reads are dominated by one scaffold_167 locus</a></li>
+  <li><a href="#d-018-2026-10-10-threaded-blas-on-raven-worker-count-matters-more" id="toc-d-018-2026-10-10-threaded-blas-on-raven-worker-count-matters-more" class="nav-link" data-scroll-target="#d-018-2026-10-10-threaded-blas-on-raven-worker-count-matters-more">D-018 (2026-10-10) Threaded BLAS on raven: worker count matters more</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -424,6 +425,105 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="d-017-2026-10-09-peve-reads-are-dominated-by-one-scaffold_167-locus">D-017 (2026-10-09) Peve reads are dominated by one scaffold_167 locus</h2>
 <p>In Peve, a median 69% of raw gene + lncRNA reads per library fall on one locus, <code>Porites_evermani_scaffold_167</code> about 401.5–408.4 kb: five nested lncRNAs (<code>lncRNA_4889</code>–<code>lncRNA_4893</code>, the three largest each 15.8% of all reads, i.e.&nbsp;the same reads counted more than once) and four short adjacent genes (<code>Peve_00009616</code>–<code>Peve_00009619</code>, 200–300 bp, no ortholog or SwissProt annotation). The share rises across the year (median TP1 0.57, TP2 0.72, TP3 0.70, TP4 0.78). The top-10-feature read fraction is 0.70 in Peve against 0.07–0.08 in Apul and Ptuh; with the locus removed it is 0.13. This looks like a highly expressed repetitive or rRNA-like element annotated as both genes and lncRNAs. Found while completing H26’s pre-registration (<code>hypotheses/H26/feasibility_check.R</code>; per-library totals only).</p>
 <p>H26 excludes these nine features in Peve and computes library-composition covariates without them. Earlier Peve analyses used the matrices as delivered; DESeq2’s median-of-ratios size factors are robust to a few dominant features, but a time-varying share of this size could still leak into Peve timepoint effects through normalization. Not yet raised upstream (urol-e5/timeseries_molecular); decided 2026-10-09 to record it here first.</p>
+</section>
+<section id="d-018-2026-10-10-threaded-blas-on-raven-worker-count-matters-more" class="level2">
+<h2 class="anchored" data-anchor-id="d-018-2026-10-10-threaded-blas-on-raven-worker-count-matters-more">D-018 (2026-10-10) Threaded BLAS on raven: worker count matters more</h2>
+<p>Raven R links multithreaded OpenBLAS (48 threads by default) on 24 physical cores (Xeon Gold 5220R, 2 threads per core). Forked analyses use <code>detectCores() - 1</code> = 47 workers, and the H08 rerun reached load average ~136. <code>R/parallel.R</code> adds <code>pin_blas_threads(n = 1)</code>: it sets <code>OPENBLAS_NUM_THREADS</code>/<code>OMP_NUM_THREADS</code>/<code>MKL_NUM_THREADS</code> (for child R processes) and calls <code>RhpcBLASctl::blas_set_num_threads()</code> (for this process and its forks), and skips the latter if RhpcBLASctl is missing.</p>
+<p>Benchmarks on raven, 2026-10-10, machine otherwise idle (load &lt; 10), seconds of wall time, <code>default</code> = 48 BLAS threads, <code>pinned</code> = 1:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>piece</th>
+<th>workers</th>
+<th>default</th>
+<th>pinned</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>H08 <code>count_edges</code>, Apul 15,559 x 21,108, one pass, no fork</td>
+<td>1</td>
+<td>16.7</td>
+<td>9.4</td>
+</tr>
+<tr class="even">
+<td>H08 <code>count_edges</code>, 47 or 48 permutations</td>
+<td>47</td>
+<td>141, 143, 145</td>
+<td>160, 161, 161</td>
+</tr>
+<tr class="odd">
+<td>same</td>
+<td>24</td>
+<td>77</td>
+<td>74</td>
+</tr>
+<tr class="even">
+<td>same</td>
+<td>16</td>
+<td></td>
+<td>50</td>
+</tr>
+<tr class="odd">
+<td>same</td>
+<td>12</td>
+<td>90</td>
+<td>48</td>
+</tr>
+<tr class="even">
+<td>same</td>
+<td>6</td>
+<td></td>
+<td>76</td>
+</tr>
+<tr class="odd">
+<td><code>fit_varpart()</code>, Apul 20,000 genes x 40 samples</td>
+<td>47</td>
+<td>31, 27, 28</td>
+<td>30, 28, 28</td>
+</tr>
+<tr class="even">
+<td>same</td>
+<td>24</td>
+<td>30</td>
+<td>30</td>
+</tr>
+<tr class="odd">
+<td>same</td>
+<td>12</td>
+<td>46</td>
+<td>46</td>
+</tr>
+<tr class="even">
+<td>same, 500 genes serial</td>
+<td>1</td>
+<td>11.1</td>
+<td>11.1</td>
+</tr>
+<tr class="odd">
+<td>H18 full render (<code>quarto render</code>)</td>
+<td>47</td>
+<td>19 min (committed run)</td>
+<td>16 min</td>
+</tr>
+</tbody>
+</table>
+<p>Findings:</p>
+<ul>
+<li>The variancePartition / lme4 fits never start BLAS threads (2 threads per worker in both modes; 40 x few-column matrices are below OpenBLAS’s threading cutoff). Pinning does not change their speed, so it is not the cause of H04’s 0.24 s/feature/worker (the open item in D-013). Here the 47-worker rate was 0.065 s/feature/worker against 0.022 serial, and throughput stops improving at about 24 workers, the physical core count. H04’s slower rate on the 1.8 M Ptuh CpGs is more likely memory per fork.</li>
+<li>H08’s correlation pass is memory-bandwidth bound. 47 workers are about 3x slower than 12–16 pinned workers for the same 48 permutations. Pinning helps only once workers are reduced (12 workers: 90 s default, 48 s pinned); at 47 workers it is about 12% slower.</li>
+<li>Pinning changes lme4 results beyond floating-point level. Default vs pinned <code>fit_varpart()</code> on 20,000 genes: 5,738 features differ by &gt; 1e-6, 7 by &gt; 1e-3, max 0.024 (fits on the zero-variance boundary); medians of every component agree to 1e-5. Each mode is bit-reproducible on rerun. H18 rendered pinned matched every committed output CSV to &lt;= 6e-10 absolute, with identical text columns and verdicts.</li>
+</ul>
+<p>Choice: <code>pin_blas_threads()</code> is opt-in, and neither <code>_targets.R</code> nor a project <code>.Rprofile</code>/<code>.Renviron</code> calls it. A global pin on its own makes no analysis faster at the current worker counts (H08 gets slower). The gain needs fewer workers, and most analyses hard-code <code>detectCores() - 1</code>, so that change means editing their <code>analysis.qmd</code> and marking the targets outdated. A global pin would also make H01/H04 reruns drift from their committed varpart outputs with no speed benefit. For a raven rerun, use the existing overrides:</p>
+<pre><code>OPENBLAS_NUM_THREADS=1 H08_WORKERS=12 Rscript -e 'targets::tar_make(H08)'
+H04_WORKERS=24 Rscript -e 'targets::tar_make(H04)'</code></pre>
+<p>(Environment variables set in the calling shell reach the knitr R process; checked in <code>/proc/&lt;pid&gt;/environ</code> during the H18 render.) When an analysis that forks is next edited for other reasons, cap its workers (about 16 for memory-bound passes, 24 for CPU-bound fits) and call <code>pin_blas_threads()</code> before forking. The change does not touch decision rules. H09’s WGCNA threads were not benchmarked.</p>
 
 
 </section>
