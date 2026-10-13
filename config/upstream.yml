@@ -165,6 +165,36 @@ files:
     dest: data/raw/its2/ITS2_rel_abund_matrix.csv
     source_page: quarto/its.qmd
 
+  # ---- Saved calcification calculations for assay-unit QC only ------------
+  - id: calcification_qc_TP1
+    layer: assay_qc
+    species: all
+    format: csv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries/92b60b34c481eb170a061925e673297b76a8225c/timepoint_1/output/1_calcification_rates.csv
+    dest: data/raw/assay_qc/TP1_calcification_rates.csv
+    source_page: docs/qc/2026-10-12/QC-follow-up.md
+  - id: calcification_qc_TP2
+    layer: assay_qc
+    species: all
+    format: csv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries/92b60b34c481eb170a061925e673297b76a8225c/timepoint_2/output/2_calcification_rates.csv
+    dest: data/raw/assay_qc/TP2_calcification_rates.csv
+    source_page: docs/qc/2026-10-12/QC-follow-up.md
+  - id: calcification_qc_TP3
+    layer: assay_qc
+    species: all
+    format: csv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries/92b60b34c481eb170a061925e673297b76a8225c/timepoint_3/output/3_calcification_rates.csv
+    dest: data/raw/assay_qc/TP3_calcification_rates.csv
+    source_page: docs/qc/2026-10-12/QC-follow-up.md
+  - id: calcification_qc_TP4
+    layer: assay_qc
+    species: all
+    format: csv
+    url: https://raw.githubusercontent.com/urol-e5/timeseries/92b60b34c481eb170a061925e673297b76a8225c/timepoint_4/output/4_calcification_rates.csv
+    dest: data/raw/assay_qc/TP4_calcification_rates.csv
+    source_page: docs/qc/2026-10-12/QC-follow-up.md
+
   # ---- Files tracked inside MOSAiC itself (pinned to the commit above) ------
   - id: orthologs_three_way
     layer: orthologs

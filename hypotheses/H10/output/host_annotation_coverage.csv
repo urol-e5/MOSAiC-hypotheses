@@ -1,0 +1,6 @@
+species,host_annotation,annotation_matches,samples,colonies
+Apul,Acropora pulchra,TRUE,120,50
+Peve,Porites evermanni,TRUE,119,33
+Peve,Porites lobata lutea,FALSE,43,12
+Ptuh,Pocillopora meandrina,FALSE,47,15
+Ptuh,Pocillopora tuahiniensis,TRUE,112,30

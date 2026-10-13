@@ -2,6 +2,15 @@
 
 **Status:** inconclusive
 
+**Assay QC addendum — 2026-10-12:** the [calcification follow-up](../../docs/qc/2026-10-12/QC-follow-up.md)
+confirms that delivered TP1/TP4 calculations use minute denominators and
+TP2/TP3 use hour denominators, all labeled per hour. Nonpositive incubation
+durations also occur, including eight distinct TP2 molecular samples.
+Calcification estimates and any decision or adjusted p-value depending on
+them await validated upstream recalculation and reanalysis. The registered
+verdict and delivered measurements are preserved; no guessed rescaling is
+applied. H14's primary AFDW decision is separate from its secondary calcification analysis.
+
 **Run on:** 2026-10-08 against MOSAiC commit `86432e3` (see `config/upstream.lock.yml`).
 R 4.3.2, lme4 1.1-37, pls 2.8.5 (newly added to `DESCRIPTION`). Runtime
 about 40 s on a 16 GB / 8-core laptop. Reproduction gate and test suite

@@ -2,6 +2,15 @@
 
 **Status:** not supported
 
+**Assay QC addendum — 2026-10-12:** the [calcification follow-up](../../docs/qc/2026-10-12/QC-follow-up.md)
+confirms that delivered TP1/TP4 calculations use minute denominators and
+TP2/TP3 use hour denominators, all labeled per hour. Nonpositive incubation
+durations also occur, including eight distinct TP2 molecular samples.
+Calcification estimates and any decision or adjusted p-value depending on
+them await validated upstream recalculation and reanalysis. The registered
+verdict and delivered measurements are preserved; no guessed rescaling is
+applied.
+
 **Run on:** 2026-10-07 against MOSAiC commit `86432e3` (see `config/upstream.lock.yml`).
 R 4.3.2, DESeq2 1.42.1, lme4 1.1-37. Runtime 2 h 48 min on a 16 GB / 8-core
 laptop (7 cores), most of it the all-genes sensitivity check.

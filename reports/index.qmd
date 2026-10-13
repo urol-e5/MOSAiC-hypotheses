@@ -12,6 +12,20 @@ lock  <- yaml::read_yaml(file.path(root, "config", "upstream.lock.yml"))
 Built against MOSAiC commit `r substr(lock$mosaic_commit, 1, 7)`; upstream lock last updated `r lock$lock_updated`.
 Rules for adding a hypothesis are in [CLAUDE.md](https://github.com/urol-e5/MOSAiC-hypotheses/blob/main/CLAUDE.md).
 
+::: {.callout-warning}
+## Read verdicts with their caveats
+
+Statuses record the pre-registered decision rule. They do not establish every
+part of a hypothesis's title. Each completed analysis links to its full result,
+sample sizes, effect estimates, and caveats below.
+
+Unresolved [data QC findings](qc.qmd#unresolved-interpretation-limits), including
+the calcification scale shift and mixed taxonomy in the broader cohort, limit
+biological interpretation even when integrity checks pass.
+The [2026-10-12 follow-up](qc-follow-up.qmd) confirms inconsistent calcification
+time units and reports H10's intended-host-annotation sensitivity.
+:::
+
 ```{r}
 library(gt)
 status_colors <- c(proposed = "#f8f9fa", planned = "#e9ecef", running = "#fff3cd", supported = "#d1e7dd",
@@ -19,12 +33,20 @@ status_colors <- c(proposed = "#f8f9fa", planned = "#e9ecef", running = "#fff3cd
 board |>
   dplyr::mutate(layers = vapply(layers, paste, "", collapse = ", "),
                 species = vapply(species, paste, "", collapse = ", "),
-                depends_on = vapply(depends_on, function(x) if (length(x)) paste(x, collapse = ", ") else "", "")) |>
-  dplyr::select(id, tier, title, status, layers, species, depends_on) |>
+                depends_on = vapply(depends_on, function(x) if (length(x)) paste(x, collapse = ", ") else "", ""),
+                report = ifelse(file.exists(file.path(root, "hypotheses", dir, "RESULT.md")),
+                                sprintf("[Result & caveats](results/%s.html)", dir),
+                                sprintf("[Registration](https://github.com/urol-e5/MOSAiC-hypotheses/blob/main/hypotheses/%s/hypothesis.md)", dir)),
+                title = ifelse(id == "H02",
+                               paste0(title, "<br><small><strong>Interpretation:</strong> Acropora is much more seasonally plastic; the Pocillopora–Porites ordering is weak and does not establish a robust three-species ranking.</small>"),
+                               title)) |>
+  dplyr::select(id, tier, title, status, layers, species, depends_on, report) |>
   gt() |>
   tab_header(title = "Hypotheses") |>
   cols_label(id = "ID", tier = "Tier", title = "Claim", status = "Status",
-             layers = "Layers", species = "Species", depends_on = "Depends on") |>
+             layers = "Layers", species = "Species", depends_on = "Depends on", report = "Details") |>
+  fmt_markdown(columns = c(title, report)) |>
+  cols_width(id ~ px(45), tier ~ px(35), title ~ pct(35), status ~ px(100)) |>
   data_color(columns = status, fn = function(x) unname(status_colors[x])) |>
   tab_options(table.font.size = px(13))
 ```

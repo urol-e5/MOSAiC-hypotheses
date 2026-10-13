@@ -264,3 +264,45 @@ that forks is next edited for other reasons, cap its workers (about 16 for
 memory-bound passes, 24 for CPU-bound fits) and call `pin_blas_threads()`
 before forking. The change does not touch decision rules. H09's WGCNA
 threads were not benchmarked.
+
+## D-019 (2026-10-12) Calcification exports have inconsistent time denominators
+
+The QC follow-up (`docs/qc/2026-10-12/QC-follow-up.md`) traces TP1/TP4 minute
+and TP2/TP3 hour denominators into delivered rates labeled per hour. All
+439 finite sample-level rates matched to the locked physiology master
+agree with the inspected exports. Four saved assay outputs are pinned to
+timeseries commit `92b60b3` and newly checksummed; existing file checksums
+are unchanged. All four calculation scripts use automatic `difftime` units.
+
+A complete correction is not a blanket 60-fold rescaling: 64 saved assay
+records have nonpositive durations, including eight distinct core TP2
+samples, and other assay terms remain unverified. Do not infer corrected
+clocks/dates, replace invalid rates with zero, or use diagnostic hourly
+candidates as measurements. Keep physiology unchanged. Calcification
+estimates and decisions in H09, H10 secondary, H14 secondary, H16 and H22
+remain qualified pending verified upstream recomputation and reanalysis;
+H14's primary AFDW rule is separate. H20 is withdrawn. Existing verdicts
+remain records of their registered fits, not validation of assay units.
+
+The new loader `load_calcification_assay_qc()` exposes saved assay records
+for auditing only. Harmonization does not merge them into physiology or
+sample-presence flags. The documented issue draft is prepared for upstream
+follow-up but has not been posted.
+
+## D-020 (2026-10-12) H10 broad code groups and intended-host sensitivity
+
+The broader ITS2 cohort's mixed annotations are recognized upstream
+(timeseries issue 61), not a demonstrated annotation error. Prefixes and
+intended species must not be treated as synonymous. H10 retains its
+registered all-sample code-group analysis and adds a dated intended-host
+sensitivity using each ITS2 row's annotation, preserving colony blocking,
+999 permutations, 500 bootstraps and the decision thresholds. It retains
+120/119/112 samples and 50/33/30 colonies in Apul/Peve/Ptuh; all three pass,
+so the sensitivity is supported. Matching annotations are not independently
+verified species identities. All original primary estimates are preserved.
+
+Do not merge POR-206/POR-251 across layers here. The upstream assembly
+contains the mapping, but the analysis preserves delivered keys pending
+collection-metadata reconciliation. This outside-core record is excluded
+from H10's intended-annotation sensitivity. Secondary calcification findings
+remain subject to D-019 regardless of the ITS2 verdict.

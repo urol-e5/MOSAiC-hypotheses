@@ -1,0 +1,9 @@
+---
+title: "H07 results and caveats"
+---
+
+```{r}
+#| results: asis
+source("../R/site.R")
+render_result("../hypotheses/H07/RESULT.md")
+```

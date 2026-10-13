@@ -49,3 +49,20 @@ within-colony distance is lower than between-colony with p < 0.01.
   profile count per species.
 
 ## Amendments
+
+### Amendment 1 — 2026-10-12: host-annotation sensitivity and assay qualification
+
+The registered all-sample analysis groups samples by ACR/POR/POC code. The
+broader ITS2 cohort includes 43 POR-coded records annotated Porites lobata
+lutea and 47 POC-coded records annotated Pocillopora meandrina. Preserve the
+primary cohort and decision rule; interpret its estimates as code-group
+results. Add a sensitivity restricted to records annotated Acropora pulchra,
+Porites evermanni, or Pocillopora tuahiniensis for the corresponding code,
+using the same models, 999 permutations, 500 colony bootstraps, and thresholds.
+Report retained samples and colonies. Annotation agreement is not independent
+taxonomic validation. Do not merge POR-206/POR-251 without upstream confirmation.
+
+The calcification timepoint-scale concern in the 2026-10-07 QC audit remains
+unresolved. Secondary calcification models describe delivered values and
+cannot establish absence of a physiological effect until assay provenance
+is verified. No guessed conversion factor is applied.

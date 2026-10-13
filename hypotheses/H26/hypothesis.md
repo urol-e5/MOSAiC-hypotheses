@@ -155,3 +155,28 @@ Compute: raven. The full selection pipeline is re-run for each of 1,000
 permutations per species.
 
 ## Amendments
+
+### Implementation correction (2026-10-11): freeze the training normalization scale
+
+The original run passed training geometric means to separate calls of
+`DESeq2::estimateSizeFactorsForMatrix()` for training and held-out samples.
+With supplied geometric means DESeq2 rescales each batch's size factors to
+geometric mean 1, so held-out libraries were normalized on a separate scale.
+The corrected implementation computes median-of-ratios factors against the
+training geometric means and divides both batches by the geometric mean of
+the **training** factors only. When the dispersion trend uses a local fit,
+the VST integration grid, noise term, and log-scale calibration are also
+frozen on the training data; otherwise DESeq2 recalculates those quantities
+from the held-out batch despite receiving the training dispersion function.
+
+This repairs step 1's implementation of the registered training-only
+normalization. It does not change the hypothesis, selection procedure,
+resampling, or decision rule. Regression tests check library-depth
+invariance, independence from other held-out samples, agreement of training
+size factors with DESeq2, and agreement of the frozen local transformation
+with DESeq2 on training data. The 2026-10-09/10 outputs are historical and
+require a full rerun of the primary, permutation null, and checks C1–C3.
+The full corrected rerun completed on 2026-10-12 with exit status 0.
+The registered verdict remains `not supported`; the corrected Peve and Ptuh
+upper interval bounds are below 5%. `RESULT.md` and the output tables now
+report that rerun, with the original result preserved separately.

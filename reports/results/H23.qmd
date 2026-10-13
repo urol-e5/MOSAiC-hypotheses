@@ -1,0 +1,9 @@
+---
+title: "H23 results and caveats"
+---
+
+```{r}
+#| results: asis
+source("../R/site.R")
+render_result("../hypotheses/H23/RESULT.md")
+```

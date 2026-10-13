@@ -56,7 +56,9 @@ Implementation notes (not in `hypothesis.md`; none changes the rule):
   filtered lncRNAs of the training samples, and the lncRNA dispersion trend
   on the predictor lncRNAs (isolated ones) only, to keep the 1,000
   permutation re-runs tractable. Held-out samples use the training
-  geometric means and dispersion function.
+  geometric means, size-factor scaling constant, and dispersion function.
+  For a local dispersion fit, the VST integration grid, noise term, and
+  log-scale calibration are also frozen on training samples.
 - Gene normalization does not depend on the lncRNA permutation, so it is
   computed once per fold and reused; when a permutation leaves a training
   sample without a lncRNA value, that sample is dropped from selection and
@@ -117,24 +119,7 @@ knitr::kable(n_tab, format.args = list(big.mark = ","))
 ## Model
 
 ```{r functions}
-geo_means <- function(m) exp(rowMeans(log(m)))
-
-# Fit size factors and dispersion trend on `train` counts; transform train
-# and test. `disp_rows`: rows used for the dispersion trend (and returned).
-norm_fold <- function(train, test, disp_rows = rownames(train)) {
-  gm <- geo_means(train)
-  sf_train <- DESeq2::estimateSizeFactorsForMatrix(train, geoMeans = gm)
-  sf_test <- DESeq2::estimateSizeFactorsForMatrix(test, geoMeans = gm)
-  dds <- DESeq2::DESeqDataSetFromMatrix(train[disp_rows, , drop = FALSE], data.frame(row.names = colnames(train)), ~ 1)
-  DESeq2::sizeFactors(dds) <- sf_train
-  dds <- suppressMessages(DESeq2::estimateDispersions(dds, quiet = TRUE))
-  vtr <- SummarizedExperiment::assay(DESeq2::varianceStabilizingTransformation(dds, blind = FALSE))
-  dte <- DESeq2::DESeqDataSetFromMatrix(test[disp_rows, , drop = FALSE], data.frame(row.names = colnames(test)), ~ 1)
-  DESeq2::sizeFactors(dte) <- sf_test
-  DESeq2::dispersionFunction(dte) <- DESeq2::dispersionFunction(dds)
-  vte <- SummarizedExperiment::assay(DESeq2::varianceStabilizingTransformation(dte, blind = FALSE))
-  list(train = vtr, test = vte)
-}
+# Frozen normalization helpers are sourced from R/expression.R.
 
 folds_of <- function(d) unique(d$info$colony)
 

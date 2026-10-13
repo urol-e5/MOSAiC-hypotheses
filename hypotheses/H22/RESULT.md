@@ -1,93 +1,137 @@
 # H22 result
 
-**Status:** inconclusive
+**Status:** not supported
 
-**Run on:** 2026-10-08 against MOSAiC commit `86432e3` (see `config/upstream.lock.yml`).
-R 4.3.2, DESeq2 1.42.1, glmnet 4.1.9 (newly added to `DESCRIPTION`). Runtime
-6.5 min on a 16 GB / 8-core laptop (7 cores). Reproduction gate and test
-suite passed on 2026-10-08 before the run. Analysis follows Amendment 1 in
-`hypothesis.md`, written before any analysis. The Model assumed three sites,
-but the expression colonies are at two (5 per site, site = nutrient). The
-amendment therefore uses two outer folds, at most training rows − 1 PCs,
-`glmnet` with the baseline unpenalized, raw-scale traits, and a
-within-transition permutation null.
+**Assay QC addendum — 2026-10-12:** the [calcification follow-up](../../docs/qc/2026-10-12/QC-follow-up.md)
+confirms that delivered TP1/TP4 calculations use minute denominators and
+TP2/TP3 use hour denominators, all labeled per hour. Nonpositive incubation
+durations also occur, including eight distinct TP2 molecular samples.
+Calcification estimates and any decision or adjusted p-value depending on
+them await validated upstream recalculation and reanalysis. The registered
+verdict and delivered measurements are preserved; no guessed rescaling is
+applied.
+
+**Corrected run:** 2026-10-12 on raven against MOSAiC commit `86432e3`
+(see `config/upstream.lock.yml`). R 4.3.3, DESeq2 1.42.1, glmnet 4.1.9
+(the original H22 model version, installed in an isolated library). Runtime
+about 13 min 30 s with 24 workers and one OpenBLAS thread per worker; the
+full run completed at 06:50 PDT with exit status 0. It included the primary,
+both sensitivities (200 permutations per species/trait/analysis), and all
+12 descriptive cross-species transfer comparisons.
+
+**Methodological correction:** Amendment 2 (2026-10-12) replaces Amendment
+1's all-samples expression preprocessing. Filtering, normalization, VST,
+centering, PCA, and gene scaling are now learned separately in every outer
+and inner training fold. Held-out samples use the frozen training scale.
+Inner colony validation selects a penalty fraction using models with their
+own training-derived PCs, rather than validating one PCA fitted across all
+inner folds. Source-only gene and response scaling also replace target
+species standardization in the descriptive transfer analysis. The shared
+VST uses the full training feature set for its dispersion fit. These changes
+are documented before the rerun; the original text and decision rule remain.
+The [original result](RESULT-original-2026-10-08.md) is preserved. This is a
+methodological correction on an already analysed dataset, not independent
+replication; changes in scores cannot be attributed solely to one component
+of the revised preprocessing and tuning procedure.
+
+The reproduction gate passed all 22 tests on desktop and raven, including
+perturbation tests for outer and inner leakage and a raw-count loading
+regression. Eight input/configuration checksums matched the desktop.
+Notebook MD5: `b9354448e71582d1e9fdae9f71c39cb2`; shared expression helper
+MD5: `7b8ab107a74c3f8419e82c1a4bbd8a43`. Logs, checkpoints, and the isolated
+library are retained at `/home/sr320/h22-preprocessing-2026-10-12` on raven.
+All 3,600 permutation draws and saved predictions were verified finite;
+reported scores, p-values, BH corrections, and verdicts were recomputed.
+Sample cohorts and baseline scores match the original run in all analyses.
 
 **Samples used:** colony × transition rows with expression at t and the
-trait at t and t+1. 10 colonies per species, 5 per site; three-way orthologs.
+trait at t and t+1. About 10 colonies per species, 5 per site; three-way
+orthologs. Raw mapped groups are unfiltered; retained genes vary by training
+fold and trait. Inner validation refits its own filters as well.
 
-| Species | Rows, AFDW (Mahana / Manava) | Rows, calcification (Mahana / Manava) | Ortholog genes |
-|---|---|---|---|
-| Apul | 29 (14 / 15) | 27 (12 / 15) | 9,820 |
-| Peve | 26 (11 / 15) | 28 (13 / 15) | 9,282 |
-| Ptuh | 29 (14 / 15) | 25 (10 / 15) | 9,946 |
+| Species | Rows, AFDW (Mahana / Manava) | Rows, calcification (Mahana / Manava) | Raw mapped groups | Genes in primary outer folds |
+|---|---|---|---|---|
+| Apul | 29 (14 / 15) | 27 (12 / 15) | 10,223 | 9,789–9,887 |
+| Peve | 26 (11 / 15) | 28 (13 / 15) | 10,346 | 9,142–9,497 |
+| Ptuh | 29 (14 / 15) | 25 (10 / 15) | 10,346 | 9,916–9,979 |
 
 **Headline numbers:** leave-one-site-out, out-of-sample R² pooled over the
 two held-out sites. dR2 = molecular − baseline. p from 200 within-transition
 permutations of training y[t+1]; q = BH across the two traits within species.
-PCs: mean number with non-zero coefficients across folds (14 available).
+The PCs-selected summary is weighted by held-out prediction rows, as in the
+output calculation; 9–14 PCs are available depending on the training fold.
 
 | Species | Trait | R² baseline | R² + expression | dR2 | p | q | PCs selected |
 |---|---|---|---|---|---|---|---|
-| Apul | AFDW | −0.233 | −0.362 | −0.129 | 0.89 | 0.89 | 5.3 |
-| Apul | calc | 0.032 | 0.032 | 0.0009 | 0.30 | 0.60 | 0 |
-| Peve | AFDW | −1.353 | −1.494 | −0.141 | 0.70 | 0.70 | 2.3 |
-| Peve | calc | 0.370 | 0.370 | 0.0002 | 0.50 | 0.70 | 0 |
-| Ptuh | AFDW | −0.842 | −0.763 | 0.079 | 0.12 | 0.24 | 1.0 |
-| Ptuh | calc | −0.393 | −0.232 | 0.161 | 0.24 | 0.24 | 6.4 |
+| Apul | AFDW | −0.233 | −0.365 | −0.132 | 0.781 | 0.781 | 7.3 |
+| Apul | calc | 0.032 | −0.036 | −0.067 | 0.582 | 0.781 | 4.9 |
+| Peve | AFDW | −1.353 | −1.442 | −0.089 | 0.652 | 0.736 | 1.2 |
+| Peve | calc | 0.370 | 0.361 | −0.009 | 0.736 | 0.736 | 0.5 |
+| Ptuh | AFDW | −0.842 | −0.810 | 0.032 | 0.189 | 0.189 | 4.8 |
+| Ptuh | calc | −0.393 | −0.249 | 0.143 | 0.174 | 0.189 | 7.8 |
 
-No trait in any species has dR2 > 0 with q < 0.05, so `supported` is out.
-`not supported` needs dR2 <= 0 for both traits in two species. No species
-meets it, because the calcification dR2 is +0.0009 in Apul and +0.0002 in
-Peve. The rule returns `inconclusive`.
+Both traits have dR2 <= 0 in Apul and Peve, so the registered rule returns
+`not supported` (previously `inconclusive`). Ptuh improves on both traits,
+but neither improvement passes BH q < 0.05. The corrected calcification
+models select expression PCs in at least one fold in both Apul and Peve;
+their negative dR2 values are not the original zero-PC refitting artifact.
+The raw AFDW baseline R² remains negative in every species. Expression does
+not provide consistent gains when transferred to the other site/nutrient
+regime in this analysis.
 
-**Important for reading the verdict:** those two positive values are
-numerical, not predictive. In both cases the elastic net selected 0
-expression PCs in every fold. The "molecular" model is then the baseline
-refitted by `glmnet` rather than `lm`, and the two fits differ in the
-fourth decimal. Had they been scored as exactly 0, Apul and Peve would meet
-the `not supported` clause and the verdict would be `not supported`. The
-verdict above is the one the pre-registered rule produced. No change was
-made after seeing it; any change would need a dated amendment.
+**Sensitivity checks:** both `inconclusive`; no trait passes q < 0.05.
 
-**Sensitivity checks (Amendment 1):** all `inconclusive`.
+| Check | Apul dR2: AFDW / calc | Peve dR2: AFDW / calc | Ptuh dR2: AFDW / calc | Smallest q |
+|---|---|---|---|---|
+| Leave one colony out | 0.057 / −0.150 | −0.121 / −0.008 | −0.021 / 0.013 | 0.100 (Apul AFDW) |
+| TP3→TP4 dropped | 0.095 / −0.190 | −0.242 / −0.062 | −0.417 / 0.333 | 0.129 (Ptuh calc) |
 
-| Check | Result |
-|---|---|
-| Leave one colony out (10 folds) | Apul AFDW dR2 0.116, q = 0.030, the only trait passing in any species; all others q >= 0.10 |
-| TP3→TP4 dropped | Ptuh calcification dR2 0.451, p = 0.040, q = 0.080; all others dR2 within ±0.21 and q >= 0.32 |
+The original colony-validation Apul AFDW signal (q = 0.030) no longer passes
+correction. Dropping TP3→TP4 still gives the largest positive sensitivity
+estimate for Ptuh calcification, but it remains nonsignificant after BH.
 
-**Secondary, cross-species transfer (descriptive):** train on one species,
-test on another, 9,017 shared orthologs, z-scored within species. dR2
-ranges from −0.12 to +0.08 across the 12 train/test/trait combinations.
-Expression adds nothing consistent across species.
+**Secondary, cross-species transfer (descriptive):** filtering and gene/
+response scaling are learned from source training rows only. Retained
+features vary by source species and trait (9,233–9,849). dR2 ranges from
+−5.066 to 0.269 over the 12 comparisons; only two are positive. Baseline
+R² also often becomes strongly negative under transfer. These scores now
+include species differences in levels and expression distributions that
+the original target-specific standardization removed. Neither transfer
+approach is an independent cohort, and reference quality and physiological
+scale differences limit interpretation.
 
 **Current Findings:** not reported separately. Under CLAUDE.md §6 the
-verdict is not `supported`, and with two folds of 5 colonies the result does
-not bound an effect usefully.
+verdict is not `supported`, and with two outer folds of 5 colonies the
+negative performance point estimates do not provide a useful effect bound
+or an adequately powered exclusion of a biological association.
 
-**Caveats:** there are about 10 colonies per species, 5 per site, so each
-outer fold trains on about 13–15 rows from 5 colonies. That is far too few to
-estimate an expression-to-physiology map reliably, and out-of-sample R² is
-very noisy. The most informative number may be the baseline itself: R² is
-negative for AFDW in all three species and for calcification in Ptuh. Even
-the trait's own previous value plus timepoint does not carry from one site
-to the other, so site/nutrient shifts dominate whatever expression could
-add. Site is confounded with nutrient, so "novel conditions" means the other
-site and nutrient regime only. There is no independent cohort; held-out site
-and held-out species are proxies. The only signals (Apul AFDW under
-leave-one-colony-out, and Ptuh calcification without TP3→TP4) appear in
-different species under different checks, and neither appears in the
-primary analysis. Traits are on the raw scale because upstream AFDW has
-negative values. Species is confounded with reference quality, which matters
-for the transfer secondary.
+**Caveats:** about 10 colonies per species and 5 per site; each primary
+training fold uses only 10–15 paired rows from 5 colonies. Inner models use
+fewer colonies, so penalty selection and out-of-sample R² remain noisy even
+with correct separation of training and validation data. Site is confounded
+with nutrient, and there is no independent cohort. The `not supported`
+verdict describes the registered performance rule for this pipeline, not
+proof that expression contains no predictive biology. Traits remain on the
+raw scale. The prior QC audit's calcification timepoint-scale warning remains
+unresolved; this correction does not validate assay units or rescale those
+measurements. Species is confounded with reference quality (Peve N50 0.17 Mb;
+Ptuh mapped to *P. meandrina*), especially affecting cross-species transfer.
+The transfer stage logged 12 warnings. A targeted audit reproduced DESeq2's
+"all genes have equal values" warning when constructing a one-sample
+validation dataset; the transfer design contains 12 such constructions
+(six source/trait singleton colony folds, each used for two target species).
+These apply a training-fitted VST and do not fit a differential-expression
+model to the single held-out sample. All scores and predictions remain finite.
 
 **Outputs:** in `output/`
-- `n_per_species.csv`: rows per species, trait and site
-- `dr2_summary.csv`: primary R², dR2, null, p, q, PCs selected
-- `predictions.csv`, `null_dr2.csv`: held-out predictions and all null draws
-- `observed_vs_predicted.png`, `figure_data.csv`: figure and its data
-- `sens_leave_one_colony_out.csv`, `sens_drop_tp3_tp4.csv`: sensitivity checks
-- `cross_species_transfer.csv`: secondary
-- `verdicts.csv`: verdict for each analysis
 
-inconclusive
+- `n_per_species.csv`: rows, colonies, site balance and raw mapped groups
+- `dr2_summary.csv`: primary R², dR2, null, p, q and feature/PC counts
+- `predictions.csv`: primary predictions, fold IDs, gene counts, training counts, selected PCs and penalties
+- `null_dr2.csv`: all primary null draws; full analysis checkpoints retain sensitivity nulls
+- `observed_vs_predicted.png`, `figure_data.csv`: figure and its data
+- `sens_leave_one_colony_out.csv`, `sens_drop_tp3_tp4.csv`: sensitivity results
+- `cross_species_transfer.csv`: descriptive transfer comparisons
+- `verdicts.csv`: corrected verdicts for all three analyses
+
+not supported

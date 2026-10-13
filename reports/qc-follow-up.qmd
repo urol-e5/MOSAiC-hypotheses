@@ -1,0 +1,8 @@
+---
+title: "Assay and taxonomy QC follow-up — 2026-10-12"
+---
+
+```{r}
+#| results: asis
+cat(readLines("qc-follow-up-evidence/audit.md", encoding = "UTF-8"), sep = "\n")
+```

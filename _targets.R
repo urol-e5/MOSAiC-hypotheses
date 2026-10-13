@@ -29,7 +29,7 @@ list(
   # ---- Reproduction gate -------------------------------------------------------
   tar_target(reproduction_gate, {
     harmonized
-    res <- testthat::test_dir("tests", reporter = "summary", stop_on_failure = TRUE)
+    res <- run_reproduction_gate()
     as.data.frame(res)
   }),
 
@@ -97,7 +97,8 @@ list(
   tar_quarto(H14, "hypotheses/H14/analysis.qmd",
              execute_params = { harmonized; reproduction_gate; list() }),
   tar_quarto(H10, "hypotheses/H10/analysis.qmd",
-             execute_params = { harmonized; reproduction_gate; list() }),
+             execute_params = { harmonized; reproduction_gate; list() },
+             extra_files = "R/host-qc.R"),
   tar_quarto(H13, "hypotheses/H13/analysis.qmd",
              execute_params = { harmonized; reproduction_gate; list() },
              extra_files = "R/expression.R"),
