@@ -15,6 +15,7 @@ root <- tryCatch(rprojroot::find_root(rprojroot::has_file("_targets.R")), error 
 knitr::opts_knit$set(root.dir = root)
 setwd(root)
 source(file.path(root, "R", "load.R"))
+source(file.path(root, "R", "host-qc.R"))
 suppressPackageStartupMessages({ library(tidyr); library(ggplot2); library(vegan) })
 design <- load_design()
 out_dir <- file.path(root, "hypotheses", "H10", "output")
@@ -108,9 +109,9 @@ r2_terms <- function(m, info) {
   a$R2[1:2]
 }
 
-permanova_sp <- function(sp) {
-  m <- by_sp[[sp]]$m
-  info <- by_sp[[sp]]$info |> mutate(colony = factor(colony), timepoint = factor(timepoint)) |> as.data.frame()
+permanova_sp <- function(sp, datasets = by_sp) {
+  m <- datasets[[sp]]$m
+  info <- datasets[[sp]]$info |> mutate(colony = factor(colony), timepoint = factor(timepoint)) |> as.data.frame()
   d <- vegdist(m, "bray")
   a_free <- adonis2(d ~ colony + timepoint, data = info, by = "terms", permutations = n_perm)
   a_block <- adonis2(d ~ colony + timepoint, data = info, by = "terms",
@@ -135,9 +136,9 @@ knitr::kable(perm, digits = 3)
 ### Within- vs between-colony distances
 
 ```{r paired}
-paired_sp <- function(sp) {
-  info <- by_sp[[sp]]$info
-  D <- as.matrix(vegdist(by_sp[[sp]]$m, "bray"))
+paired_sp <- function(sp, datasets = by_sp) {
+  info <- datasets[[sp]]$info
+  D <- as.matrix(vegdist(datasets[[sp]]$m, "bray"))
   per_col <- bind_rows(lapply(split(seq_len(nrow(info)), info$colony), function(i) {
     if (length(i) < 2) return(NULL)
     w <- D[i, i][upper.tri(D[i, i])]
@@ -216,6 +217,49 @@ knitr::kable(sec, digits = 4)
 
 ## Sensitivity checks
 
+### Intended host annotations (2026-10-12 amendment)
+
+The primary analysis above retains the registered all-sample code groups.
+This sensitivity retains only records whose delivered host annotation matches
+the intended species. It uses each ITS2 record's annotation, not a colony's
+first annotation from the design. Matching labels do not independently verify
+host identity. No IDs are merged and no source measurements are changed.
+
+```{r host-taxonomy-sensitivity}
+host_qc <- classify_host_annotations(design, its2)
+write_csv(host_qc, file.path(out_dir, "host_annotation_audit.csv"))
+host_coverage <- host_qc |> group_by(species, host_annotation, annotation_matches) |>
+  summarise(samples = n(), colonies = n_distinct(colony), .groups = "drop")
+write_csv(host_coverage, file.path(out_dir, "host_annotation_coverage.csv"))
+knitr::kable(host_coverage)
+
+restricted <- lapply(by_sp, function(x) {
+  keep <- x$info$sample_id %in% host_qc$sample_id[host_qc$annotation_matches]
+  m <- x$m[keep, , drop = FALSE]
+  m <- m[, colSums(m) > 0, drop = FALSE]
+  list(info = x$info[keep, ], m = m)
+})
+set.seed(20261012)
+host_perm <- bind_rows(lapply(species_all, permanova_sp, datasets = restricted))
+host_pd <- lapply(species_all, paired_sp, datasets = restricted)
+host_paired <- bind_rows(lapply(host_pd, `[[`, "summary"))
+host_dec <- host_perm |> select(species, term, R2) |>
+  pivot_wider(names_from = term, values_from = R2, names_prefix = "R2_") |>
+  left_join(host_paired |> select(species, p_one_sided), by = "species") |>
+  mutate(passes = R2_colony > 0.5 & R2_timepoint < 0.1 & p_one_sided < 0.01,
+         reverses = R2_timepoint >= R2_colony)
+host_n <- bind_rows(lapply(names(restricted), function(sp) {
+  i <- restricted[[sp]]$info
+  tibble(species = sp, samples = nrow(i), colonies = n_distinct(i$colony),
+         colonies_ge2_samples = sum(table(i$colony) >= 2))
+}))
+write_csv(host_n, file.path(out_dir, "sens_intended_host_n.csv"))
+write_csv(host_perm, file.path(out_dir, "sens_intended_host_permanova.csv"))
+write_csv(host_paired, file.path(out_dir, "sens_intended_host_within_vs_between.csv"))
+write_csv(host_dec, file.path(out_dir, "sens_intended_host_decision.csv"))
+knitr::kable(host_dec, digits = 4)
+```
+
 The pre-registered check is the profile count per species and how dominated
 each species is by one profile (n table above): a species where nearly every
 sample carries the same profile makes colony and timepoint R2 both small and
@@ -231,3 +275,7 @@ the test close to trivial.
 - Relative abundances: a change in one profile forces changes in others.
 - The colony bootstrap for R2 treats colonies as exchangeable within species,
   ignoring site.
+- Primary species codes include mixed host annotations; use the sensitivity
+  above for claims about the intended host annotations. Calcification units
+  remain under upstream QC review; secondary calcification estimates do not
+  establish a biological null.

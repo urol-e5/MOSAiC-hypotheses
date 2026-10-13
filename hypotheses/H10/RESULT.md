@@ -2,13 +2,24 @@
 
 **Status:** supported
 
+**Interpretation update — 2026-10-12:** the registered primary cohort is grouped
+by ACR/POR/POC codes and contains mixed host annotations. The intended-host
+sensitivity below passes the same rule, but annotation agreement is not
+independent species validation. The [assay QC follow-up](../../docs/qc/2026-10-12/QC-follow-up.md)
+confirms mixed minute/hour calcification denominators and nonpositive
+incubation durations. The secondary calcification contrast awaits validated
+upstream recalculation; its non-significant estimate does not establish
+absence of a physiological effect. Original measurements and verdict are
+preserved.
+
+
 **Run on:** 2026-10-07 against MOSAiC commit `86432e3` (see `config/upstream.lock.yml`).
 R 4.3.2, vegan, lme4 1.1-37. Runtime about 2 min on a 16 GB / 8-core laptop.
 
 **Samples used:** all ITS2 samples. ITS2 covers more colonies than the
 molecular layers (about 10 colonies per species there); here:
 
-| Species | Samples | Colonies | Colonies with >= 2 samples | Profiles present | Top profile (share of samples) |
+| Code group | Samples | Colonies | Colonies with >= 2 samples | Profiles present | Top profile (share of samples) |
 |---|---|---|---|---|---|
 | Apul | 120 | 50 | 38 | 7 | D1-D1u-D1jb (0.85) |
 | Peve | 162 | 45 | 45 | 23 | C15-C15kl-C15he-C15vz (0.53) |
@@ -23,14 +34,14 @@ R2 95% CI from 500 colony bootstraps) and paired within- vs between-colony
 Bray-Curtis (one-sided Wilcoxon signed-rank across colonies, Hodges-Lehmann
 shift with 95% CI).
 
-| Species | R2 colony (95% CI) | R2 timepoint (95% CI), p | Within / between, median | Shift (95% CI) | p |
+| Code group | R2 colony (95% CI) | R2 timepoint (95% CI), p | Within / between, median | Shift (95% CI) | p |
 |---|---|---|---|---|---|
 | Apul | 0.885 (0.754–0.962) | 0.003 (0.001–0.024), 0.68 | 0 / 0.195 | −0.189 (−0.207 to −0.161) | 6.7e-8 |
 | Peve | 0.797 (0.690–0.882) | 0.006 (0.004–0.022), 0.30 | 0 / 0.619 | −0.480 (−0.596 to −0.402) | 9.2e-9 |
 | Ptuh | 0.726 (0.645–0.801) | 0.009 (0.006–0.031), 0.26 | 0.5 / 0.798 | −0.504 (−0.588 to −0.398) | 1.3e-8 |
 
 R2(colony) > 0.5, R2(timepoint) < 0.1 and within < between at p < 0.01 in
-all three species, so the rule returns `supported`.
+all three registered code groups, so the rule returns `supported`.
 
 Secondary (reported only; does not change the status): dominant-genus
 contrast possible only in Apul, *Durusdinium* (102 samples) vs *Symbiodinium*
@@ -39,6 +50,26 @@ and Ptuh are entirely *Cladocopium*-dominated. `lmer(trait ~ genus +
 timepoint + (1|colony))`: `cells.cm2` +51,756 cells per cm2 (95% CI −63,385
 to 166,898, p = 0.38); `calc.umol.cm2.hr` −0.052 (−0.115 to 0.012, p = 0.11).
 No detectable physiology difference.
+
+**Intended-host-annotation sensitivity (run 2026-10-12):** same models,
+999 permutations, 500 colony bootstraps; seed 20261012. Retain each ITS2
+record only when its delivered host annotation matches the intended species.
+
+| Intended annotation | Samples | Colonies | R2 colony (95% CI) | R2 timepoint (95% CI), p | Within / between, median | Paired p |
+|---|---:|---:|---|---|---|---:|
+| Acropora pulchra | 120 | 50 | 0.885 (0.727–0.960) | 0.003 (0.001–0.025), 0.734 | 0 / 0.195 | 6.69e-8 |
+| Porites evermanni | 119 | 33 | 0.703 (0.496–0.846) | 0.011 (0.006–0.049), 0.334 | 0 / 0.297 | 4.14e-6 |
+| Pocillopora tuahiniensis | 112 | 30 | 0.636 (0.538–0.728) | 0.017 (0.011–0.069), 0.210 | 0.5 / 0.792 | 4.02e-6 |
+
+All three point estimates and paired p-values pass the registered thresholds:
+sensitivity verdict **supported**. Peve's colony-R2 interval crosses 0.5;
+the registered rule uses the point estimate. Apul is unchanged in membership,
+so its different bootstrap interval/permutation p reflects the separate seed.
+This sensitivity does not validate the secondary physiology analysis or
+eliminate the existing site/annotation confounds. Detailed sample membership
+is in `host_annotation_audit.csv`; estimates and counts are in
+`sens_intended_host_n.csv`, `sens_intended_host_permanova.csv`,
+`sens_intended_host_within_vs_between.csv` and `sens_intended_host_decision.csv`.
 
 **Caveats:** colony counts here are 45 to 50 per species, about 10 of which
 are the molecular colonies used elsewhere. R2 for a factor with this many

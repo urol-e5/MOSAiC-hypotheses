@@ -15,6 +15,9 @@ Status board and QC report: <https://urol-e5.github.io/MOSAiC-hypotheses/>
 
 [Full data QC review (2026-10-07)](docs/qc/2026-10-07/QC-review.md),
 including species/timepoint abnormalities, supporting tables, and figures.
+[Assay and taxonomy follow-up (2026-10-12)](docs/qc/2026-10-12/QC-follow-up.md)
+confirms the calcification time-unit mismatch and reports H10's
+intended-host-annotation sensitivity. Validated assay recalculation is pending.
 
 ## How it works
 

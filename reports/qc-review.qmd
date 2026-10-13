@@ -1,0 +1,13 @@
+---
+title: "Detailed QC audit — 2026-10-07"
+---
+
+This is the preserved audit from 2026-10-07. Later analysis decisions and
+corrections are recorded in the [decision log](decisions.qmd) and current
+[result reports](index.qmd). See the [QC overview](qc.qmd) for current coverage
+and prominent interpretation limits.
+
+```{r}
+#| results: asis
+cat(readLines("qc-evidence/audit.md", encoding = "UTF-8"), sep = "\n")
+```

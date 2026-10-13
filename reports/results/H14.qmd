@@ -1,0 +1,9 @@
+---
+title: "H14 results and caveats"
+---
+
+```{r}
+#| results: asis
+source("../R/site.R")
+render_result("../hypotheses/H14/RESULT.md")
+```

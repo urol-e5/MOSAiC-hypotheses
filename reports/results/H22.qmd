@@ -1,0 +1,9 @@
+---
+title: "H22 results and caveats"
+---
+
+```{r}
+#| results: asis
+source("../R/site.R")
+render_result("../hypotheses/H22/RESULT.md")
+```

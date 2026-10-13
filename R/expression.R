@@ -50,3 +50,69 @@ mirna_qc_samples <- function(m, min_reads = 1000) {
 # Peve features on the scaffold_167 locus that dominates Peve libraries
 # (decision D-017). Analyses that exclude it say so in hypothesis.md.
 peve_dominant_locus <- c(paste0("lncRNA_", 4889:4893), paste0("Peve_0000961", 6:9))
+
+# Frozen count normalization and VST shared by held-out prediction analyses.
+geo_means <- function(m) exp(rowMeans(log(m)))
+
+# Median-of-ratios factors on one frozen training scale. DESeq2's
+# estimateSizeFactorsForMatrix(..., geoMeans = gm) recenters every supplied
+# batch, which would put held-out samples on their own scale.
+fold_size_factors <- function(train, test) {
+  gm <- geo_means(train)
+  keep <- is.finite(gm) & gm > 0
+  if (!any(keep)) stop("No genes with positive training geometric means")
+  raw_factors <- function(m) apply(m[keep, , drop = FALSE], 2, function(x) {
+    positive <- is.finite(x) & x > 0
+    exp(median(log(x[positive]) - log(gm[keep][positive])))
+  })
+  sf_train <- raw_factors(train)
+  sf_test <- raw_factors(test)
+  if (any(!is.finite(c(sf_train, sf_test)) | c(sf_train, sf_test) <= 0)) {
+    stop("Non-finite or non-positive fold size factors")
+  }
+  training_scale <- exp(mean(log(sf_train)))
+  list(train = sf_train / training_scale, test = sf_test / training_scale)
+}
+
+# DESeq2's local VST also calibrates its integral using the supplied batch.
+# Freeze those quantities on training data, following getVarianceStabilizedData
+# in DESeq2 1.42.1. Parametric and mean fits already use fixed functions.
+frozen_local_vst <- function(dds) {
+  q <- DESeq2::counts(dds, normalized = TRUE)
+  xg <- sinh(seq(asinh(0), asinh(max(q)), length.out = 1000))[-1]
+  noise <- mean(1 / DESeq2::sizeFactors(dds))
+  variance <- DESeq2::dispersionFunction(dds)(xg) * xg^2 + noise * xg
+  integrand <- 1 / sqrt(variance)
+  integral <- splinefun(asinh((xg[-1] + xg[-length(xg)]) / 2),
+                        cumsum(diff(xg) * (integrand[-1] + integrand[-length(integrand)]) / 2))
+  h <- quantile(rowMeans(q), c(0.95, 0.999))
+  eta <- diff(log2(h)) / diff(integral(asinh(h)))
+  xi <- log2(h[1]) - eta * integral(asinh(h[1]))
+  function(q) {
+    out <- eta * integral(asinh(q)) + xi
+    dim(out) <- dim(q)
+    dimnames(out) <- dimnames(q)
+    out
+  }
+}
+
+# Fit size factors and dispersion trend on `train` counts; transform train
+# and test. `disp_rows`: rows used for the dispersion trend (and returned).
+norm_fold <- function(train, test, disp_rows = rownames(train)) {
+  sf <- fold_size_factors(train, test)
+  dds <- DESeq2::DESeqDataSetFromMatrix(train[disp_rows, , drop = FALSE], data.frame(row.names = colnames(train)), ~ 1)
+  DESeq2::sizeFactors(dds) <- sf$train
+  dds <- suppressMessages(DESeq2::estimateDispersions(dds, quiet = TRUE))
+  dte <- DESeq2::DESeqDataSetFromMatrix(test[disp_rows, , drop = FALSE], data.frame(row.names = colnames(test)), ~ 1)
+  DESeq2::sizeFactors(dte) <- sf$test
+  DESeq2::dispersionFunction(dte) <- DESeq2::dispersionFunction(dds)
+  if (identical(attr(DESeq2::dispersionFunction(dds), "fitType"), "local")) {
+    transform <- frozen_local_vst(dds)
+    vtr <- transform(DESeq2::counts(dds, normalized = TRUE))
+    vte <- transform(DESeq2::counts(dte, normalized = TRUE))
+  } else {
+    vtr <- SummarizedExperiment::assay(DESeq2::varianceStabilizingTransformation(dds, blind = FALSE))
+    vte <- SummarizedExperiment::assay(DESeq2::varianceStabilizingTransformation(dte, blind = FALSE))
+  }
+  list(train = vtr, test = vte)
+}

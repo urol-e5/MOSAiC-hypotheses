@@ -209,6 +209,19 @@ write_derived <- function(x, name, dir = "data/derived") {
   p
 }
 
+# Saved assay calculations are QC evidence only, separate from physiology.
+# Preserve repeated assay records and their stored numeric time denominators.
+harmonize_calcification_qc <- function(path) {
+  x <- readr::read_csv(path, show_col_types = FALSE, progress = FALSE,
+                        col_types = readr::cols(.default = readr::col_character()))
+  tibble::tibble(
+    sample_id = norm_sample_id(paste(x$colony_id, x$timepoint)),
+    start_time = x$start.time, stop_time = x$stop.time,
+    stored_timediff = as.numeric(x$timediff),
+    reported_rate = as.numeric(x$umol.cm2.hr)) |>
+    filter(!is.na(sample_id))
+}
+
 harmonize_all <- function(manifest = yaml::read_yaml("config/upstream.yml"), out_dir = "data/derived") {
   files <- setNames(lapply(manifest$files, `[[`, "dest"), vapply(manifest$files, `[[`, "", "id"))
   layers <- list()
@@ -229,6 +242,10 @@ harmonize_all <- function(manifest = yaml::read_yaml("config/upstream.yml"), out
   orthologs <- harmonize_orthologs(files$orthologs_three_way)
   orthologs_all <- harmonize_orthologs(files$orthologs_annotated)
   temperature <- harmonize_temperature(files$temperature)
+  assay_qc <- bind_rows(lapply(paste0("calcification_qc_TP", 1:4), function(id) {
+    harmonize_calcification_qc(files[[id]])
+  }))
+  write_derived(assay_qc, "calcification_assay_qc", out_dir)
 
   for (nm in names(layers)) write_derived(layers[[nm]], nm, out_dir)
   write_derived(orthologs, "orthologs_three_way", out_dir)

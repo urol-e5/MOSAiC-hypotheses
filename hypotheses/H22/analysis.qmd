@@ -27,7 +27,8 @@ tps <- c("TP1", "TP2", "TP3", "TP4")
 n_perm <- 200
 max_pc <- 20
 alpha_en <- 0.5
-n_cores <- max(1, parallel::detectCores() - 1)
+n_cores <- as.integer(Sys.getenv("H22_WORKERS", max(1, parallel::detectCores() - 1)))
+n_lambda <- 100L
 set.seed(20261008)
 ```
 
@@ -52,10 +53,14 @@ Implementation notes (not in `hypothesis.md`; none changes the rule):
 - Timepoint enters as dummies for the transition (TP2→TP3, TP3→TP4 vs
   TP1→TP2). A dummy that is constant in a training fold is dropped from
   both models in that fold.
-- Inner CV uses `cv.glmnet(..., foldid = colony, grouped = FALSE)`, since
-  each inner fold has only 2–3 rows.
-- Every fold asserts that no test colony is in the training data, and PCA,
-  centering and lambda are computed from training rows only.
+- Amendment 2 (2026-10-12) moves filtering, normalization, VST, centering,
+  PCA, and any standardization into each outer and inner training fold.
+  Inner colony validation selects one of 100 penalty fractions, pooling
+  squared errors over validation rows.
+- Frozen expression transforms are shared with H26 through `R/expression.R`.
+  Preprocessing is cached before response permutations; all model fitting
+  and penalty selection are repeated for every permutation.
+- Every fold asserts that its training and held-out colonies are disjoint.
 
 ## Data
 
@@ -65,8 +70,8 @@ phys <- load_physiology() |> select(sample_id, all_of(unname(traits))) |>
 orth <- load_orthologs()
 
 prep_species <- function(sp) {
-  v <- prep_vst(genes_by_ortholog(sp, orthologs = orth), design)
-  info <- design |> filter(sample_id %in% colnames(v$vst)) |> select(sample_id, colony, site, nutrient, timepoint) |>
+  counts <- round(as_count_matrix(genes_by_ortholog(sp, orthologs = orth)))
+  info <- design |> filter(has_genes %in% TRUE, sample_id %in% colnames(counts)) |> select(sample_id, colony, site, nutrient, timepoint) |>
     left_join(phys, by = "sample_id") |> mutate(t = match(timepoint, tps))
   rows <- lapply(names(traits), function(tr) {
     col <- traits[[tr]]
@@ -76,13 +81,13 @@ prep_species <- function(sp) {
     a |> inner_join(b, by = c("colony", "t")) |> filter(is.finite(y0), is.finite(y1)) |>
       mutate(trait = tr, interval = factor(t, levels = 1:3), species = sp)
   })
-  list(species = sp, vst = v$vst, rows = bind_rows(rows))
+  list(species = sp, counts = counts[, info$sample_id, drop = FALSE], rows = bind_rows(rows))
 }
 dat <- lapply(setNames(species_all, species_all), prep_species)
 
 n_tab <- bind_rows(lapply(dat, function(d) d$rows |> group_by(species, trait) |>
   summarise(rows = n(), colonies = n_distinct(colony), Mahana = sum(site == "Mahana"), Manava = sum(site == "Manava"),
-            .groups = "drop") |> mutate(ortholog_genes = nrow(d$vst))))
+            .groups = "drop") |> mutate(raw_ortholog_genes = nrow(d$counts))))
 write_csv(n_tab, file.path(out_dir, "n_per_species.csv"))
 knitr::kable(n_tab)
 ```
@@ -92,27 +97,83 @@ knitr::kable(n_tab)
 ```{r functions}
 dummies <- function(r) cbind(i2 = as.numeric(r$t == 2), i3 = as.numeric(r$t == 3))
 
-# Fit both models on `tr` rows, predict `te` rows. `X`: gene x sample matrix.
-fit_fold <- function(X, tr, te, y1_train = tr$y1) {
-  stopifnot(!any(te$colony %in% tr$colony))
+# Filter and fit the expression representation using unique training libraries.
+# Held-out counts are transformed with frozen training parameters only.
+prepare_fold <- function(X, tr, te, zscore_genes = FALSE) {
+  stopifnot(!any(te$colony %in% tr$colony), !any(te$sample_id %in% tr$sample_id))
+  train_ids <- unique(tr$sample_id); test_ids <- unique(te$sample_id)
+  counts <- filter_expressed(X[, train_ids, drop = FALSE])
+  if (!nrow(counts)) stop("No expressed genes in training fold")
+  v <- norm_fold(counts, X[rownames(counts), test_ids, drop = FALSE])
+  sd_gene <- apply(v$train, 1, sd)
+  variable <- is.finite(sd_gene) & sd_gene > 0
+  v$train <- v$train[variable, , drop = FALSE]
+  v$test <- v$test[variable, , drop = FALSE]
+  if (!nrow(v$train)) stop("No variable genes in training fold")
+  Xtr <- t(v$train[, tr$sample_id, drop = FALSE])
+  Xte <- t(v$test[, te$sample_id, drop = FALSE])
+  mu <- colMeans(Xtr)
+  scaling <- if (zscore_genes) apply(Xtr, 2, sd) else rep(1, ncol(Xtr))
+  Xtr <- sweep(sweep(Xtr, 2, mu), 2, scaling, '/')
+  Xte <- sweep(sweep(Xte, 2, mu), 2, scaling, '/')
+  k <- min(max_pc, nrow(Xtr) - 1L, ncol(Xtr))
+  if (k < 1) stop("Too few training samples for PCA")
+  pc <- prcomp(Xtr, center = FALSE, rank. = k)
   D_tr <- dummies(tr); D_te <- dummies(te)
   keep <- apply(D_tr, 2, function(z) length(unique(z)) > 1)
-  D_tr <- D_tr[, keep, drop = FALSE]; D_te <- D_te[, keep, drop = FALSE]
-  B_tr <- cbind(y0 = tr$y0, D_tr); B_te <- cbind(y0 = te$y0, D_te)
-  base <- lm.fit(cbind(1, B_tr), y1_train)
-  pred_base <- drop(cbind(1, B_te) %*% base$coefficients)
-  Xtr <- t(X[, tr$sample_id, drop = FALSE]); mu <- colMeans(Xtr)
-  k <- min(max_pc, nrow(Xtr) - 1)
-  pc <- prcomp(sweep(Xtr, 2, mu), center = FALSE, rank. = k)
-  S_tr <- pc$x; S_te <- sweep(t(X[, te$sample_id, drop = FALSE]), 2, mu) %*% pc$rotation
-  Z_tr <- cbind(B_tr, S_tr); Z_te <- cbind(B_te, S_te)
-  pf <- c(rep(0, ncol(B_tr)), rep(1, ncol(S_tr)))
-  foldid <- as.integer(factor(tr$colony))
-  cv <- glmnet::cv.glmnet(Z_tr, y1_train, alpha = alpha_en, penalty.factor = pf, foldid = foldid,
-                          grouped = FALSE, standardize = TRUE)
-  pred_mol <- drop(predict(cv, Z_te, s = "lambda.min"))
-  tibble(row = te$row, y1 = te$y1, pred_base = pred_base, pred_mol = pred_mol, k = k,
-         n_pc_selected = sum(as.matrix(coef(cv, s = "lambda.min"))[-(1:(ncol(B_tr) + 1)), 1] != 0))
+  B_tr <- cbind(y0 = tr$y0, D_tr[, keep, drop = FALSE])
+  B_te <- cbind(y0 = te$y0, D_te[, keep, drop = FALSE])
+  Z_tr <- cbind(B_tr, pc$x)
+  Z_te <- cbind(B_te, Xte %*% pc$rotation)
+  list(tr = tr, te = te, B_tr = B_tr, B_te = B_te, Z_tr = Z_tr, Z_te = Z_te,
+       penalty = c(rep(0, ncol(B_tr)), rep(1, ncol(pc$x))), k = k,
+       gene_ids = rownames(v$train), train_ids = train_ids,
+       center = mu, scaling = scaling, rotation = pc$rotation)
+}
+
+prepare_outer_fold <- function(X, tr, te, zscore_genes = FALSE) {
+  outer <- prepare_fold(X, tr, te, zscore_genes)
+  colonies <- unique(tr$colony)
+  if (length(colonies) < 2) stop("Too few training colonies for inner CV")
+  inner <- lapply(colonies, function(cc) {
+    train <- which(tr$colony != cc); valid <- which(tr$colony == cc)
+    list(train = train, valid = valid,
+         design = prepare_fold(X, tr[train, ], tr[valid, ], zscore_genes))
+  })
+  list(outer = outer, inner = inner)
+}
+
+# PCA spaces differ across folds; align paths by fractions of each training
+# fit's maximum lambda. Ties choose the largest penalty fraction.
+penalty_fractions <- function(d) {
+  minimum <- if (nrow(d$Z_tr) < ncol(d$Z_tr)) 0.01 else 0.0001
+  exp(seq(log(1), log(minimum), length.out = n_lambda))
+}
+
+fit_path <- function(d, y, fractions) {
+  glmnet::glmnet(d$Z_tr, y, alpha = alpha_en, penalty.factor = d$penalty,
+                 standardize = TRUE, nlambda = length(fractions), lambda.min.ratio = min(fractions))
+}
+
+fit_fold <- function(fold, y1_train = fold$outer$tr$y1) {
+  fractions <- penalty_fractions(fold$outer)
+  losses <- lapply(fold$inner, function(f) {
+    fit <- fit_path(f$design, y1_train[f$train], fractions)
+    predictions <- predict(fit, f$design$Z_te, s = fit$lambda[1] * fractions)
+    colSums((predictions - y1_train[f$valid])^2)
+  })
+  mse <- Reduce('+', losses) / sum(vapply(fold$inner, function(f) length(f$valid), 0L))
+  fraction <- fractions[which.min(mse)]
+  d <- fold$outer
+  base <- lm.fit(cbind(1, d$B_tr), y1_train)
+  pred_base <- drop(cbind(1, d$B_te) %*% base$coefficients)
+  fit <- fit_path(d, y1_train, fractions)
+  lambda <- fit$lambda[1] * fraction
+  pred_mol <- drop(predict(fit, d$Z_te, s = lambda))
+  tibble(row = d$te$row, y1 = d$te$y1, pred_base = pred_base, pred_mol = pred_mol, k = d$k,
+         n_pc_selected = sum(as.matrix(coef(fit, s = lambda))[-(1:(ncol(d$B_tr) + 1)), 1] != 0),
+         lambda_fraction = fraction, lambda = lambda, genes = length(d$gene_ids),
+         training_samples = length(d$train_ids), training_colonies = n_distinct(d$tr$colony))
 }
 
 r2_pooled <- function(p) {
@@ -120,33 +181,47 @@ r2_pooled <- function(p) {
   c(R2_base = 1 - sum((p$y1 - p$pred_base)^2) / sst, R2_mol = 1 - sum((p$y1 - p$pred_mol)^2) / sst)
 }
 
-# Outer CV over a grouping column (`site` or `colony`); optional permutation of training y1.
-run_cv <- function(X, rows, by = "site", permute = FALSE) {
+# Cache label-independent preprocessing for outer and nested inner folds.
+prepare_cv <- function(X, rows, by = "site") {
   rows <- rows |> mutate(row = row_number())
-  folds <- unique(rows[[by]])
-  preds <- bind_rows(lapply(folds, function(f) {
+  groups <- unique(rows[[by]])
+  folds <- parallel::mclapply(groups, function(f) {
     tr <- rows[rows[[by]] != f, ]; te <- rows[rows[[by]] == f, ]
+    prepare_outer_fold(X, tr, te)
+  }, mc.cores = min(n_cores, length(groups)))
+  if (any(vapply(folds, inherits, logical(1), 'try-error'))) stop("Fold preprocessing failed")
+  names(folds) <- groups
+  folds
+}
+
+run_cv <- function(folds, permute = FALSE) {
+  preds <- bind_rows(lapply(names(folds), function(name) {
+    f <- folds[[name]]
+    tr <- f$outer$tr
     y1 <- tr$y1
     if (permute) for (g in unique(tr$t)) { i <- which(tr$t == g); y1[i] <- y1[i][sample.int(length(i))] }
-    fit_fold(X, tr, te, y1)
+    fit_fold(f, y1) |> mutate(fold = name)
   }))
   list(preds = preds, r2 = r2_pooled(preds))
 }
 
 evaluate <- function(d, trait, by = "site", rows_filter = function(r) r) {
   rows <- rows_filter(d$rows |> filter(.data$trait == !!trait))
-  obs <- run_cv(d$vst, rows, by)
+  folds <- prepare_cv(d$counts, rows, by)
+  obs <- run_cv(folds)
   null <- unlist(parallel::mclapply(seq_len(n_perm), function(i) {
     set.seed(20261008 + i)
-    r <- run_cv(d$vst, rows, by, permute = TRUE)$r2
+    r <- run_cv(folds, permute = TRUE)$r2
     r[["R2_mol"]] - r[["R2_base"]]
   }, mc.cores = n_cores))
+  if (!is.numeric(null) || length(null) != n_perm || any(!is.finite(null))) stop("Invalid permutation results")
   dR2 <- obs$r2[["R2_mol"]] - obs$r2[["R2_base"]]
   list(summary = tibble(species = d$species, trait = trait, cv = by, rows = nrow(rows),
                         R2_base = obs$r2[["R2_base"]], R2_mol = obs$r2[["R2_mol"]], dR2 = dR2,
                         null_dR2_median = median(null), null_dR2_95 = quantile(null, 0.95),
                         p = (1 + sum(null >= dR2)) / (1 + length(null)),
-                        mean_pcs_selected = mean(obs$preds$n_pc_selected), pcs_available = max(obs$preds$k)),
+                        mean_pcs_selected = mean(obs$preds$n_pc_selected), pcs_available = max(obs$preds$k),
+                        min_genes = min(obs$preds$genes), max_genes = max(obs$preds$genes)),
        preds = obs$preds |> mutate(species = d$species, trait = trait, cv = by), null = null)
 }
 
@@ -205,22 +280,25 @@ knitr::kable(bind_rows(sens_loco$per_trait |> mutate(check = "leave one colony o
 
 ## Secondary: cross-species transfer (descriptive)
 
-Train on all rows of one species, test on another; ortholog genes and both
-y columns z-scored within species. No permutation null and no decision.
+Train on the paired rows of one species and test on another. Expression
+preprocessing and gene/response standardization use source training rows
+only (Amendment 2). No permutation null and no decision.
 
 ```{r transfer}
-common <- Reduce(intersect, lapply(dat, function(d) rownames(d$vst)))
-zg <- lapply(dat, function(d) t(scale(t(d$vst[common, ]))))
-zrows <- lapply(dat, function(d) d$rows |> group_by(trait) |>
-  mutate(m = mean(c(y0, y1)), s = sd(c(y0, y1)), y0 = (y0 - m) / s, y1 = (y1 - m) / s) |> ungroup())
+common <- Reduce(intersect, lapply(dat, function(d) rownames(d$counts)))
 transfer <- bind_rows(lapply(species_all, function(a) bind_rows(lapply(setdiff(species_all, a), function(b)
   bind_rows(lapply(names(traits), function(tr) {
-    tr_rows <- zrows[[a]] |> filter(trait == tr) |> mutate(row = row_number())
-    te_rows <- zrows[[b]] |> filter(trait == tr) |> mutate(row = row_number(), colony = paste0("test_", colony))
-    X <- cbind(zg[[a]], zg[[b]])
-    p <- fit_fold(X, tr_rows, te_rows)
+    tr_rows <- dat[[a]]$rows |> filter(trait == tr) |> mutate(row = row_number())
+    te_rows <- dat[[b]]$rows |> filter(trait == tr) |> mutate(row = row_number())
+    mu <- mean(c(tr_rows$y0, tr_rows$y1)); sigma <- sd(c(tr_rows$y0, tr_rows$y1))
+    tr_rows <- tr_rows |> mutate(y0 = (y0 - mu) / sigma, y1 = (y1 - mu) / sigma)
+    te_rows <- te_rows |> mutate(y0 = (y0 - mu) / sigma, y1 = (y1 - mu) / sigma)
+    X <- cbind(dat[[a]]$counts[common, ], dat[[b]]$counts[common, ])
+    fold <- prepare_outer_fold(X, tr_rows, te_rows, zscore_genes = TRUE)
+    p <- fit_fold(fold)
     r <- r2_pooled(p)
-    tibble(train = a, test = b, trait = tr, genes = length(common), R2_base = r[["R2_base"]], R2_mol = r[["R2_mol"]],
+    tibble(train = a, test = b, trait = tr, genes = length(fold$outer$gene_ids),
+           R2_base = r[["R2_base"]], R2_mol = r[["R2_mol"]],
            dR2 = r[["R2_mol"]] - r[["R2_base"]])
   }))))))
 write_csv(transfer, file.path(out_dir, "cross_species_transfer.csv"))

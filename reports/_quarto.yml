@@ -2,6 +2,15 @@ project:
   type: website
   output-dir: _site
   execute-dir: project
+  pre-render: Rscript prepare-site.R
+  render:
+    - "*.qmd"
+    - "results/*.qmd"
+  resources:
+    - qc-evidence/*.csv
+    - qc-evidence/*.png
+    - qc-follow-up-evidence/*.csv
+    - qc-follow-up-evidence/calcification-issue-draft.md
 
 website:
   title: "MOSAiC hypotheses"

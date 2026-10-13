@@ -1,5 +1,5 @@
 mosaic_commit: 86432e3e393aecca307be356e514c95981177b7c
-lock_updated: '2026-10-07'
+lock_updated: '2026-10-12'
 files:
 - id: genes_Apul
   md5: 6d9c7c720951658ab7c4a552c9bfc926
@@ -77,6 +77,22 @@ files:
   md5: f82988f58109f845113b901dc0ec7d3a
   bytes: 85385.0
   fetched_on: '2026-10-06'
+- id: calcification_qc_TP1
+  md5: f4a4b258f0b2d6e74b81df4148ac7769
+  bytes: 52475.0
+  fetched_on: '2026-10-12'
+- id: calcification_qc_TP2
+  md5: 6f675a509fd14112c3975c33f9ee8bf6
+  bytes: 79690.0
+  fetched_on: '2026-10-12'
+- id: calcification_qc_TP3
+  md5: 6eb688c82b3dc939626b0001b57c31c2
+  bytes: 47318.0
+  fetched_on: '2026-10-12'
+- id: calcification_qc_TP4
+  md5: c29fe81d095d0bffe3e87033d1f2154d
+  bytes: 42431.0
+  fetched_on: '2026-10-12'
 - id: orthologs_three_way
   md5: c97f836634ffe3c954da66f057f9537d
   bytes: 7628171.0

@@ -15,6 +15,40 @@ sp_names <- c(Apul = "A. pulchra", Peve = "P. evermanni", Ptuh = "P. tuahiniensi
 Harmonized from MOSAiC commit `r substr(lock$mosaic_commit, 1, 7)`; lock updated `r lock$lock_updated`.
 Every table here is derived from `config/design.csv` and `data/derived/`, which are what every hypothesis reads.
 
+## Unresolved interpretation limits
+
+::: {.callout-warning}
+## Integrity checks do not resolve assay scale or taxonomy
+
+The [2026-10-07 detailed QC audit](qc-review.qmd) documents these unresolved
+issues. The audit is a dated descriptive record; the tables below reflect the
+current harmonized inputs.
+
+- **Calcification units confirmed inconsistent:** the [2026-10-12 follow-up](qc-follow-up.qmd)
+  traces minute denominators at TP1/TP4 and hour denominators at TP2/TP3 into
+  rates all labeled per hour. It also identifies nonpositive saved durations,
+  including eight distinct TP2 molecular samples. Validated upstream
+  recalculation is required before biological interpretation; no rescaling
+  has been applied to physiology.
+- **Broader-cohort taxonomy:** 43 Peve-coded ITS2 records carry *Porites lobata
+  lutea* annotations, and 47 Ptuh-coded records carry *Pocillopora meandrina*
+  annotations. Code prefixes are not verified species identities. The core
+  molecular sets contain 10 colonies per intended species; analyses of the
+  broader cohort, including H10, need this qualification. H10's new
+  [intended-host-annotation sensitivity](results/H10.qmd) still passes its
+  registered rule; matching labels do not independently verify taxonomy.
+- **Peve lncRNA composition:** five overlapping features account for a median
+  90.6% of delivered lncRNA counts. Their independence and read-assignment
+  provenance remain unresolved. H26 excludes the affected locus under D-017;
+  this does not resolve the upstream issue or qualify all earlier analyses.
+- **Usable coverage differs from presence:** Peve miRNA QC retains 10/7/6/6
+  libraries at TP1–TP4, with declining depth. Layer flags count delivered
+  samples before this QC and before feature-level missingness.
+
+See the [full audit and evidence](qc-review.qmd) and [decision log](decisions.qmd)
+for additional coverage, temperature, methylation, and sample-quality limits.
+:::
+
 ## Samples per species, timepoint, and layer
 
 ```{r}
@@ -47,6 +81,7 @@ design |>
 ## Layer overlap
 
 Number of samples shared between each pair of layers (all species pooled). The diagonal is the layer's own n.
+These are availability counts, not counts passing analysis-specific QC.
 
 ```{r}
 L <- as.matrix(design[, layer_cols]); colnames(L) <- sub("^has_", "", layer_cols)
@@ -64,6 +99,10 @@ design |> filter(if_all(all_of(mol))) |> dplyr::count(species, timepoint) |>
 ```
 
 ## Site and nutrient balance
+
+This table includes the broader physiology/ITS2 cohort. The core molecular
+cohort has five Mahana/Low and five Manava/High colonies per species, with no
+Hilton samples. Nutrient treatment is confounded with site.
 
 ```{r}
 design |> distinct(species, colony, site, nutrient) |>

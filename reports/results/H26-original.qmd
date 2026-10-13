@@ -1,0 +1,9 @@
+---
+title: "H26 original result (superseded)"
+---
+
+```{r}
+#| results: asis
+source("../R/site.R")
+render_result("../hypotheses/H26/RESULT-original-2026-10-10.md")
+```

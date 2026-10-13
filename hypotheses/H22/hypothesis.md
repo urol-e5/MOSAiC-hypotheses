@@ -2,7 +2,7 @@
 id: H22
 slug: held-out-molecular-forecast
 title: Expression at one timepoint forecasts next-timepoint physiology at held-out sites better than physiology alone
-status: inconclusive
+status: not supported
 tier: 4
 layers: [genes, physiology]
 species: [Apul, Peve, Ptuh]
@@ -111,3 +111,54 @@ conflict. The decision rule is unchanged.
   out among the remaining 9), and dropping the TP3→TP4 transition.
 - *Cross-species transfer*: genes z-scored within species and y z-scored
   within species before training on one species and testing on another.
+
+### Amendment 2 (2026-10-12): fit all predictive preprocessing on training data
+
+The original results are known. Amendment 1's all-samples expression filter
+and VST allowed held-out predictors to influence the fitted preprocessing.
+This methodological correction supersedes that feature-preparation clause
+before the corrected rerun. The original text and decision rule are retained.
+
+- Start from unfiltered, rounded three-way ortholog counts. In each outer
+  fold, apply the H01 count filter to the unique training sample IDs only,
+  estimate size factors and the DESeq2 dispersion trend from those samples,
+  and apply the frozen training scale and VST to held-out samples. The
+  shared frozen transformation uses the full training feature set for the
+  dispersion fit. Centering, any gene standardization, and PCA also use
+  training samples only; k is capped by 20, training rows − 1, and retained
+  feature count. Rows lacking paired physiology remain excluded.
+- Inner leave-one-colony-out validation repeats this preprocessing using
+  its own training colonies. Since feature sets and PCs may differ among
+  inner folds, select a penalty **fraction** rather than reuse one PCA
+  representation: 100 fractions logarithmically spaced from 1 to a minimum
+  of 0.01 when the outer training design has more variables than rows,
+  otherwise 0.0001 (the original glmnet default). Apply this same fraction
+  grid to each fit's own training-derived maximum lambda. Use glmnet's
+  interpolated predictions on its corresponding path, pool squared errors over inner
+  validation rows (as in the original `grouped = FALSE` choice), and choose
+  the fraction with lowest MSE; ties choose the largest fraction. Apply that
+  fraction to the outer training fit. Alpha remains 0.5 and nuisance terms
+  remain unpenalized. Outer held-out responses never inform tuning; inner
+  validation responses are used only to score training-fitted models.
+- Preprocessing is deterministic and independent of the response, so it
+  is cached per fold and reused under the 200 response permutations. Both
+  baseline and molecular models and inner penalty selection are refitted
+  for every permutation. This retains the registered null and p-value rule.
+- Cross-species transfer remains descriptive. Align raw ortholog IDs,
+  then filter, normalize, transform, and standardize genes using the source
+  species' training rows only. Standardize both response columns with the
+  source training mean and SD and apply those constants to target rows.
+  Target species data no longer fit their own gene or response scaling.
+- Save fold sample/feature counts and penalty fractions with predictions.
+  Regression tests perturb held-out counts and responses to verify that
+  training representations and selected penalty fractions stay unchanged.
+
+The corrected primary, both sensitivity analyses, and descriptive transfer
+are rerun before updating `RESULT.md`. The original result is retained as
+a historical record. This is a correction on an already analysed dataset,
+not an independent replication or a new pre-registration.
+
+The corrected full run completed on 2026-10-12 with exit status 0. The
+primary verdict is `not supported`; both sensitivity verdicts remain
+`inconclusive`. Updated estimates and the archived original report are
+linked from `RESULT.md`.
